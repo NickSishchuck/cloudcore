@@ -1,4 +1,4 @@
-# Я здесь впервые
+# "Я здесь впервые"
 Сначала создай .env в своём локальном проекте. Перенеси содержимое из .envTemplate
 в новосозданный .env. Поменяй пароль.
 ```dockerfile
@@ -46,20 +46,29 @@ docker compose exec database mysql -uroot -p {пароль указан в .env.
  ввести его интерактивно. Если хочешь автоматически, убери пробел между -p и паролем}
 
 # Выполнение SQL команды
-docker compose exec database mysql -uroot -p FileStorage -e "SELECT * FROM users;"
+docker compose exec database mysql -uroot -p CloudCoreDB -e "SELECT * FROM users;"
 
 # Просмотр логов БД
 docker compose logs database --follow
+
+# Пересоздание БД
+docker compose down --volumes
+    #Поднятие всего приложения
+    docker compose up --build
+    
+MySQL автоматически по-очереди пройдётся по файлам в ../database/init/, но только если в вольюме будет пусто. 
+По-этому мы удаляем содержимое вольюма, чтобы внести обновления в бд.
+
 ``` 
 
 # Работа с storage
 ```dockerfile
-# Просмотр файлов в storage
-docker compose exec backend ls -la /app/storage
+У нас volume mapping, по-этому содержимое storage можно просматривать прям локально
+через проводник
 
-# Очистка storage (!)
-sudo rm -rf ./storage/*
-mkdir -p ./storage/users
+
+Если бы у нас его не было, было бы:
+docker compose exec backend ls -la /app/storage
 ```
 
 # Очистка системы

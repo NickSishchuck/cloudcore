@@ -15,7 +15,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
-      - ConnectionStrings__DefaultConnection=Server=database;Port=3306;Database=FileStorage;Uid=root;Pwd=${DB_PASSWORD:-defaultpassword}
+      - ConnectionStrings__DefaultConnection=Server=database;Port=3306;Database=CloudCoreDB;Uid=root;Pwd=${DB_PASSWORD:-defaultpassword}
       - FileStorage__BasePath=/app/storage
     volumes:
       - ./storage:/app/storage
@@ -29,7 +29,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-defaultpassword}
-      MYSQL_DATABASE: FileStorage
+      MYSQL_DATABASE: CloudCoreDB
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     volumes:
