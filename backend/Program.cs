@@ -36,13 +36,13 @@ namespace CloudCore
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
-
-
-            app.MapControllers();
+            app.UseRouting();
 
             app.UseCors("AllowAll");
-            app.UseRouting();
+
+            app.UseAuthorization();
+
+            app.MapControllers();
 
             app.Run("http://0.0.0.0:5000");
         }

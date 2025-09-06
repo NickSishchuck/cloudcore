@@ -1,2 +1,6 @@
 .env
 .vs/
+backend/obj/
+backend/bin/
+.git/
+.github/
