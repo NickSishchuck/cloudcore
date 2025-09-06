@@ -1,0 +1,10 @@
+@URL = http://localhost:5000
+
+GET {{URL}}/my-drive/
+Accept: application/json
+###
+
+GET {{URL}}/my-drive/files
+Accept: application/json
+
+###

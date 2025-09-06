@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CloudCore.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("my-drive")]
     public class TestController : ControllerBase
     {
         [HttpGet]
