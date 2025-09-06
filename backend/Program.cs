@@ -1,34 +1,32 @@
-var builder = WebApplication.CreateBuilder(args);
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services.AddCors(options =>
+namespace CloudCore
 {
-    options.AddPolicy("AllowAll", policy =>
+    public class Program
     {
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+            builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            });
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+            var app = builder.Build();
+            app.UseCors("AllowAll");
+            app.UseRouting();
+            app.MapControllers();
+            app.Run("http://0.0.0.0:5000");
+        }
+    }
 }
-
-app.UseCors("AllowAll");
-app.UseRouting();
-app.MapControllers();
-
-app.MapGet("/", () => new { 
-    message = "FileStorage API запущен",
-    test = "/api/test"
-});
-
-app.Run("http://0.0.0.0:5000");
