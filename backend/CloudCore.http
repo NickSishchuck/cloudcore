@@ -1,0 +1,17 @@
+@URL = http://localhost:5000
+@USERID = 1
+@FOLDERID = 2
+@FILEID = 1
+
+// get all firstlayer files and folders
+GET {{URL}}/user/{{USERID}}/mydrive
+Accept: application/json
+
+###
+
+GET {{URL}}/user/{{USERID}}/mydrive?parentId={{FOLDERID}}
+Accept: application/json
+###
+
+GET {{URL}}/user/{{USERID}}/mydrive/{{FILEID}}/download
+Accept: application/json
