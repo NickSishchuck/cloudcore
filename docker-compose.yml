@@ -28,6 +28,7 @@ services:
   database:
     image: mysql:8.0
     environment:
+      MYSQL_HOST: database
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-defaultpassword}
       MYSQL_DATABASE: CloudCoreDB
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
@@ -44,6 +45,7 @@ services:
       interval: 10s
     networks:
       - app-network
+
 
 volumes:
   mysql_data:
