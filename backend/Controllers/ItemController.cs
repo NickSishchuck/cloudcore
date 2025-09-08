@@ -47,23 +47,9 @@ namespace CloudCore.Controllers
             if (string.IsNullOrEmpty(item.FilePath))
                 return NotFound("File path is empty.");
 
-            //var rootPath = _environment.ContentRootPath;
-
-
-            //var storagePath = Path.Combine(rootPath, "storage");
-
-            
-
-            //var filePath = Path.Combine(storagePath, item.FilePath).Replace("\\", "/");
-
-            var filePath = Environment.GetEnvironmentVariable("FileStorage__BasePath"); ;
+            var filePath = Path.Combine(Environment.GetEnvironmentVariable("FileStorage__BasePath"), item.FilePath);
 
             var directory = Path.GetDirectoryName(filePath);
-            //if (Directory.Exists(directory))
-            //{
-            //    var files = Directory.GetFiles(directory);
-            //    return NotFound($"Files in directory: {string.Join(", ", files)}");
-            //}
 
 
             if (!System.IO.File.Exists(filePath))
