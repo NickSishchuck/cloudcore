@@ -15,7 +15,11 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
-      - ConnectionStrings__DefaultConnection=Server=database;Port=3306;Database=CloudCoreDB;Uid=root;Pwd=${DB_PASSWORD:-defaultpassword}
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_NAME=CloudCoreDB
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-defaultpassword}
       - FileStorage__BasePath=/app/storage
     volumes:
       - ./storage:/app/storage
@@ -45,7 +49,6 @@ services:
       interval: 10s
     networks:
       - app-network
-
 
 volumes:
   mysql_data:
