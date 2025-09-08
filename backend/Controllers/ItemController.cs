@@ -12,12 +12,11 @@ namespace CloudCore.Controllers
     {
 
         private readonly CloudCoreDbContext _context;
-        private readonly IWebHostEnvironment _environment;
 
-        public ItemController(CloudCoreDbContext context, IWebHostEnvironment environment)
+
+        public ItemController(CloudCoreDbContext context)
         {
             _context = context;
-            _environment = environment;
         }
 
         [HttpGet]
@@ -48,17 +47,27 @@ namespace CloudCore.Controllers
             if (string.IsNullOrEmpty(item.FilePath))
                 return NotFound("File path is empty.");
 
-            var rootPath = _environment.ContentRootPath;
+            //var rootPath = _environment.ContentRootPath;
+
+
+            //var storagePath = Path.Combine(rootPath, "storage");
 
             
-            var storagePath = Path.Combine(rootPath, "storage");
 
-            
-            var filePath = Path.Combine(storagePath, item.FilePath).Replace("\\", "/");
+            //var filePath = Path.Combine(storagePath, item.FilePath).Replace("\\", "/");
+
+            var filePath = Environment.GetEnvironmentVariable("FileStorage__BasePath"); ;
+
+            var directory = Path.GetDirectoryName(filePath);
+            //if (Directory.Exists(directory))
+            //{
+            //    var files = Directory.GetFiles(directory);
+            //    return NotFound($"Files in directory: {string.Join(", ", files)}");
+            //}
 
 
             if (!System.IO.File.Exists(filePath))
-                return NotFound("Physical file not found.");
+                return Ok($"file not found. {filePath}");
 
             return PhysicalFile(filePath, item.MimeType ?? "application/octet-stream", item.Name);
         }
