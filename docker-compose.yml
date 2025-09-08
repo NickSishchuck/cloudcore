@@ -22,7 +22,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-defaultpassword}
       - FileStorage__BasePath=/app/storage
     volumes:
-      - ./storage:/app/storage
+      - ./backend/storage:/app/storage
     depends_on:
       database:
         condition: service_healthy
