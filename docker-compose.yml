@@ -20,9 +20,9 @@ services:
       - DB_NAME=CloudCoreDB
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD:-defaultpassword}
-      - FileStorage__BasePath=/app/backend/storage
+      - FileStorage__BasePath=/app/storage
     volumes:
-      - ./storage:/app/backend/storage
+      - ./backend/storage:/app/storage
     depends_on:
       database:
         condition: service_healthy
