@@ -4,6 +4,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using CloudCore.Models;
 using System;
+using CloudCore.Services.Interfaces;
+using CloudCore.Services;
 
 namespace CloudCore
 {
@@ -33,6 +35,8 @@ namespace CloudCore
 
             // Add db context
             builder.Services.AddDbContext<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+            builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
             // Add controllers and endpoints
             builder.Services.AddControllers();
