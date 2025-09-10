@@ -6,20 +6,26 @@ using Microsoft.EntityFrameworkCore;
 using System;
 namespace CloudCore.Controllers
 {
+
     [ApiController]
     [Route("user/{userid}/mydrive")]
     public class ItemController : ControllerBase
     {
 
         private readonly CloudCoreDbContext _context;
-        private readonly IWebHostEnvironment _environment;
 
-        public ItemController(CloudCoreDbContext context, IWebHostEnvironment environment)
+        
+        public ItemController(CloudCoreDbContext context)
         {
             _context = context;
-            _environment = environment;
         }
 
+        /// <summary>
+        /// Retrieves all items for a specific user within a given parent directory.
+        /// </summary>
+        /// <param name="userId">User identifier.</param>
+        /// <param name="parentId">Parent directory ID (null for root level)</param>
+        /// <returns>List of user items or NotFound if no items exist</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Item>>> GetItems(int userId, int? parentId)
         {
@@ -33,7 +39,11 @@ namespace CloudCore.Controllers
             return Ok(userFiles);
         }
 
-
+        /// <summary>
+        /// Downloads a file by ID.
+        /// </summary>
+        /// <param name="id">File identifier</param>
+        /// <returns>File content or NotFound/BadRequest if file doesn't exist or path is invalid</returns>
         [HttpGet("{id}/download")]
         public async Task<IActionResult> DownloadFile(int id)
         {
@@ -48,19 +58,13 @@ namespace CloudCore.Controllers
             if (string.IsNullOrEmpty(item.FilePath))
                 return NotFound("File path is empty.");
 
-            var rootPath = _environment.ContentRootPath;
+            var fullPath = Path.Combine(Environment.GetEnvironmentVariable("FileStorage__BasePath"), item.FilePath);
+
+            if (!fullPath.StartsWith(Path.GetFullPath(Environment.GetEnvironmentVariable("FileStorage__BasePath"))))
+                return BadRequest("Invalid file path.");
 
             
-            var storagePath = Path.Combine(rootPath, "storage");
-
-            
-            var filePath = Path.Combine(storagePath, item.FilePath).Replace("\\", "/");
-
-
-            if (!System.IO.File.Exists(filePath))
-                return NotFound("Physical file not found.");
-
-            return PhysicalFile(filePath, item.MimeType ?? "application/octet-stream", item.Name);
+            return PhysicalFile(fullPath, item.MimeType ?? "application/octet-stream", item.Name, enableRangeProcessing: false);
         }
 
         
