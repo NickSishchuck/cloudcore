@@ -1,5 +1,6 @@
 
 using CloudCore.Models;
+using CloudCore.Services.Interfaces;
 using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,11 +14,13 @@ namespace CloudCore.Controllers
     {
 
         private readonly CloudCoreDbContext _context;
+        private readonly IFileStorageService _fileStorageService;
 
         
-        public ItemController(CloudCoreDbContext context)
+        public ItemController(CloudCoreDbContext context, IFileStorageService fileStorageService)
         {
             _context = context;
+            _fileStorageService = fileStorageService;
         }
 
         /// <summary>
@@ -45,11 +48,11 @@ namespace CloudCore.Controllers
         /// <param name="id">File identifier</param>
         /// <returns>File content or NotFound/BadRequest if file doesn't exist or path is invalid</returns>
         [HttpGet("{id}/download")]
-        public async Task<IActionResult> DownloadFile(int id)
+        public async Task<IActionResult> DownloadFile(int userId,int id)
         {
 
             var item = await _context.Items
-        .Where(i => i.Id == id && i.IsDeleted == false && i.Type == "file")
+        .Where(i => i.Id == id && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
         .FirstOrDefaultAsync();
 
             if (item == null)
@@ -58,13 +61,19 @@ namespace CloudCore.Controllers
             if (string.IsNullOrEmpty(item.FilePath))
                 return NotFound("File path is empty.");
 
-            var fullPath = Path.Combine(Environment.GetEnvironmentVariable("FileStorage__BasePath"), item.FilePath);
+            try
+            {
+                var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
 
-            if (!fullPath.StartsWith(Path.GetFullPath(Environment.GetEnvironmentVariable("FileStorage__BasePath"))))
-                return BadRequest("Invalid file path.");
+                if (!System.IO.File.Exists(fullPath))
+                    return NotFound("File not found on disk.");
 
-            
-            return PhysicalFile(fullPath, item.MimeType ?? "application/octet-stream", item.Name, enableRangeProcessing: false);
+                return PhysicalFile(fullPath, item.MimeType ?? "application/octet-stream", item.Name, enableRangeProcessing: false);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return BadRequest("Invalid file path");
+            }
         }
 
         
