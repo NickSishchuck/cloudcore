@@ -67,12 +67,14 @@ public class AuthService : IAuthService
 
     public string HashPassword(string password)
     {
-        return BCrypt.Net.BCrypt.HashPassword(password);
+        //TODO
+        return password;
     }
 
-    public bool VerifyPassword(string password, string hash)
+    public bool VerifyPassword(string password, string storedPassword)
     {
-        return BCrypt.Net.BCrypt.Verify(password, hash);
+        //TODO
+        return password == storedPassword;
     }
 
     public string GenerateJwtToken(User user)

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudCore - Sign In</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="login-container">
+    <h1>☁️ CloudCore</h1>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+    <div id="success-message" class="success" style="display: none;"></div>
+
+    <form class="login-form" id="loginForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" >
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+    </form>
+
+    <div class="demo-users">
+        <h3>Demo Accounts</h3>
+        <div class="demo-user" onclick="fillCredentials('admin', 'password123')">
+            <strong>Administrator:</strong> admin / password123
+        </div>
+        <div class="demo-user" onclick="fillCredentials('user', 'password123')">
+            <strong>Standard User:</strong> user / password123
+        </div>
+    </div>
+
+    <div class="login-link">
+        Don't have an account? <a href="register.html">Create account</a>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5000';
+
+    // Auto-fill demo credentials
+    function fillCredentials(username, password) {
+        document.getElementById('username').value = username;
+        document.getElementById('password').value = password;
+    }
+
+    // Show error message
+    function showError(message) {
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        document.getElementById('success-message').style.display = 'none';
+    }
+
+    // Show success message
+    function showSuccess(message) {
+        const successDiv = document.getElementById('success-message');
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        document.getElementById('error-message').style.display = 'none';
+    }
+
+    // Hide all messages
+    function hideMessages() {
+        document.getElementById('error-message').style.display = 'none';
+        document.getElementById('success-message').style.display = 'none';
+    }
+
+    // Handle login form submission
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const loginBtn = document.getElementById('loginBtn');
+
+        // Disable button and show loading
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Signing in...';
+        hideMessages();
+
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('cloudcore_token', data.token);
+                localStorage.setItem('cloudcore_user', JSON.stringify({
+                    id: data.userId,
+                    username: data.username,
+                    email: data.email
+                }));
+
+                console.log('🎉 Login successful!');
+                console.log('JWT Token:', data.token);
+                console.log('User Info:', data);
+
+                showSuccess(`Welcome back, ${data.username}!`);
+
+                // Redirect to main page after 1 second
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+
+            } else {
+                // Login failed
+                showError(data.message || 'Sign in failed. Please check your credentials.');
+            }
+
+        } catch (error) {
+            console.error('Login error:', error);
+            showError('Unable to connect to server. Please try again.');
+        } finally {
+            // Re-enable button
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Sign In';
+        }
+    });
+
+    // Check if user is already logged in
+    window.addEventListener('load', function() {
+        const token = localStorage.getItem('cloudcore_token');
+        if (token) {
+            console.log('User already logged in, redirecting...');
+            window.location.href = 'index.html';
+        }
+    });
+</script>
+</body>
+</html>

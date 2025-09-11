@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudCore - Create Account</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="register-container">
+    <h1>☁️ CloudCore</h1>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+    <div id="success-message" class="success" style="display: none;"></div>
+
+    <form class="register-form" id="registerForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required
+                   minlength="3" maxlength="50"
+                   pattern="[a-zA-Z0-9_]+"
+                   title="Only letters, numbers, and underscores allowed">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required
+                   maxlength="100">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required
+                   minlength="6"
+                   title="Password must be at least 6 characters long">
+        </div>
+
+        <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="registerBtn">Create Account</button>
+    </form>
+
+    <div class="login-link">
+        Already have an account? <a href="login.html">Sign in</a>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5000';
+
+    // Show error message
+    function showError(message) {
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        document.getElementById('success-message').style.display = 'none';
+    }
+
+    // Show success message
+    function showSuccess(message) {
+        const successDiv = document.getElementById('success-message');
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        document.getElementById('error-message').style.display = 'none';
+    }
+
+    // Hide all messages
+    function hideMessages() {
+        document.getElementById('error-message').style.display = 'none';
+        document.getElementById('success-message').style.display = 'none';
+    }
+
+    // Validate password confirmation
+    function validatePasswords() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+            showError('Passwords do not match');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Handle registration form submission
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validatePasswords()) {
+            return;
+        }
+
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const registerBtn = document.getElementById('registerBtn');
+
+        // Disable button and show loading
+        registerBtn.disabled = true;
+        registerBtn.textContent = 'Creating account...';
+        hideMessages();
+
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Success! Store token and redirect
+                localStorage.setItem('cloudcore_token', data.token);
+                localStorage.setItem('cloudcore_user', JSON.stringify({
+                    id: data.userId,
+                    username: data.username,
+                    email: data.email
+                }));
+
+                console.log('🎉 Registration successful!');
+                console.log('JWT Token:', data.token);
+                console.log('User Info:', data);
+
+                showSuccess(`Account created successfully! Welcome, ${data.username}!`);
+
+                // Redirect to main page after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+
+            } else {
+                // Registration failed
+                showError(data.message || 'Registration failed. Please try again.');
+            }
+
+        } catch (error) {
+            console.error('Registration error:', error);
+            showError('Unable to connect to server. Please try again.');
+        } finally {
+            // Re-enable button
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Create Account';
+        }
+    });
+
+    // Add real-time password confirmation validation
+    document.getElementById('confirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = this.value;
+
+        if (confirmPassword && password !== confirmPassword) {
+            this.style.borderColor = '#d93025';
+        } else {
+            this.style.borderColor = '#dadce0';
+        }
+    });
+
+    // Check if user is already logged in
+    window.addEventListener('load', function() {
+        const token = localStorage.getItem('cloudcore_token');
+        if (token) {
+            console.log('User already logged in, redirecting...');
+            window.location.href = 'index.html';
+        }
+    });
+</script>
+</body>
+</html>
