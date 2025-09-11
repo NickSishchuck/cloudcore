@@ -1,0 +1,94 @@
+@URL = http://localhost:5000
+
+### 1. Login as ADMIN
+POST {{URL}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password123"
+}
+
+### 2. Login as USER  
+POST {{URL}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "user",
+  "password": "password123"
+}
+
+### 3. Register a NEW USER
+POST {{URL}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "student",
+  "email": "student@university.edu",
+  "password": "mypassword123"
+}
+
+### === Copy your token here after login ===
+@ADMIN_TOKEN = paste_admin_token_here
+@USER_TOKEN = paste_user_token_here
+
+### 4. Get ADMIN files (should work)
+GET {{URL}}/user/1/mydrive
+Authorization: Bearer {{ADMIN_TOKEN}}
+Accept: application/json
+
+### 5. Get USER files (should work)
+GET {{URL}}/user/2/mydrive
+Authorization: Bearer {{USER_TOKEN}}
+Accept: application/json
+
+### 6. USER trying to access ADMIN files (should FAIL with 403)
+GET {{URL}}/user/1/mydrive
+Authorization: Bearer {{USER_TOKEN}}
+Accept: application/json
+
+### 7. Access files WITHOUT token (should FAIL with 401)
+GET {{URL}}/user/1/mydrive
+Accept: application/json
+
+### 8. Download ADMIN file (should work)
+GET {{URL}}/user/1/mydrive/1/download
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+### 9. Download USER file (should work)
+GET {{URL}}/user/2/mydrive/7/download
+Authorization: Bearer {{USER_TOKEN}}
+
+### 10. USER trying to download ADMIN file (should FAIL with 403)
+GET {{URL}}/user/1/mydrive/1/download
+Authorization: Bearer {{USER_TOKEN}}
+
+### === Error Testing ===
+
+### 11. Wrong password (should FAIL)
+POST {{URL}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "wrongpassword"
+}
+
+### 12. Non-existent user (should FAIL)
+POST {{URL}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "hacker",
+  "password": "password123"
+}
+
+### 13. Duplicate registration (should FAIL)
+POST {{URL}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "email": "duplicate@test.com",
+  "password": "password123"
+}

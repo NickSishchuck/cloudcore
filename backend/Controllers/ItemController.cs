@@ -1,22 +1,21 @@
-
 using CloudCore.Models;
 using CloudCore.Services.Interfaces;
 using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+
 namespace CloudCore.Controllers
 {
-
     [ApiController]
     [Route("user/{userid}/mydrive")]
+    [Authorize] // Require authentication for all endpoints
     public class ItemController : ControllerBase
     {
-
         private readonly CloudCoreDbContext _context;
         private readonly IFileStorageService _fileStorageService;
 
-        
         public ItemController(CloudCoreDbContext context, IFileStorageService fileStorageService)
         {
             _context = context;
@@ -24,14 +23,28 @@ namespace CloudCore.Controllers
         }
 
         /// <summary>
+        /// Gets the current user ID from JWT token
+        /// </summary>
+        private int GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.Parse(userIdClaim ?? "0");
+        }
+
+        /// <summary>
         /// Retrieves all items for a specific user within a given parent directory.
         /// </summary>
-        /// <param name="userId">User identifier.</param>
+        /// <param name="userId">User identifier from route</param>
         /// <param name="parentId">Parent directory ID (null for root level)</param>
         /// <returns>List of user items or NotFound if no items exist</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Item>>> GetItems(int userId, int? parentId)
         {
+            var currentUserId = GetCurrentUserId();
+            
+            if (currentUserId != userId)
+                return Forbid("You can only access your own files");
+
             var userFiles = await _context.Items
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
                 .ToListAsync();
@@ -45,15 +58,20 @@ namespace CloudCore.Controllers
         /// <summary>
         /// Downloads a file by ID.
         /// </summary>
+        /// <param name="userId">User identifier from route</param>
         /// <param name="id">File identifier</param>
         /// <returns>File content or NotFound/BadRequest if file doesn't exist or path is invalid</returns>
         [HttpGet("{id}/download")]
-        public async Task<IActionResult> DownloadFile(int userId,int id)
+        public async Task<IActionResult> DownloadFile(int userId, int id)
         {
+            var currentUserId = GetCurrentUserId();
+            
+            if (currentUserId != userId)
+                return Forbid("You can only download your own files");
 
             var item = await _context.Items
-        .Where(i => i.Id == id && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
-        .FirstOrDefaultAsync();
+                .Where(i => i.Id == id && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
+                .FirstOrDefaultAsync();
 
             if (item == null)
                 return NotFound("File not found or is not a file.");
@@ -75,7 +93,5 @@ namespace CloudCore.Controllers
                 return BadRequest("Invalid file path");
             }
         }
-
-        
     }
 }

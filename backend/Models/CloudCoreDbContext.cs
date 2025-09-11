@@ -20,8 +20,6 @@ public partial class CloudCoreDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-    
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -82,9 +80,9 @@ public partial class CloudCoreDbContext : DbContext
             entity.Property(e => e.Email)
                 .HasMaxLength(100)
                 .HasColumnName("email");
-            entity.Property(e => e.Password)
+            entity.Property(e => e.PasswordHash)
                 .HasMaxLength(255)
-                .HasColumnName("password");
+                .HasColumnName("password_hash");
             entity.Property(e => e.Username)
                 .HasMaxLength(50)
                 .HasColumnName("username");
