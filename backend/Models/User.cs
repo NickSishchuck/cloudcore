@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace CloudCore.Models;
 
@@ -13,5 +14,6 @@ public partial class User
 
     public string? PasswordHash { get; set; }
 
+    [JsonIgnore]
     public virtual ICollection<Item> Items { get; set; } = new List<Item>();
 }
