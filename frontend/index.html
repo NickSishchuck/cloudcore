@@ -1,12 +1,957 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FileStorage</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>CloudCore Drive</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            background-color: #fff;
+            color: #202124;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid #dadce0;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 22px;
+            font-weight: 400;
+            color: #5f6368;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #4285f4, #34a853, #fbbc04, #ea4335);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+            max-width: 720px;
+            margin: 0 32px;
+        }
+
+        .search-box {
+            width: 100%;
+            height: 48px;
+            border: 1px solid #dadce0;
+            border-radius: 24px;
+            padding: 0 48px 0 16px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-box:focus {
+            border-color: #4285f4;
+            box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #5f6368;
+            cursor: pointer;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 256px;
+            background: #fff;
+            border-right: 1px solid #dadce0;
+            height: calc(100vh - 64px);
+            padding: 16px 0;
+            overflow-y: auto;
+        }
+
+        .new-button {
+            margin: 0 16px 16px;
+            padding: 12px 24px;
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: box-shadow 0.2s, background-color 0.2s;
+        }
+
+        .new-button:hover {
+            background: #f8f9fa;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .sidebar-item {
+            padding: 8px 24px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-item:hover {
+            background: #f1f3f4;
+        }
+
+        .sidebar-item.active {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+
+        /* Main Content */
+        .main {
+            display: flex;
+            height: calc(100vh - 64px);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Breadcrumbs */
+        .breadcrumbs {
+            padding: 16px 24px;
+            background: #fff;
+            border-bottom: 1px solid #dadce0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb {
+            color: #1a73e8;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .breadcrumb:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb.current {
+            color: #5f6368;
+            cursor: default;
+        }
+
+        .breadcrumb-separator {
+            color: #5f6368;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            padding: 16px 24px;
+            background: #fff;
+            border-bottom: 1px solid #dadce0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-btn {
+            padding: 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 4px;
+            color: #5f6368;
+            transition: background-color 0.2s;
+        }
+
+        .view-btn:hover {
+            background: #f1f3f4;
+        }
+
+        .view-btn.active {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+
+        /* File Grid */
+        .file-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .file-item {
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+            position: relative;
+        }
+
+        .file-item:hover {
+            border-color: #4285f4;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .file-item.selected {
+            border-color: #4285f4;
+            background: #e8f0fe;
+        }
+
+        .file-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border-radius: 4px;
+        }
+
+        .file-icon.folder {
+            background: #4285f4;
+            color: white;
+        }
+
+        .file-icon.file {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+
+        .file-icon.pdf {
+            background: #ea4335;
+            color: white;
+        }
+
+        .file-icon.image {
+            background: #34a853;
+            color: white;
+        }
+
+        .file-icon.html {
+            background: #ff6d01;
+            color: white;
+        }
+
+        .file-name {
+            font-size: 14px;
+            font-weight: 400;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-info {
+            font-size: 12px;
+            color: #5f6368;
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        /* List View */
+        .file-list {
+            display: none;
+        }
+
+        .file-list.active {
+            display: table;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .file-list-header {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dadce0;
+        }
+
+        .file-list-header th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        .file-list-row {
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .file-list-row:hover {
+            background: #f8f9fa;
+        }
+
+        .file-list-row td {
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        .file-list-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        /* Loading and Empty States */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 16px;
+            color: #5f6368;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            color: #5f6368;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 8px 0;
+            min-width: 160px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #f1f3f4;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #dadce0;
+            margin: 4px 0;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #dadce0;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .upload-area.dragover {
+            border-color: #4285f4;
+            background: #e8f0fe;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .search-container {
+                margin: 0 16px;
+            }
+
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 12px;
+            }
+        }
+    </style>
 </head>
 <body>
-Hello world!
+<!-- Header -->
+<div class="header">
+    <div class="header-left">
+        <div class="logo">
+            <div class="logo-icon">CC</div>
+            CloudCore Drive
+        </div>
+    </div>
+    <div class="search-container">
+        <input type="text" class="search-box" placeholder="Search in Drive" id="searchBox">
+        <div class="search-icon">🔍</div>
+    </div>
+    <div style="width: 100px;"></div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <button class="new-button" id="newButton">
+            <span>➕</span>
+            New
+        </button>
+        <div class="sidebar-item active" data-section="mydrive">
+            <span>💾</span>
+            My Drive
+        </div>
+        <div class="sidebar-item" data-section="recent">
+            <span>🕒</span>
+            Recent
+        </div>
+        <div class="sidebar-item" data-section="shared">
+            <span>👥</span>
+            Shared with me
+        </div>
+        <div class="sidebar-item" data-section="trash">
+            <span>🗑️</span>
+            Trash
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content">
+        <!-- Breadcrumbs -->
+        <div class="breadcrumbs" id="breadcrumbs">
+            <a href="#" class="breadcrumb current" data-folder-id="null">My Drive</a>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div></div>
+            <div class="view-controls">
+                <button class="view-btn active" id="gridViewBtn" title="Grid view">⊞</button>
+                <button class="view-btn" id="listViewBtn" title="List view">☰</button>
+            </div>
+        </div>
+
+        <!-- File Container -->
+        <div class="file-container" id="fileContainer">
+            <div class="loading" id="loadingState">Loading...</div>
+
+            <!-- Grid View -->
+            <div class="file-grid" id="fileGrid"></div>
+
+            <!-- List View -->
+            <table class="file-list" id="fileList">
+                <thead class="file-list-header">
+                <tr>
+                    <th>Name</th>
+                    <th>Modified</th>
+                    <th>Size</th>
+                </tr>
+                </thead>
+                <tbody id="fileListBody"></tbody>
+            </table>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon">📁</div>
+                <h3>This folder is empty</h3>
+                <p>Upload files or create folders to get started</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu">
+    <div class="context-menu-item" id="downloadItem">Download</div>
+    <div class="context-menu-item" id="renameItem">Rename</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="deleteItem">Move to trash</div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" multiple style="display: none;">
+
+<script>
+    class CloudCoreDrive {
+        constructor() {
+            this.currentUserId = 1; //TODO
+            this.currentFolderId = null;
+            this.currentView = 'grid';
+            this.selectedItems = new Set();
+            this.breadcrumbPath = [];
+            this.allItems = [];
+
+            this.initializeEventListeners();
+            this.loadFiles();
+        }
+
+        initializeEventListeners() {
+            document.getElementById('gridViewBtn').addEventListener('click', () => this.setView('grid'));
+            document.getElementById('listViewBtn').addEventListener('click', () => this.setView('list'));
+
+            document.getElementById('newButton').addEventListener('click', () => this.triggerFileUpload());
+            document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
+
+            document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
+
+            document.addEventListener('click', () => this.hideContextMenu());
+            document.getElementById('downloadItem').addEventListener('click', () => this.downloadSelected());
+
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', (e) => this.handleSidebarClick(e));
+            });
+
+            this.setupDragAndDrop();
+        }
+
+        async loadFiles(folderId = null) {
+            this.showLoading();
+
+            try {
+                const url = folderId
+                    ? `http://localhost:5000/user/${this.currentUserId}/mydrive?parentId=${folderId}`
+                    : `http://localhost:5000/user/${this.currentUserId}/mydrive`;
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        this.allItems = [];
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                } else {
+                    this.allItems = await response.json();
+                }
+
+                this.currentFolderId = folderId;
+                this.renderFiles();
+                this.updateBreadcrumbs();
+
+            } catch (error) {
+                console.error('Error loading files:', error);
+                this.showError('Failed to load files');
+            }
+        }
+
+        renderFiles(items = this.allItems) {
+            this.hideLoading();
+
+            if (!items || items.length === 0) {
+                this.showEmptyState();
+                return;
+            }
+
+            this.hideEmptyState();
+
+            if (this.currentView === 'grid') {
+                this.renderGridView(items);
+            } else {
+                this.renderListView(items);
+            }
+        }
+
+        renderGridView(items) {
+            const grid = document.getElementById('fileGrid');
+            grid.innerHTML = '';
+
+            items.forEach(item => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.dataset.itemId = item.id;
+                fileItem.dataset.itemType = item.type;
+
+                const icon = this.getFileIcon(item);
+                const size = item.fileSize ? this.formatFileSize(item.fileSize) : '';
+
+                fileItem.innerHTML = `
+                        <div class="file-icon ${icon.class}">
+                            ${icon.emoji}
+                        </div>
+                        <div class="file-name" title="${item.name}">
+                            ${item.name}
+                        </div>
+                        <div class="file-info">
+                            ${size}
+                        </div>
+                    `;
+
+                fileItem.addEventListener('click', (e) => this.handleFileClick(e, item));
+                fileItem.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
+                fileItem.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
+
+                grid.appendChild(fileItem);
+            });
+        }
+
+        renderListView(items) {
+            const listBody = document.getElementById('fileListBody');
+            listBody.innerHTML = '';
+
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'file-list-row';
+                row.dataset.itemId = item.id;
+                row.dataset.itemType = item.type;
+
+                const icon = this.getFileIcon(item);
+                const size = item.fileSize ? this.formatFileSize(item.fileSize) : '';
+
+                row.innerHTML = `
+                        <td>
+                            <span class="file-list-icon ${icon.class}">
+                                ${icon.emoji}
+                            </span>
+                            ${item.name}
+                        </td>
+                        <td>-</td>
+                        <td>${size}</td>
+                    `;
+
+                row.addEventListener('click', (e) => this.handleFileClick(e, item));
+                row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
+                row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
+
+                listBody.appendChild(row);
+            });
+        }
+
+        getFileIcon(item) {
+            if (item.type === 'folder') {
+                return { emoji: '📁', class: 'folder' };
+            }
+
+            const ext = item.name.split('.').pop().toLowerCase();
+            const mimeType = item.mimeType || '';
+
+            if (mimeType.startsWith('image/')) {
+                return { emoji: '🖼️', class: 'image' };
+            } else if (ext === 'pdf' || mimeType === 'application/pdf') {
+                return { emoji: '📄', class: 'pdf' };
+            } else if (ext === 'html' || mimeType === 'text/html') {
+                return { emoji: '🌐', class: 'html' };
+            } else if (mimeType.startsWith('text/')) {
+                return { emoji: '📝', class: 'file' };
+            } else {
+                return { emoji: '📄', class: 'file' };
+            }
+        }
+
+        handleFileClick(e, item) {
+            e.stopPropagation();
+
+            document.querySelectorAll('.file-item.selected, .file-list-row.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            e.currentTarget.classList.add('selected');
+            this.selectedItems.clear();
+            this.selectedItems.add(item);
+        }
+
+        handleFileDoubleClick(e, item) {
+            if (item.type === 'folder') {
+                this.navigateToFolder(item);
+            } else {
+                this.downloadFile(item);
+            }
+        }
+
+        navigateToFolder(folder) {
+            this.breadcrumbPath.push({
+                id: folder.id,
+                name: folder.name
+            });
+            this.loadFiles(folder.id);
+        }
+
+        async downloadFile(file) {
+            try {
+                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${file.id}/download`;
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = file.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (error) {
+                console.error('Error downloading file:', error);
+                alert('Failed to download file');
+            }
+        }
+
+        updateBreadcrumbs() {
+            const breadcrumbs = document.getElementById('breadcrumbs');
+            breadcrumbs.innerHTML = '';
+
+            const homeBreadcrumb = document.createElement('a');
+            homeBreadcrumb.className = 'breadcrumb';
+            homeBreadcrumb.href = '#';
+            homeBreadcrumb.textContent = 'My Drive';
+            homeBreadcrumb.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.navigateToRoot();
+            });
+            breadcrumbs.appendChild(homeBreadcrumb);
+
+            this.breadcrumbPath.forEach((folder, index) => {
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = ' > ';
+                breadcrumbs.appendChild(separator);
+
+                const breadcrumb = document.createElement('a');
+                breadcrumb.className = index === this.breadcrumbPath.length - 1 ? 'breadcrumb current' : 'breadcrumb';
+                breadcrumb.href = '#';
+                breadcrumb.textContent = folder.name;
+
+                if (index < this.breadcrumbPath.length - 1) {
+                    breadcrumb.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.navigateToFolderInPath(index);
+                    });
+                }
+
+                breadcrumbs.appendChild(breadcrumb);
+            });
+        }
+
+        navigateToRoot() {
+            this.breadcrumbPath = [];
+            this.loadFiles(null);
+        }
+
+        navigateToFolderInPath(index) {
+            const targetFolder = this.breadcrumbPath[index];
+            this.breadcrumbPath = this.breadcrumbPath.slice(0, index + 1);
+            this.loadFiles(targetFolder.id);
+        }
+
+        setView(view) {
+            this.currentView = view;
+
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(view + 'ViewBtn').classList.add('active');
+
+            if (view === 'grid') {
+                document.getElementById('fileGrid').style.display = 'grid';
+                document.getElementById('fileList').classList.remove('active');
+            } else {
+                document.getElementById('fileGrid').style.display = 'none';
+                document.getElementById('fileList').classList.add('active');
+            }
+
+            this.renderFiles();
+        }
+
+        handleSearch(query) {
+            if (!query.trim()) {
+                this.renderFiles();
+                return;
+            }
+
+            const filteredItems = this.allItems.filter(item =>
+                item.name.toLowerCase().includes(query.toLowerCase())
+            );
+            this.renderFiles(filteredItems);
+        }
+
+        showContextMenu(e, item) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'block';
+            menu.style.left = e.pageX + 'px';
+            menu.style.top = e.pageY + 'px';
+
+            this.selectedItems.clear();
+            this.selectedItems.add(item);
+        }
+
+        hideContextMenu() {
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        downloadSelected() {
+            this.selectedItems.forEach(item => {
+                if (item.type === 'file') {
+                    this.downloadFile(item);
+                }
+            });
+            this.hideContextMenu();
+        }
+
+        triggerFileUpload() {
+            document.getElementById('fileInput').click();
+        }
+
+        handleFileUpload(e) { //TODO
+            const files = Array.from(e.target.files);
+            console.log('Files selected for upload:', files);
+            alert('Upload functionality requires backend implementation');
+        }
+
+        setupDragAndDrop() {
+            const container = document.getElementById('fileContainer');
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                container.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                container.addEventListener(eventName, () => {
+                    container.classList.add('dragover');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                container.addEventListener(eventName, () => {
+                    container.classList.remove('dragover');
+                });
+            });
+
+            container.addEventListener('drop', (e) => {
+                const files = Array.from(e.dataTransfer.files);
+                console.log('Files dropped:', files);
+                alert('Drag & drop upload requires backend implementation');
+            });
+        }
+
+        handleSidebarClick(e) {
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            e.currentTarget.classList.add('active');
+
+            const section = e.currentTarget.dataset.section;
+            if (section === 'mydrive') {
+                this.navigateToRoot();
+            } else {
+                console.log('Section not implemented:', section);
+            }
+        }
+
+        formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        showLoading() {
+            document.getElementById('loadingState').style.display = 'flex';
+            document.getElementById('fileGrid').style.display = 'none';
+            document.getElementById('fileList').classList.remove('active');
+            document.getElementById('emptyState').style.display = 'none';
+        }
+
+        hideLoading() {
+            document.getElementById('loadingState').style.display = 'none';
+            this.setViewDisplay();
+        }
+
+        setViewDisplay() {
+            if (this.currentView === 'grid') {
+                document.getElementById('fileGrid').style.display = 'grid';
+                document.getElementById('fileList').classList.remove('active');
+            } else {
+                document.getElementById('fileGrid').style.display = 'none';
+                document.getElementById('fileList').classList.add('active');
+            }
+        }
+
+        showEmptyState() {
+            document.getElementById('emptyState').style.display = 'flex';
+            document.getElementById('fileGrid').style.display = 'none';
+            document.getElementById('fileList').classList.remove('active');
+        }
+
+        hideEmptyState() {
+            document.getElementById('emptyState').style.display = 'none';
+            this.setViewDisplay();
+        }
+
+        showError(message) {
+            this.hideLoading();
+            console.error(message);
+            alert(message);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        new CloudCoreDrive();
+    });
+</script>
 </body>
 </html>
