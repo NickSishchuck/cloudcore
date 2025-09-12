@@ -29,7 +29,7 @@ Content-Type: application/json
 }
 
 ### === Copy your token here after login ===
-@ADMIN_TOKEN = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiYWRtaW4iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJhZG1pbkBjbG91ZGNvcmUuY29tIiwiZXhwIjoxNzU4MjA5MDQ1LCJpc3MiOiJDbG91ZENvcmUiLCJhdWQiOiJDbG91ZENvcmUifQ.taHtemQViPjF2ProM8a4LOz0ztSRiFJga3ABdjGa3xE
+@ADMIN_TOKEN = your_admin_token
 @USER_TOKEN = your_user_token
 
 ### 4. Get ADMIN files (should work)

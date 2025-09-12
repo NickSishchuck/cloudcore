@@ -35,8 +35,8 @@ namespace CloudCore
             // Create web
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add db context
-            builder.Services.AddDbContext<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            // Add db context (in case of multiple use of context, context factory provided)
+            builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
             // Add services
             builder.Services.AddScoped<IFileStorageService, FileStorageService>();

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.IO.Compression;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace CloudCore.Controllers
 {
@@ -15,12 +16,12 @@ namespace CloudCore.Controllers
     [Authorize] // Require authentication for all endpoints
     public class ItemController : ControllerBase
     {
-        private readonly CloudCoreDbContext _context;
+        private readonly IDbContextFactory<CloudCoreDbContext> _contextFactory;
         private readonly IFileStorageService _fileStorageService;
         private readonly IZipArchiveService _zipArchiveService;
-        public ItemController(CloudCoreDbContext context, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService)
+        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _fileStorageService = fileStorageService;
             _zipArchiveService = zipArchiveService;
         }
@@ -54,15 +55,24 @@ namespace CloudCore.Controllers
                     errorCode = "ACCESS_DENIED",
                     timestamp = DateTime.UtcNow
                 });
+            try
+            {
+                using var _context = _contextFactory.CreateDbContext(); 
+                var userFiles = await _context.Items
+                    .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
+                    .ToListAsync();
 
-            var userFiles = await _context.Items
-                .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
-                .ToListAsync();
+                if (userFiles == null || userFiles.Count == 0)
+                    return NotFound("No files found for this user.");
 
-            if (userFiles == null || userFiles.Count == 0)
-                return NotFound("No files found for this user.");
+                return Ok(userFiles);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
 
-            return Ok(userFiles);
+            
         }
 
         [HttpGet("{folderId}/downloadfolder")]
@@ -77,20 +87,28 @@ namespace CloudCore.Controllers
                     errorCode = "ACCESS_DENIED",
                     timestamp = DateTime.UtcNow
                 });
+            try
+            {
+                using var _context = _contextFactory.CreateDbContext();
+                var folder = await _context.Items
+                    .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
+                    .FirstOrDefaultAsync();
 
-            var folder = await _context.Items
-                .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                .FirstOrDefaultAsync();
-
-            if (folder == null)
-                return NotFound("Folder not found");
+                if (folder == null)
+                    return NotFound("Folder not found");
 
                 var archiveStream = await _zipArchiveService.CreateFolderArchiveAsync(userId, folderId, folder.Name);
                 var fileName = $"{folder.Name}.zip";
-                return File(archiveStream.ToArray(), "application/zip", fileName);
-
-
-           
+                return File(archiveStream, "application/zip", fileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -111,19 +129,20 @@ namespace CloudCore.Controllers
                     errorCode = "ACCESS_DENIED",
                     timestamp = DateTime.UtcNow
                 });
-
-            var item = await _context.Items
-                .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
-                .FirstOrDefaultAsync();
-
-            if (item == null)
-                return NotFound("File not found or is not a file.");
-
-            if (string.IsNullOrEmpty(item.FilePath))
-                return NotFound("File path is empty.");
-
+           
             try
             {
+                using var _context = _contextFactory.CreateDbContext();
+                var item = await _context.Items
+                    .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                    return NotFound("File not found or is not a file.");
+
+                if (string.IsNullOrEmpty(item.FilePath))
+                    return NotFound("File path is empty.");
+
                 var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
 
                 if (!System.IO.File.Exists(fullPath))
@@ -134,6 +153,10 @@ namespace CloudCore.Controllers
             catch (UnauthorizedAccessException)
             {
                 return BadRequest("Invalid file path");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
         }
 
@@ -174,6 +197,7 @@ namespace CloudCore.Controllers
 
             try
             {
+                using var _context = _contextFactory.CreateDbContext();
                 var items = await _context.Items
                     .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
                     .ToListAsync();
@@ -181,10 +205,14 @@ namespace CloudCore.Controllers
                 if (items == null || items.Count == 0)
                     return NotFound("File or files not found");
 
-                using var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items);
+                var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items);
                 var fileName = $"selected_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
 
-                return File(archiveStream.ToArray(), "application/zip", fileName);
+                return File(archiveStream, "application/zip", fileName);
+            }
+            catch(InvalidOperationException ex)
+            { 
+                return BadRequest(ex.Message); 
             }
             catch(Exception)
             {
