@@ -35,12 +35,13 @@ namespace CloudCore
             // Create web
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add db context
-            builder.Services.AddDbContext<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            // Add db context (in case of multiple use of context, context factory provided)
+            builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
             // Add services
             builder.Services.AddScoped<IFileStorageService, FileStorageService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IZipArchiveService, ZipArchiveService>();
 
             // Add JWT Authentication
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";

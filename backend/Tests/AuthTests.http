@@ -29,8 +29,8 @@ Content-Type: application/json
 }
 
 ### === Copy your token here after login ===
-@ADMIN_TOKEN = paste_admin_token_here
-@USER_TOKEN = paste_user_token_here
+@ADMIN_TOKEN = your_admin_token
+@USER_TOKEN = your_user_token
 
 ### 4. Get ADMIN files (should work)
 GET {{URL}}/user/1/mydrive
@@ -63,9 +63,26 @@ Authorization: Bearer {{USER_TOKEN}}
 GET {{URL}}/user/1/mydrive/1/download
 Authorization: Bearer {{USER_TOKEN}}
 
+
+### 11. USER trying to download folder as zip
+GET {{URL}}/user/2/mydrive/6/downloadfolder
+Authorization: Bearer {{USER_TOKEN}}
+Accept: application/zip
+
+### 12. USER trying to download multiple files as zip (POST)
+POST {{URL}}/user/1/mydrive/download/multiple
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+Accept: application/zip
+[1, 2, 4]
+
+
+
+
+
 ### === Error Testing ===
 
-### 11. Wrong password (should FAIL)
+### 1. Wrong password (should FAIL)
 POST {{URL}}/auth/login
 Content-Type: application/json
 
@@ -74,7 +91,7 @@ Content-Type: application/json
   "password": "wrongpassword"
 }
 
-### 12. Non-existent user (should FAIL)
+### 2. Non-existent user (should FAIL)
 POST {{URL}}/auth/login
 Content-Type: application/json
 
@@ -83,7 +100,7 @@ Content-Type: application/json
   "password": "password123"
 }
 
-### 13. Duplicate registration (should FAIL)
+### 3. Duplicate registration (should FAIL)
 POST {{URL}}/auth/register
 Content-Type: application/json
 

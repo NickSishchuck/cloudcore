@@ -1,3 +1,4 @@
+using BCrypt.Net;
 using CloudCore.Models;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -67,13 +68,13 @@ public class AuthService : IAuthService
 
     public string HashPassword(string password)
     {
-        //TODO
+        //return BCrypt.Net.BCrypt.HashPassword(password);
         return password;
     }
 
     public bool VerifyPassword(string password, string storedPassword)
     {
-        //TODO
+        //return BCrypt.Net.BCrypt.Verify(password, storedPassword);
         return password == storedPassword;
     }
 
