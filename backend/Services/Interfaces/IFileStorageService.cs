@@ -1,4 +1,6 @@
-﻿namespace CloudCore.Services.Interfaces
+﻿using CloudCore.Models;
+
+namespace CloudCore.Services.Interfaces
 {
     public interface IFileStorageService
     {
@@ -21,5 +23,41 @@
         /// <param name="userId">The user identifier.</param>
         /// <returns>The user directory path.</returns>
         string GetFileFullPath(int userId, string relativePath);
+
+        /// <summary>
+        /// Builds the complete folder path by traversing up the folder hierarchy from the given folder to the root.
+        /// Combines folder names with the user's base storage path.
+        /// </summary>
+        /// <param name="folder">The folder item to build the path for</param>
+        /// <returns>The complete file system path to the folder</returns>
+        string GetFolderPath(Item folder);
+
+        /// <summary>
+        /// Removes the last occurrence of a specified string from a folder path.
+        /// </summary>
+        /// <param name="path">The original path</param>
+        /// <param name="searchString">The string to remove from the path</param>
+        /// <returns>The modified path with the search string removed, or empty string if not found</returns>
+        public string RemoveFromFolderPath(string path, string searchString);
+
+        // <summary>
+        /// Creates a new file path by replacing the initial path segments with segments from a new folder path.
+        /// Removes the user base path portion and maps corresponding segments from the new folder structure.
+        /// </summary>
+        /// <param name="filePath">The original file path</param>
+        /// <param name="folderPath">The new folder path to map segments from</param>
+        /// <param name="userBasePath">The user's base path to exclude from mapping</param>
+        /// <returns>The modified file path with updated folder segments</returns>
+        string GetNewFilePath(string filePath, string folderPath, string userBasePath);
+
+        /// <summary>
+        /// Creates a new folder path by replacing the last occurrence of a search string with a new name.
+        /// </summary>
+        /// <param name="path">The original folder path</param>
+        /// <param name="searchString">The string to replace in the path</param>
+        /// <param name="newName">The new name to use as replacement</param>
+        /// <returns>The new folder path with the replaced name</returns>
+        string GetNewFolderPath(string path, string searchString, string newName);
+
     }
 }

@@ -18,6 +18,24 @@ INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_ty
     ('documents', 'folder', NULL, 1, NULL, NULL, NULL, FALSE);
 
 INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
+    ('coursework', 'folder', 4, 1, NULL, NULL, NULL, FALSE);
+
+INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
+    ('coursework1.pdf', 'file', 5, 1, 'documents/coursework/coursework1.pdf', 51200, 'application/pdf', FALSE);
+
+INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
+    ('coursework1', 'folder', 5, 1, NULL, NULL, NULL, FALSE);
+
+INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
+    ('coursework.pdf', 'file', 7, 1, 'documents/coursework/coursework1/coursework.pdf', 51200, 'application/pdf', FALSE);
+
+INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
+    ('coursework2', 'folder', 7, 1, NULL, NULL, NULL, FALSE);
+    
+INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
+    ('coursework.pdf', 'file', 9, 1, 'documents/coursework/coursework1/coursework2/coursework.pdf', 51200, 'application/pdf', FALSE);
+
+INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
     ('resume.pdf', 'file', 4, 1, 'documents/resume.pdf', 51200, 'application/pdf', FALSE);
 
 INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
