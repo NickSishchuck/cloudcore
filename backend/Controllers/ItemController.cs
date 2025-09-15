@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.IO.Compression;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace CloudCore.Controllers
 {
@@ -19,11 +20,14 @@ namespace CloudCore.Controllers
         private readonly IDbContextFactory<CloudCoreDbContext> _contextFactory;
         private readonly IFileStorageService _fileStorageService;
         private readonly IZipArchiveService _zipArchiveService;
-        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService)
+        private readonly IFileRenameService _fileRenameService;
+        
+        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService)
         {
             _contextFactory = contextFactory;
             _fileStorageService = fileStorageService;
             _zipArchiveService = zipArchiveService;
+            _fileRenameService = fileRenameService;
         }
 
         /// <summary>
@@ -35,8 +39,6 @@ namespace CloudCore.Controllers
             return int.Parse(userIdClaim ?? "0");
         }
 
-        
-
         /// <summary>
         /// Retrieves all items for a specific user within a given parent directory.
         /// </summary>
@@ -47,9 +49,9 @@ namespace CloudCore.Controllers
         public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync(int userId, int? parentId)
         {
             var currentUserId = GetCurrentUserId();
-            
+
             if (currentUserId != userId)
-                return StatusCode(403 , new
+                return StatusCode(403, new
                 {
                     message = "You can only download your own files",
                     errorCode = "ACCESS_DENIED",
@@ -57,8 +59,8 @@ namespace CloudCore.Controllers
                 });
             try
             {
-                using var _context = _contextFactory.CreateDbContext(); 
-                var userFiles = await _context.Items
+                using var context = _contextFactory.CreateDbContext();
+                var userFiles = await context.Items
                     .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
                     .ToListAsync();
 
@@ -71,8 +73,6 @@ namespace CloudCore.Controllers
             {
                 return NotFound(ex.Message);
             }
-
-            
         }
 
         [HttpGet("{folderId}/downloadfolder")]
@@ -89,8 +89,8 @@ namespace CloudCore.Controllers
                 });
             try
             {
-                using var _context = _contextFactory.CreateDbContext();
-                var folder = await _context.Items
+                using var context = _contextFactory.CreateDbContext();
+                var folder = await context.Items
                     .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                     .FirstOrDefaultAsync();
 
@@ -121,7 +121,7 @@ namespace CloudCore.Controllers
         public async Task<IActionResult> DownloadFileAsync(int userId, int fileId)
         {
             var currentUserId = GetCurrentUserId();
-            
+
             if (currentUserId != userId)
                 return StatusCode(403, new
                 {
@@ -129,11 +129,11 @@ namespace CloudCore.Controllers
                     errorCode = "ACCESS_DENIED",
                     timestamp = DateTime.UtcNow
                 });
-           
+
             try
             {
-                using var _context = _contextFactory.CreateDbContext();
-                var item = await _context.Items
+                using var context = _contextFactory.CreateDbContext();
+                var item = await context.Items
                     .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
                     .FirstOrDefaultAsync();
 
@@ -160,7 +160,6 @@ namespace CloudCore.Controllers
             }
         }
 
-
         /// <summary>
         /// Downloads multiple selected items (files and folders) as a single ZIP archive
         /// Processes user authorization, validates item ownership, and creates compressed archive
@@ -183,7 +182,7 @@ namespace CloudCore.Controllers
         /// 
         /// Response: ZIP file download with multiple selected items
         /// </example>
-        [HttpPost ("download/multiple")]
+        [HttpPost("download/multiple")]
         public async Task<IActionResult> DownloadMultipleItemsAsZipAsync(int userId, [FromBody] List<int> itemsId)
         {
             var currentUserId = GetCurrentUserId();
@@ -197,8 +196,8 @@ namespace CloudCore.Controllers
 
             try
             {
-                using var _context = _contextFactory.CreateDbContext();
-                var items = await _context.Items
+                using var context = _contextFactory.CreateDbContext();
+                var items = await context.Items
                     .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
                     .ToListAsync();
 
@@ -210,13 +209,152 @@ namespace CloudCore.Controllers
 
                 return File(archiveStream, "application/zip", fileName);
             }
-            catch(InvalidOperationException ex)
-            { 
-                return BadRequest(ex.Message); 
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
-            catch(Exception)
+            catch (Exception)
             {
                 return BadRequest();
+            }
+        }
+
+        /// <summary>
+        /// Renames an item (file or folder) for a specific user, with authorization checks.
+        /// Updates the database and file system paths accordingly.
+        /// </summary>
+        /// <param name="userId">The ID of the user who owns the item</param>
+        /// <param name="itemId">The ID of the item to rename</param>
+        /// <param name="newName">The new name for the item</param>
+        /// <returns>An action result indicating success or failure with appropriate HTTP status codes</returns>
+        [HttpPut("{itemId}/rename")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RenameItem(int userId, int itemId, [FromBody] string newName)
+        {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                return BadRequest(new
+                {
+                    message = "Item name cannot be empty",
+                    errorCode = "INVALID_NAME",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+
+            // Authorization check
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId != userId)
+            {
+                return StatusCode(403, new
+                {
+                    message = "You can only rename your own files",
+                    errorCode = "ACCESS_DENIED",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                var item = await context.Items
+                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                {
+                    return NotFound(new
+                    {
+                        message = "Item not found",
+                        errorCode = "ITEM_NOT_FOUND",
+                        timestamp = DateTime.UtcNow
+                    });
+                }
+
+                if (item.Type == "file")
+                {
+                    _fileRenameService.RenameFile(item, newName, out string newRelativePath);
+                    await context.SaveChangesAsync();
+
+                    return Ok(new
+                    {
+                        message = "File renamed successfully",
+                        itemId = item.Id,
+                        itemNewName = newName,
+                        timestamp = DateTime.UtcNow
+                    });
+                }
+
+                if (item.Type == "folder")
+                {
+                    await _fileRenameService.RenameFolder(context, item, newName);
+
+                    return Ok(new
+                    {
+                        message = "Folder renamed successfully",
+                        itemId = item.Id,
+                        itemNewName = newName,
+                        timestamp = DateTime.UtcNow
+                    });
+                }
+
+                return BadRequest(new
+                {
+                    message = "Unsupported item type",
+                    errorCode = "UNSUPPORTED_TYPE",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    errorCode = "INVALID_OPERATION",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new
+                {
+                    message = "Access denied to file system",
+                    errorCode = "FILE_SYSTEM_ACCESS_DENIED",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    message = "Directory not found",
+                    errorCode = "DIRECTORY_NOT_FOUND",
+                    detail = ex.Message,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (IOException ex)
+            {
+                return StatusCode(409, new
+                {
+                    message = "File system conflict occurred",
+                    errorCode = "FILE_SYSTEM_CONFLICT",
+                    detail = ex.Message,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "An unexpected error occurred",
+                    errorCode = "INTERNAL_ERROR",
+                    timestamp = DateTime.UtcNow
+                });
             }
         }
 
@@ -241,10 +379,10 @@ namespace CloudCore.Controllers
 
             try
             {
-                using var _context = _contextFactory.CreateDbContext();
+                using var context = _contextFactory.CreateDbContext();
                 
                 // Verify the folder exists and belongs to the user
-                var folder = await _context.Items
+                var folder = await context.Items
                     .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                     .FirstOrDefaultAsync();
 
@@ -291,10 +429,10 @@ namespace CloudCore.Controllers
 
             try
             {
-                using var _context = _contextFactory.CreateDbContext();
+                using var context = _contextFactory.CreateDbContext();
                 
                 // Verify all folders exist and belong to the user
-                var folders = await _context.Items
+                var folders = await context.Items
                     .Where(i => folderIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                     .ToListAsync();
 
@@ -340,6 +478,5 @@ namespace CloudCore.Controllers
             
             return $"{size:0.##} {sizes[order]}";
         }
-
     }
 }

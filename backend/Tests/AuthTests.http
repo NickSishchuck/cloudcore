@@ -69,7 +69,7 @@ GET {{URL}}/user/2/mydrive/6/downloadfolder
 Authorization: Bearer {{USER_TOKEN}}
 Accept: application/zip
 
-### 12. USER trying to download multiple files as zip (POST)
+### 12. Admin trying to download multiple files as zip (POST)
 POST {{URL}}/user/1/mydrive/download/multiple
 Authorization: Bearer {{ADMIN_TOKEN}}
 Content-Type: application/json
@@ -77,6 +77,12 @@ Accept: application/zip
 [1, 2, 4]
 
 
+###
+PUT {{URL}}/user/1/mydrive/1/rename
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+Accept: application/json
+"test1.html"
 
 
 
