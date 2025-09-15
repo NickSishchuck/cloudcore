@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CloudCore Drive</title>
     <style>
@@ -434,7 +435,6 @@
 <div class="header">
     <div class="header-left">
         <div class="logo">
-            <div class="logo-icon">CC</div>
             CloudCore Drive
         </div>
     </div>
@@ -533,8 +533,8 @@
             this.authToken = null;
             this.currentUser = null;
             this.currentContextItem = null;
-
-            // Check authentication first
+            this.folderSizeCache = new Map();
+            
             this.initializeAuth();
         }
 
@@ -641,6 +641,50 @@
             this.renderListView(items);
         }
 
+        async fetchFolderSize(folderId) {
+            if (this.folderSizeCache.has(folderId)) {
+                const cachedSize = this.folderSizeCache.get(folderId);
+                this.updateFolderSizeDisplay(folderId, cachedSize);
+                return;
+            }
+
+            try {
+                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${folderId}/size`;
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const sizeData = await response.json();
+                    this.folderSizeCache.set(folderId, sizeData);
+                    this.updateFolderSizeDisplay(folderId, sizeData);
+                } else {
+                    this.updateFolderSizeDisplay(folderId, null);
+                }
+            } catch (error) {
+                console.error(`Error fetching size for folder ${folderId}:`, error);
+                this.updateFolderSizeDisplay(folderId, null);
+            }
+        }
+
+        updateFolderSizeDisplay(folderId, sizeData) {
+            const sizeElement = document.getElementById(`size-${folderId}`);
+            if (!sizeElement) return;
+
+            if (sizeData) {
+                const displayText = sizeData.fileCount > 0
+                    ? `${sizeData.formattedSize} (${sizeData.fileCount} files)`
+                    : 'Empty folder';
+                sizeElement.innerHTML = `<span class="folder-size">${displayText}</span>`;
+            } else {
+                sizeElement.innerHTML = '<span class="folder-size-error">-</span>';
+            }
+        }
         renderListView(items) {
             const listBody = document.getElementById('fileListBody');
             listBody.innerHTML = '';
@@ -652,25 +696,73 @@
                 row.dataset.itemType = item.type;
 
                 const icon = this.getFileIcon(item);
-                const size = item.fileSize ? this.formatFileSize(item.fileSize) : '';
+
+                let sizeDisplay = '';
+                if (item.type === 'file') {
+                    sizeDisplay = item.fileSize ? this.formatFileSize(item.fileSize) : '';
+                } else {
+                    sizeDisplay = '<span class="folder-size-loading">Calculating...</span>';
+                }
 
                 row.innerHTML = `
-                        <td>
-                            <span class="file-list-icon ${icon.class}">
-                                ${icon.emoji}
-                            </span>
-                            ${item.name}
-                        </td>
-                        <td>-</td>
-                        <td>${size}</td>
-                    `;
+            <td>
+                <span class="file-list-icon ${icon.class}">
+                    ${icon.emoji}
+                </span>
+                ${item.name}
+            </td>
+            <td>-</td>
+            <td id="size-${item.id}">${sizeDisplay}</td>
+        `;
 
                 row.addEventListener('click', (e) => this.handleFileClick(e, item));
                 row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
                 row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
 
                 listBody.appendChild(row);
+
+                if (item.type === 'folder') {
+                    this.fetchFolderSize(item.id);
+                }
             });
+        }
+
+        async fetchBatchFolderSizes(folderIds) {
+            try {
+                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/sizes`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(folderIds)
+                });
+
+                if (response.ok) {
+                    const sizesData = await response.json();
+
+                    // Update all folder size displays
+                    Object.values(sizesData).forEach(sizeData => {
+                        this.folderSizeCache.set(sizeData.folderId, sizeData);
+                        this.updateFolderSizeDisplay(sizeData.folderId, sizeData);
+                    });
+
+                    // Handle folders that weren't in the response (likely empty or error)
+                    folderIds.forEach(folderId => {
+                        if (!sizesData[folderId]) {
+                            this.updateFolderSizeDisplay(folderId, null);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching batch folder sizes:', error);
+                // Fall back to individual requests or show error
+                folderIds.forEach(folderId => {
+                    this.updateFolderSizeDisplay(folderId, null);
+                });
+            }
         }
 
         getFileIcon(item) {
