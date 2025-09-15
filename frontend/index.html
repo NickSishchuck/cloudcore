@@ -221,122 +221,15 @@
             justify-content: space-between;
         }
 
-        .view-controls {
-            display: flex;
-            gap: 8px;
-        }
-
-        .view-btn {
-            padding: 8px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            border-radius: 4px;
-            color: #5f6368;
-            transition: background-color 0.2s;
-        }
-
-        .view-btn:hover {
-            background: #f1f3f4;
-        }
-
-        .view-btn.active {
-            background: #e8f0fe;
-            color: #1a73e8;
-        }
-
-        /* File Grid */
+        /* File Container */
         .file-container {
             flex: 1;
             overflow-y: auto;
-            padding: 16px 24px;
-        }
-
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .file-item {
-            border: 1px solid #dadce0;
-            border-radius: 8px;
-            padding: 16px;
-            cursor: pointer;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            background: #fff;
-            position: relative;
-        }
-
-        .file-item:hover {
-            border-color: #4285f4;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-        }
-
-        .file-item.selected {
-            border-color: #4285f4;
-            background: #e8f0fe;
-        }
-
-        .file-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            border-radius: 4px;
-        }
-
-        .file-icon.folder {
-            background: #4285f4;
-            color: white;
-        }
-
-        .file-icon.file {
-            background: #f1f3f4;
-            color: #5f6368;
-        }
-
-        .file-icon.pdf {
-            background: #ea4335;
-            color: white;
-        }
-
-        .file-icon.image {
-            background: #34a853;
-            color: white;
-        }
-
-        .file-icon.html {
-            background: #ff6d01;
-            color: white;
-        }
-
-        .file-name {
-            font-size: 14px;
-            font-weight: 400;
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-info {
-            font-size: 12px;
-            color: #5f6368;
-            text-align: center;
-            margin-top: 4px;
+            padding: 0;
         }
 
         /* List View */
         .file-list {
-            display: none;
-        }
-
-        .file-list.active {
-            display: table;
             width: 100%;
             border-collapse: collapse;
         }
@@ -364,6 +257,10 @@
             background: #f8f9fa;
         }
 
+        .file-list-row.selected {
+            background: #e8f0fe;
+        }
+
         .file-list-row td {
             padding: 12px 16px;
             font-size: 14px;
@@ -378,6 +275,31 @@
             justify-content: center;
             border-radius: 2px;
             font-size: 12px;
+        }
+
+        .file-list-icon.folder {
+            background: #4285f4;
+            color: white;
+        }
+
+        .file-list-icon.file {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+
+        .file-list-icon.pdf {
+            background: #ea4335;
+            color: white;
+        }
+
+        .file-list-icon.image {
+            background: #34a853;
+            color: white;
+        }
+
+        .file-list-icon.html {
+            background: #ff6d01;
+            color: white;
         }
 
         /* Loading and Empty States */
@@ -413,26 +335,43 @@
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             padding: 8px 0;
-            min-width: 160px;
+            min-width: 180px;
             z-index: 1000;
             display: none;
         }
 
         .context-menu-item {
-            padding: 8px 16px;
+            padding: 10px 16px;
             cursor: pointer;
             font-size: 14px;
             transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .context-menu-item:hover {
             background: #f1f3f4;
         }
 
+        .context-menu-item.danger {
+            color: #d93025;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #fce8e6;
+        }
+
         .context-menu-separator {
             height: 1px;
             background: #dadce0;
             margin: 4px 0;
+        }
+
+        .context-menu-icon {
+            font-size: 16px;
+            width: 16px;
+            text-align: center;
         }
 
         /* Upload Area */
@@ -450,6 +389,34 @@
             background: #e8f0fe;
         }
 
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            background: #4285f4;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: none;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .notification.success {
+            background: #34a853;
+        }
+
+        .notification.error {
+            background: #ea4335;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -458,11 +425,6 @@
 
             .search-container {
                 margin: 0 16px;
-            }
-
-            .file-grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-                gap: 12px;
             }
         }
     </style>
@@ -522,18 +484,12 @@
         <!-- Toolbar -->
         <div class="toolbar">
             <div></div>
-            <div class="view-controls">
-                <button class="view-btn active" id="gridViewBtn" title="Grid view">⊞</button>
-                <button class="view-btn" id="listViewBtn" title="List view">☰</button>
-            </div>
+            <div></div>
         </div>
 
         <!-- File Container -->
         <div class="file-container" id="fileContainer">
             <div class="loading" id="loadingState">Loading...</div>
-
-            <!-- Grid View -->
-            <div class="file-grid" id="fileGrid"></div>
 
             <!-- List View -->
             <table class="file-list" id="fileList">
@@ -558,12 +514,10 @@
 </div>
 
 <!-- Context Menu -->
-<div class="context-menu" id="contextMenu">
-    <div class="context-menu-item" id="downloadItem">Download</div>
-    <div class="context-menu-item" id="renameItem">Rename</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" id="deleteItem">Move to trash</div>
-</div>
+<div class="context-menu" id="contextMenu"></div>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
 
 <!-- Hidden file input -->
 <input type="file" id="fileInput" multiple style="display: none;">
@@ -573,12 +527,12 @@
         constructor() {
             this.currentUserId = null;
             this.currentFolderId = null;
-            this.currentView = 'grid';
             this.selectedItems = new Set();
             this.breadcrumbPath = [];
             this.allItems = [];
             this.authToken = null;
             this.currentUser = null;
+            this.currentContextItem = null;
 
             // Check authentication first
             this.initializeAuth();
@@ -610,16 +564,20 @@
         }
 
         initializeEventListeners() {
-            document.getElementById('gridViewBtn').addEventListener('click', () => this.setView('grid'));
-            document.getElementById('listViewBtn').addEventListener('click', () => this.setView('list'));
-
             document.getElementById('newButton').addEventListener('click', () => this.triggerFileUpload());
             document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
 
             document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
 
+            // Close context menu on click anywhere
             document.addEventListener('click', () => this.hideContextMenu());
-            document.getElementById('downloadItem').addEventListener('click', () => this.downloadSelected());
+
+            // Close context menu on right click elsewhere
+            document.addEventListener('contextmenu', (e) => {
+                if (!e.target.closest('.file-list-row')) {
+                    this.hideContextMenu();
+                }
+            });
 
             document.querySelectorAll('.sidebar-item').forEach(item => {
                 item.addEventListener('click', (e) => this.handleSidebarClick(e));
@@ -680,45 +638,7 @@
             }
 
             this.hideEmptyState();
-
-            if (this.currentView === 'grid') {
-                this.renderGridView(items);
-            } else {
-                this.renderListView(items);
-            }
-        }
-
-        renderGridView(items) {
-            const grid = document.getElementById('fileGrid');
-            grid.innerHTML = '';
-
-            items.forEach(item => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                fileItem.dataset.itemId = item.id;
-                fileItem.dataset.itemType = item.type;
-
-                const icon = this.getFileIcon(item);
-                const size = item.fileSize ? this.formatFileSize(item.fileSize) : '';
-
-                fileItem.innerHTML = `
-                        <div class="file-icon ${icon.class}">
-                            ${icon.emoji}
-                        </div>
-                        <div class="file-name" title="${item.name}">
-                            ${item.name}
-                        </div>
-                        <div class="file-info">
-                            ${size}
-                        </div>
-                    `;
-
-                fileItem.addEventListener('click', (e) => this.handleFileClick(e, item));
-                fileItem.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
-                fileItem.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
-
-                grid.appendChild(fileItem);
-            });
+            this.renderListView(items);
         }
 
         renderListView(items) {
@@ -777,7 +697,7 @@
         handleFileClick(e, item) {
             e.stopPropagation();
 
-            document.querySelectorAll('.file-item.selected, .file-list-row.selected').forEach(el => {
+            document.querySelectorAll('.file-list-row.selected').forEach(el => {
                 el.classList.remove('selected');
             });
 
@@ -802,8 +722,95 @@
             this.loadFiles(folder.id);
         }
 
+        showContextMenu(e, item) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.currentContextItem = item;
+            this.selectedItems.clear();
+            this.selectedItems.add(item);
+
+            const menu = document.getElementById('contextMenu');
+
+            // Create context menu content based on item type
+            if (item.type === 'folder') {
+                menu.innerHTML = `
+                    <div class="context-menu-item" data-action="download-folder">
+                        <span class="context-menu-icon">📦</span>
+                        Download folder
+                    </div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item danger" data-action="delete-folder">
+                        <span class="context-menu-icon">🗑️</span>
+                        Delete folder
+                    </div>
+                `;
+            } else {
+                menu.innerHTML = `
+                    <div class="context-menu-item" data-action="download-file">
+                        <span class="context-menu-icon">⬇️</span>
+                        Download
+                    </div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item danger" data-action="delete-file">
+                        <span class="context-menu-icon">🗑️</span>
+                        Delete
+                    </div>
+                `;
+            }
+
+            // Add event listeners to context menu items
+            menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
+                menuItem.addEventListener('click', (e) => this.handleContextMenuClick(e, item));
+            });
+
+            // Position and show menu
+            menu.style.display = 'block';
+            menu.style.left = e.pageX + 'px';
+            menu.style.top = e.pageY + 'px';
+
+            // Ensure menu stays within viewport
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                menu.style.left = (e.pageX - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                menu.style.top = (e.pageY - rect.height) + 'px';
+            }
+        }
+
+        handleContextMenuClick(e, item) {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+
+            switch (action) {
+                case 'download-file':
+                    this.downloadFile(item);
+                    break;
+                case 'download-folder':
+                    this.downloadFolder(item);
+                    break;
+                case 'delete-file':
+                    this.deleteFile(item);
+                    break;
+                case 'delete-folder':
+                    this.deleteFolder(item);
+                    break;
+            }
+
+            this.hideContextMenu();
+        }
+
+        hideContextMenu() {
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'none';
+            this.currentContextItem = null;
+        }
+
         async downloadFile(file) {
             try {
+                this.showNotification(`Downloading ${file.name}...`, 'info');
+
                 const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${file.id}/download`;
 
                 const response = await fetch(url, {
@@ -828,12 +835,109 @@
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(downloadUrl);
 
+                this.showNotification(`✅ Downloaded: ${file.name}`, 'success');
                 console.log(`✅ Downloaded: ${file.name}`);
 
             } catch (error) {
                 console.error('Error downloading file:', error);
-                alert('Failed to download file');
+                this.showNotification(`❌ Failed to download ${file.name}`, 'error');
             }
+        }
+
+        async downloadFolder(folder) {
+            try {
+                this.showNotification(`Creating archive for ${folder.name}...`, 'info');
+
+                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${folder.id}/downloadfolder`;
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `Download failed: ${response.statusText}`);
+                }
+
+                // Create download link for ZIP file
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = `${folder.name}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(downloadUrl);
+
+                this.showNotification(`✅ Downloaded: ${folder.name}.zip`, 'success');
+                console.log(`✅ Downloaded folder: ${folder.name}.zip`);
+
+            } catch (error) {
+                console.error('Error downloading folder:', error);
+                this.showNotification(`❌ Failed to download ${folder.name}: ${error.message}`, 'error');
+            }
+        }
+
+        async deleteFile(file) {
+            if (!confirm(`Are you sure you want to delete "${file.name}"?`)) {
+                return;
+            }
+
+            try {
+                this.showNotification(`Deleting ${file.name}...`, 'info');
+
+                // TODO: Implement DELETE endpoint on backend
+                // For now, show a placeholder message
+                console.log(`Delete file requested: ${file.name} (ID: ${file.id})`);
+
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                this.showNotification(`❌ Delete functionality not yet implemented on backend`, 'error');
+
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                this.showNotification(`❌ Failed to delete ${file.name}`, 'error');
+            }
+        }
+
+        async deleteFolder(folder) {
+            if (!confirm(`Are you sure you want to delete "${folder.name}" and all its contents?`)) {
+                return;
+            }
+
+            try {
+                this.showNotification(`Deleting ${folder.name}...`, 'info');
+
+                // TODO: Implement DELETE endpoint on backend
+                // For now, show a placeholder message
+                console.log(`Delete folder requested: ${folder.name} (ID: ${folder.id})`);
+
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                this.showNotification(`❌ Delete functionality not yet implemented on backend`, 'error');
+
+            } catch (error) {
+                console.error('Error deleting folder:', error);
+                this.showNotification(`❌ Failed to delete ${folder.name}`, 'error');
+            }
+        }
+
+        showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
         }
 
         updateBreadcrumbs() {
@@ -883,23 +987,6 @@
             this.loadFiles(targetFolder.id);
         }
 
-        setView(view) {
-            this.currentView = view;
-
-            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(view + 'ViewBtn').classList.add('active');
-
-            if (view === 'grid') {
-                document.getElementById('fileGrid').style.display = 'grid';
-                document.getElementById('fileList').classList.remove('active');
-            } else {
-                document.getElementById('fileGrid').style.display = 'none';
-                document.getElementById('fileList').classList.add('active');
-            }
-
-            this.renderFiles();
-        }
-
         handleSearch(query) {
             if (!query.trim()) {
                 this.renderFiles();
@@ -912,32 +999,6 @@
             this.renderFiles(filteredItems);
         }
 
-        showContextMenu(e, item) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const menu = document.getElementById('contextMenu');
-            menu.style.display = 'block';
-            menu.style.left = e.pageX + 'px';
-            menu.style.top = e.pageY + 'px';
-
-            this.selectedItems.clear();
-            this.selectedItems.add(item);
-        }
-
-        hideContextMenu() {
-            document.getElementById('contextMenu').style.display = 'none';
-        }
-
-        downloadSelected() {
-            this.selectedItems.forEach(item => {
-                if (item.type === 'file') {
-                    this.downloadFile(item);
-                }
-            });
-            this.hideContextMenu();
-        }
-
         triggerFileUpload() {
             document.getElementById('fileInput').click();
         }
@@ -945,7 +1006,7 @@
         handleFileUpload(e) { //TODO
             const files = Array.from(e.target.files);
             console.log('Files selected for upload:', files);
-            alert('Upload functionality requires backend implementation');
+            this.showNotification('Upload functionality requires backend implementation', 'error');
         }
 
         setupDragAndDrop() {
@@ -973,7 +1034,7 @@
             container.addEventListener('drop', (e) => {
                 const files = Array.from(e.dataTransfer.files);
                 console.log('Files dropped:', files);
-                alert('Drag & drop upload requires backend implementation');
+                this.showNotification('Drag & drop upload requires backend implementation', 'error');
             });
         }
 
@@ -1001,41 +1062,29 @@
 
         showLoading() {
             document.getElementById('loadingState').style.display = 'flex';
-            document.getElementById('fileGrid').style.display = 'none';
-            document.getElementById('fileList').classList.remove('active');
+            document.getElementById('fileList').style.display = 'none';
             document.getElementById('emptyState').style.display = 'none';
         }
 
         hideLoading() {
             document.getElementById('loadingState').style.display = 'none';
-            this.setViewDisplay();
-        }
-
-        setViewDisplay() {
-            if (this.currentView === 'grid') {
-                document.getElementById('fileGrid').style.display = 'grid';
-                document.getElementById('fileList').classList.remove('active');
-            } else {
-                document.getElementById('fileGrid').style.display = 'none';
-                document.getElementById('fileList').classList.add('active');
-            }
+            document.getElementById('fileList').style.display = 'table';
         }
 
         showEmptyState() {
             document.getElementById('emptyState').style.display = 'flex';
-            document.getElementById('fileGrid').style.display = 'none';
-            document.getElementById('fileList').classList.remove('active');
+            document.getElementById('fileList').style.display = 'none';
         }
 
         hideEmptyState() {
             document.getElementById('emptyState').style.display = 'none';
-            this.setViewDisplay();
+            document.getElementById('fileList').style.display = 'table';
         }
 
         showError(message) {
             this.hideLoading();
             console.error(message);
-            alert(message);
+            this.showNotification(message, 'error');
         }
 
         logout() {
