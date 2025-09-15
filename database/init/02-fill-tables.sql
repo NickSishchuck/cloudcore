@@ -1,6 +1,5 @@
 USE CloudCoreDB;
 
--- Both passwords are "password123" but hashed with BCrypt
 INSERT INTO users (username, email, password_hash) VALUES
     ('admin', 'admin@cloudcore.com', 'password123'),
     ('user', 'user@cloudcore.com', 'password123');
