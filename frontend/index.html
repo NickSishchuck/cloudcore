@@ -1006,10 +1006,8 @@
                 this.showNotification(`Deleting ${folder.name}...`, 'info');
 
                 // TODO: Implement DELETE endpoint on backend
-                // For now, show a placeholder message
                 console.log(`Delete folder requested: ${folder.name} (ID: ${folder.id})`);
 
-                // Simulate API call
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 this.showNotification(`❌ Delete functionality not yet implemented on backend`, 'error');
