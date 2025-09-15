@@ -21,6 +21,7 @@ namespace CloudCore.Controllers
         private readonly IFileStorageService _fileStorageService;
         private readonly IZipArchiveService _zipArchiveService;
         private readonly IFileRenameService _fileRenameService;
+        
         public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService)
         {
             _contextFactory = contextFactory;
@@ -37,8 +38,6 @@ namespace CloudCore.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return int.Parse(userIdClaim ?? "0");
         }
-
-
 
         /// <summary>
         /// Retrieves all items for a specific user within a given parent directory.
@@ -74,8 +73,6 @@ namespace CloudCore.Controllers
             {
                 return NotFound(ex.Message);
             }
-
-
         }
 
         [HttpGet("{folderId}/downloadfolder")]
@@ -163,7 +160,6 @@ namespace CloudCore.Controllers
             }
         }
 
-
         /// <summary>
         /// Downloads multiple selected items (files and folders) as a single ZIP archive
         /// Processes user authorization, validates item ownership, and creates compressed archive
@@ -223,7 +219,6 @@ namespace CloudCore.Controllers
             }
         }
 
-
         /// <summary>
         /// Renames an item (file or folder) for a specific user, with authorization checks.
         /// Updates the database and file system paths accordingly.
@@ -280,7 +275,6 @@ namespace CloudCore.Controllers
                     });
                 }
 
-               
                 if (item.Type == "file")
                 {
                     _fileRenameService.RenameFile(item, newName, out string newRelativePath);
@@ -295,7 +289,6 @@ namespace CloudCore.Controllers
                     });
                 }
 
-               
                 if (item.Type == "folder")
                 {
                     await _fileRenameService.RenameFolder(context, item, newName);
@@ -356,7 +349,6 @@ namespace CloudCore.Controllers
             }
             catch (Exception ex)
             {
-                
                 return StatusCode(500, new
                 {
                     message = "An unexpected error occurred",
@@ -366,6 +358,125 @@ namespace CloudCore.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets the total size and file count for a directory
+        /// </summary>
+        /// <param name="userId">User identifier from route</param>
+        /// <param name="folderId">Folder identifier to calculate size for</param>
+        /// <returns>Object containing total size in bytes and file count</returns>
+        [HttpGet("{folderId}/size")]
+        public async Task<ActionResult<object>> GetFolderSizeAsync(int userId, int folderId)
+        {
+            var currentUserId = GetCurrentUserId();
+            
+            if (currentUserId != userId)
+                return StatusCode(403, new
+                {
+                    message = "You can only access your own files",
+                    errorCode = "ACCESS_DENIED",
+                    timestamp = DateTime.UtcNow
+                });
 
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+                
+                // Verify the folder exists and belongs to the user
+                var folder = await context.Items
+                    .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
+                    .FirstOrDefaultAsync();
+
+                if (folder == null)
+                    return NotFound("Folder not found");
+
+                // Calculate the total size recursively
+                var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folderId);
+
+                return Ok(new
+                {
+                    folderId = folderId,
+                    totalSize = totalSize,
+                    fileCount = fileCount,
+                    formattedSize = FormatFileSize(totalSize)
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Gets sizes for multiple folders in a single request
+        /// </summary>
+        /// <param name="userId">User identifier from route</param>
+        /// <param name="folderIds">List of folder IDs to calculate sizes for</param>
+        /// <returns>Dictionary of folder sizes</returns>
+        [HttpPost("sizes")]
+        public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync(
+            int userId, 
+            [FromBody] List<int> folderIds)
+        {
+            var currentUserId = GetCurrentUserId();
+            
+            if (currentUserId != userId)
+                return StatusCode(403, new
+                {
+                    message = "You can only access your own files",
+                    errorCode = "ACCESS_DENIED",
+                    timestamp = DateTime.UtcNow
+                });
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+                
+                // Verify all folders exist and belong to the user
+                var folders = await context.Items
+                    .Where(i => folderIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
+                    .ToListAsync();
+
+                var results = new Dictionary<int, object>();
+
+                foreach (var folder in folders)
+                {
+                    var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folder.Id);
+                    
+                    results[folder.Id] = new
+                    {
+                        folderId = folder.Id,
+                        totalSize = totalSize,
+                        fileCount = fileCount,
+                        formattedSize = FormatFileSize(totalSize)
+                    };
+                }
+
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Helper method to format file sizes
+        /// </summary>
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes == 0) return "0 Bytes";
+            
+            string[] sizes = { "Bytes", "KB", "MB", "GB", "TB" };
+            int order = 0;
+            double size = bytes;
+            
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size = size / 1024;
+            }
+            
+            return $"{size:0.##} {sizes[order]}";
+        }
     }
 }
