@@ -18,6 +18,7 @@ namespace CloudCore.Services
         
         public string GetFileFullPath(int userId, string relativePath)
         {
+            // Get full path "/app/storage/users/user/1/documents/test.pdf"
             var fullPath =  Path.Combine(GetUserStoragePath(userId), relativePath);
 
             var resolvedPath = Path.GetFullPath(fullPath);
@@ -30,11 +31,13 @@ namespace CloudCore.Services
         
         public string GetUserStoragePath(int userId)
         {
+            // Get user`s root path "/app/storage/users/user/1"
             return Path.Combine(_basePath, "users", $"user{userId}");
         }
 
         public string GetFolderPath(Item folder)
         {
+            
             var pathParts = new List<string>();
             var current = folder;
 
@@ -58,7 +61,7 @@ namespace CloudCore.Services
         public string RemoveFromFolderPath(string path, string searchString)
         {
             int lastIndexofSearchString = path.LastIndexOf(searchString);
-            string newPath = "";
+            string newPath = null;
 
             if (lastIndexofSearchString != -1)
                 newPath = path.Remove(lastIndexofSearchString, searchString.Length);

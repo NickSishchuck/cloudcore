@@ -12,17 +12,19 @@ namespace CloudCore.Services
 
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
         private readonly IFileStorageService _fileStorageService;
+        private readonly IValidationService _validationService;
 
 
-        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorage)
+        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorage, IValidationService validationService)
         {
             _dbContextFactory = dbContextFactory;
             _fileStorageService = fileStorage;
+            _validationService = validationService;
         }
 
         public async Task<FileStream> CreateFolderArchiveAsync(int userId, int folderId, string folderName)
         {
-            await ValidateArchive(userId, folderId);
+            await ValidateArchive(userId, folderId); // Checks if archive will be valid
 
             var tempFilePath = Path.GetTempFileName() + ".zip";
 
@@ -31,9 +33,7 @@ namespace CloudCore.Services
             try
             {
                 using (var zipArchive = new ZipArchive(fileSteam, ZipArchiveMode.Create, true))
-                {
                     await AddFolderToZipRecursivelyAsync(zipArchive, userId, folderId, folderName);
-                }
             }
             finally
             {
@@ -46,7 +46,9 @@ namespace CloudCore.Services
         public async Task<FileStream> CreateMultipleItemArchiveAsync(int userId, List<Item> itemsIds)
         {
             using var _context = _dbContextFactory.CreateDbContext();
-            await ValidateMultipleItemsArchive(userId, itemsIds);
+
+            await ValidateMultipleItemsArchive(userId, itemsIds); // Checks if archive will be valid
+
             var tempFilePath = Path.GetTempFileName() + ".zip";
 
             var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write);
@@ -55,21 +57,21 @@ namespace CloudCore.Services
             {
                 using (var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Create, true))
                 {
-                    foreach (var item in itemsIds)
+                    foreach (var item in itemsIds) // For each item in list
                     {
-                        if (item.Type == "folder")
+                        if (item.Type == "folder") // If item is folder
                         {
-                            zipArchive.CreateEntry($"{item.Name}/");
+                            zipArchive.CreateEntry($"{item.Name}/"); // Create a root folder
                             await AddFolderToZipRecursivelyAsync(zipArchive, userId, item.Id, item.Name);
                         }
-                        else if (item.Type == "file")
+                        else if (item.Type == "file") // If item is file
                             await AddFileToZipAsync(zipArchive, item, item.Name, userId);
                     }
                 }
             }
             finally
             {
-                fileStream?.Dispose();
+                fileStream?.Dispose(); // Close file stream
             }
 
             return new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
@@ -92,6 +94,7 @@ namespace CloudCore.Services
         private async Task AddFolderToZipRecursivelyAsync(ZipArchive zipArchive, int userId, int? folderId, string folderName, string currentPath = "")
         {
             using var _context = _dbContextFactory.CreateDbContext();
+
             // Get all items in the folder
             var items = await _context.Items
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
@@ -99,7 +102,7 @@ namespace CloudCore.Services
 
             foreach (var item in items)
             {
-                // Get a item path to make an hierarchy
+                // Get an item path to make a hierarchy
                 // -> Documents
                 //    -> item1.html
                 //    -> Folder1
@@ -110,7 +113,7 @@ namespace CloudCore.Services
                 {
                     zipArchive.CreateEntry($"{itemPath}/");
 
-                    await AddFolderToZipRecursivelyAsync(zipArchive, userId, item.Id, itemPath);
+                    await AddFolderToZipRecursivelyAsync(zipArchive, userId, item.Id, item.Name, itemPath);
                 }
                 if (item.Type == "file")
                     await AddFileToZipAsync(zipArchive, item, itemPath, userId);
@@ -150,15 +153,15 @@ namespace CloudCore.Services
             }
             catch (UnauthorizedAccessException)
             {
-
+                throw;
             }
             catch (FileNotFoundException)
             {
-
+                throw;
             }
             catch (Exception)
             {
-
+                throw;
             }
         }
 
@@ -166,6 +169,7 @@ namespace CloudCore.Services
         public async Task<(long totalSize, int fileCount)> CalculateArchiveSizeAsync(int userId, int? folderId)
         {
             using var _context = _dbContextFactory.CreateDbContext();
+
             var items = await _context.Items
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
                 .ToListAsync();
@@ -221,26 +225,13 @@ namespace CloudCore.Services
         /// <param name="userId">User ID for item validation</param>
         /// <param name="items">Collection of items to validate for archiving</param>
         /// <returns>Task that completes successfully if validation passes</returns>
-        /// <exception cref="InvalidOperationException">Thrown when size exceeds 1500MB or file count exceeds 1000</exception>
-        /// <remarks>
-        /// Enforces maximum archive size limit of 1500 MB (1,572,864,000 bytes)
-        /// Enforces maximum file count limit of 1000 files per archive
-        /// Uses CalculateMultipleItemsSizeAsync to determine actual totals
-        /// Provides detailed error messages with current vs maximum values
-        /// Essential for preventing memory issues and long processing times
-        /// </remarks>
-        public async Task ValidateMultipleItemsArchive(int userId, List<Item> items)
+        /// <exception cref="InvalidOperationException">Thrown when size exceeds 2000MB or file count exceeds 10000</exception>
+        private async Task ValidateMultipleItemsArchive(int userId, List<Item> items)
         {
-            const long MAX_ARCHIVE_SIZE = 1500 * 1024 * 1024; // 1500 MB
-            const int MAX_FILES_COUNT = 1000;
-
             var (totalSize, fileCount) = await CalculateMultipleItemsSizeAsync(userId, items);
-
-            if (totalSize > MAX_ARCHIVE_SIZE)
-                throw new InvalidOperationException($"Archive size limit exceeded. Max: {MAX_ARCHIVE_SIZE / (1024 * 1024)}MB, Actual: {totalSize / (1024 * 1024)}MB");
-
-            if (fileCount > MAX_FILES_COUNT)
-                throw new InvalidOperationException($"File count limit exceeded. Max: {MAX_FILES_COUNT}, Actual: {fileCount}");
+            var validationResult = _validationService.ValidateArchiveSize(totalSize, fileCount);
+            if (!validationResult.IsValid)
+                throw new InvalidOperationException(validationResult.ErrorMessage);
         }
         /// <summary>
         /// Validates that a single folder meets archive size and file count constraints
@@ -248,26 +239,13 @@ namespace CloudCore.Services
         /// <param name="userId">User ID for folder validation</param>
         /// <param name="folderId">Folder ID to validate (null for root level)</param>
         /// <returns>Task that completes successfully if validation passes</returns>
-        /// <exception cref="InvalidOperationException">Thrown when size exceeds 1500MB or file count exceeds 1000</exception>
-        /// <remarks>
-        /// Enforces identical limits as ValidateMultipleItemsArchive (1500MB, 1000 files)
-        /// Uses CalculateArchiveSizeAsync for recursive folder size calculation
-        /// Prevents system resource exhaustion during ZIP creation process
-        /// Should be called before initiating any archive operations
-        /// Provides user-friendly error messages with actual vs limit comparisons
-        /// </remarks>
+        /// <exception cref="InvalidOperationException">Thrown when size exceeds 2000MB or file count exceeds 10000</exception>
         private async Task ValidateArchive(int userId, int? folderId)
         {
-            const long MAX_ARCHIVE_SIZE = 1500 * 1024 * 1024; // 1500 MB
-            const int MAX_FILES_COUNT = 1000;
-
             var (totalSize, fileCount) = await CalculateArchiveSizeAsync(userId, folderId);
-
-            if (totalSize > MAX_ARCHIVE_SIZE)
-                throw new InvalidOperationException($"Archive size limit exceeded. Max: {MAX_ARCHIVE_SIZE / (1024 * 1024)}MB, Actual: {totalSize / (1024 * 1024)}MB");
-
-            if (fileCount > MAX_FILES_COUNT)
-                throw new InvalidOperationException($"File count limit exceeded. Max: {MAX_FILES_COUNT}, Actual: {fileCount}");
+            var validationResult = _validationService.ValidateArchiveSize(totalSize, fileCount);
+            if (!validationResult.IsValid)
+                throw new InvalidOperationException(validationResult.ErrorMessage);
         }
     }
 
