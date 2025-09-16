@@ -7,11 +7,11 @@ using Microsoft.EntityFrameworkCore.Internal;
 
 namespace CloudCore.Services
 {
-    public class FIleRenameService : IFileRenameService
+    public class FileRenameService : IFileRenameService
     {
         private readonly IFileStorageService _fileStorageService;
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        public FIleRenameService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorageService)
+        public FileRenameService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorageService)
         {
             _dbContextFactory = dbContextFactory;
             _fileStorageService = fileStorageService;
@@ -58,7 +58,6 @@ namespace CloudCore.Services
             Directory.Move(oldFolderPath, newFolderPath);
             await context.SaveChangesAsync();
 
-               
            
         }
 

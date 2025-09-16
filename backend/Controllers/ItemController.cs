@@ -21,13 +21,15 @@ namespace CloudCore.Controllers
         private readonly IFileStorageService _fileStorageService;
         private readonly IZipArchiveService _zipArchiveService;
         private readonly IFileRenameService _fileRenameService;
+        private readonly IValidationService _validationService;
         
-        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService)
+        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService)
         {
             _contextFactory = contextFactory;
             _fileStorageService = fileStorageService;
             _zipArchiveService = zipArchiveService;
             _fileRenameService = fileRenameService;
+            _validationService = validationService;
         }
 
         /// <summary>
@@ -39,6 +41,7 @@ namespace CloudCore.Controllers
             return int.Parse(userIdClaim ?? "0");
         }
 
+
         /// <summary>
         /// Retrieves all items for a specific user within a given parent directory.
         /// </summary>
@@ -46,15 +49,16 @@ namespace CloudCore.Controllers
         /// <param name="parentId">Parent directory ID (null for root level)</param>
         /// <returns>List of user items or NotFound if no items exist</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync(int userId, int? parentId)
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required]int userId, int? parentId)
         {
             var currentUserId = GetCurrentUserId();
 
-            if (currentUserId != userId)
+            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
+            if (!authValidation.IsValid)
                 return StatusCode(403, new
                 {
-                    message = "You can only download your own files",
-                    errorCode = "ACCESS_DENIED",
+                    message = authValidation.ErrorMessage,
+                    errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
             try
@@ -75,16 +79,36 @@ namespace CloudCore.Controllers
             }
         }
 
+        /// <summary>
+        /// Downloads a folder as a ZIP archive for the specified user.
+        /// </summary>
+        /// <param name="userId">The ID of the user who owns the folder</param>
+        /// <param name="folderId">The ID of the folder to download</param>
+        /// <returns>
+        /// A ZIP file containing all contents of the specified folder if successful,
+        /// or an appropriate error response if the folder is not found, access is denied,
+        /// or an error occurs during archive creation.
+        /// </returns>
+        /// <response code="200">Returns the folder as a ZIP file download</response>
+        /// <response code="403">Access denied - user can only download their own folders</response>
+        /// <response code="404">Folder not found or does not belong to the user</response>
+        /// <response code="400">Bad request - invalid operation or error during archive creation</response>
+        /// <remarks>
+        /// <example>
+        /// GET /user/123/mydrive/456/downloadfolder
+        /// 
+        /// Response: ZIP file download named "MyFolder.zip"
         [HttpGet("{folderId}/downloadfolder")]
-        public async Task<IActionResult> DownloadFolderAsync(int userId, int folderId)
+        public async Task<IActionResult> DownloadFolderAsync([Required]int userId,[Required]int folderId)
         {
             var currentUserId = GetCurrentUserId();
 
-            if (currentUserId != userId)
+            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
+            if (!authValidation.IsValid)
                 return StatusCode(403, new
                 {
-                    message = "You can only download your own files",
-                    errorCode = "ACCESS_DENIED",
+                    message = authValidation.ErrorMessage,
+                    errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
             try
@@ -118,15 +142,16 @@ namespace CloudCore.Controllers
         /// <param name="fileId">File identifier</param>
         /// <returns>File content or NotFound/BadRequest if file doesn't exist or path is invalid</returns>
         [HttpGet("{fileId}/download")]
-        public async Task<IActionResult> DownloadFileAsync(int userId, int fileId)
+        public async Task<IActionResult> DownloadFileAsync([Required] int userId, [Required] int fileId)
         {
             var currentUserId = GetCurrentUserId();
 
-            if (currentUserId != userId)
+            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
+            if (!authValidation.IsValid)
                 return StatusCode(403, new
                 {
-                    message = "You can only download your own files",
-                    errorCode = "ACCESS_DENIED",
+                    message = authValidation.ErrorMessage,
+                    errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
 
@@ -175,34 +200,54 @@ namespace CloudCore.Controllers
         /// Archive filename format: "selected_items_yyyyMMdd_HHmmss.zip"
         /// Only processes items that belong to the authenticated user and are not soft-deleted.
         /// </remarks>
-        /// <example>
-        /// POST /user/2/mydrive/download/multiple
-        /// Content-Type: application/json
-        /// Body: [1, 3, 5, 7]
-        /// 
-        /// Response: ZIP file download with multiple selected items
-        /// </example>
         [HttpPost("download/multiple")]
-        public async Task<IActionResult> DownloadMultipleItemsAsZipAsync(int userId, [FromBody] List<int> itemsId)
+        public async Task<IActionResult> DownloadMultipleItemsAsZipAsync([Required] int userId, [FromBody] List<int> itemsId)
         {
             var currentUserId = GetCurrentUserId();
-            if (currentUserId != userId)
+
+            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
+            if (!authValidation.IsValid)
                 return StatusCode(403, new
                 {
-                    message = "You can only download your own files",
-                    errorCode = "ACCESS_DENIED",
+                    message = authValidation.ErrorMessage,
+                    errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
 
             try
             {
                 using var context = _contextFactory.CreateDbContext();
+
+                var itemsValidation = await _validationService.ValidateItemIdsAsync(context, itemsId, userId);
+                if (!itemsValidation.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        message = itemsValidation.ErrorMessage,
+                        errorCode = itemsValidation.ErrorCode,
+                        timestamp = DateTime.UtcNow
+                    });
+                }
+
+
                 var items = await context.Items
-                    .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
-                    .ToListAsync();
+                     .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
+                     .ToListAsync();
 
                 if (items == null || items.Count == 0)
                     return NotFound("File or files not found");
+
+                var totalSize = items.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+                var sizeValidation = _validationService.ValidateArchiveSize(totalSize, items.Count);
+                if (!sizeValidation.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        message = sizeValidation.ErrorMessage,
+                        errorCode = sizeValidation.ErrorCode,
+                        timestamp = DateTime.UtcNow
+                    });
+                }
 
                 var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items);
                 var fileName = $"selected_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
@@ -232,45 +277,65 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> RenameItem(int userId, int itemId, [FromBody] string newName)
+        public async Task<IActionResult> RenameItemAsync([Required] int userId, [Required] int itemId,[StringLength(250)] [FromBody] string newName)
         {
             // Validate input
-            if (string.IsNullOrWhiteSpace(newName))
+            var nameValidation = _validationService.ValidateItemName(newName);
+            if (!nameValidation.IsValid)
             {
                 return BadRequest(new
                 {
-                    message = "Item name cannot be empty",
-                    errorCode = "INVALID_NAME",
+                    message = nameValidation.ErrorMessage,
+                    errorCode = nameValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
             }
 
             // Authorization check
             var currentUserId = GetCurrentUserId();
-            if (currentUserId != userId)
-            {
+            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
+            if (!authValidation.IsValid)
                 return StatusCode(403, new
                 {
-                    message = "You can only rename your own files",
-                    errorCode = "ACCESS_DENIED",
+                    message = authValidation.ErrorMessage,
+                    errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
-            }
 
+            var itemName = _validationService.ValidateItemName(newName);
+            if (!itemName.IsValid)
+                return StatusCode(409, new
+                {
+                    message = itemName.ErrorMessage,
+                    errorCode = itemName.ErrorCode,
+                    timestamp = DateTime.UtcNow
+                });
             try
             {
                 using var context = _contextFactory.CreateDbContext();
+
+                var itemValidation = await _validationService.ValidateItemExistsAsync(context, itemId, userId);
+                if (!itemValidation.IsValid)
+                {
+                    return NotFound(new
+                    {
+                        message = itemValidation.ErrorMessage,
+                        errorCode = itemValidation.ErrorCode,
+                        timestamp = DateTime.UtcNow
+                    });
+                }
 
                 var item = await context.Items
                     .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
                     .FirstOrDefaultAsync();
 
-                if (item == null)
+                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync( context, newName, userId, item.ParentId, itemId);
+                if (!uniquenessValidation.IsValid)
                 {
-                    return NotFound(new
+                    return Conflict(new
                     {
-                        message = "Item not found",
-                        errorCode = "ITEM_NOT_FOUND",
+                        message = uniquenessValidation.ErrorMessage,
+                        errorCode = uniquenessValidation.ErrorCode,
                         timestamp = DateTime.UtcNow
                     });
                 }
@@ -347,7 +412,7 @@ namespace CloudCore.Controllers
                     timestamp = DateTime.UtcNow
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
@@ -365,15 +430,16 @@ namespace CloudCore.Controllers
         /// <param name="folderId">Folder identifier to calculate size for</param>
         /// <returns>Object containing total size in bytes and file count</returns>
         [HttpGet("{folderId}/size")]
-        public async Task<ActionResult<object>> GetFolderSizeAsync(int userId, int folderId)
+        public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
         {
             var currentUserId = GetCurrentUserId();
-            
-            if (currentUserId != userId)
+
+            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
+            if (!authValidation.IsValid)
                 return StatusCode(403, new
                 {
-                    message = "You can only access your own files",
-                    errorCode = "ACCESS_DENIED",
+                    message = authValidation.ErrorMessage,
+                    errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
 
@@ -397,7 +463,7 @@ namespace CloudCore.Controllers
                     folderId = folderId,
                     totalSize = totalSize,
                     fileCount = fileCount,
-                    formattedSize = FormatFileSize(totalSize)
+                    formattedSize = _validationService.FormatFileSize(totalSize)
                 });
             }
             catch (Exception ex)
@@ -413,9 +479,7 @@ namespace CloudCore.Controllers
         /// <param name="folderIds">List of folder IDs to calculate sizes for</param>
         /// <returns>Dictionary of folder sizes</returns>
         [HttpPost("sizes")]
-        public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync(
-            int userId, 
-            [FromBody] List<int> folderIds)
+        public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
         {
             var currentUserId = GetCurrentUserId();
             
@@ -447,7 +511,7 @@ namespace CloudCore.Controllers
                         folderId = folder.Id,
                         totalSize = totalSize,
                         fileCount = fileCount,
-                        formattedSize = FormatFileSize(totalSize)
+                        formattedSize = _validationService.FormatFileSize(totalSize)
                     };
                 }
 
@@ -459,24 +523,6 @@ namespace CloudCore.Controllers
             }
         }
 
-        /// <summary>
-        /// Helper method to format file sizes
-        /// </summary>
-        private string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 Bytes";
-            
-            string[] sizes = { "Bytes", "KB", "MB", "GB", "TB" };
-            int order = 0;
-            double size = bytes;
-            
-            while (size >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                size = size / 1024;
-            }
-            
-            return $"{size:0.##} {sizes[order]}";
-        }
+        
     }
 }
