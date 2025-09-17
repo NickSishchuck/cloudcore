@@ -11,10 +11,12 @@ namespace CloudCore.Services
     public class FileRenameService : IFileRenameService
     {
         private readonly IFileStorageService _fileStorageService;
+        private readonly IItemRepository _itemRepository;
 
-        public FileRenameService(IFileStorageService fileStorageService)
+        public FileRenameService(IFileStorageService fileStorageService, IItemRepository itemRepository)
         {
             _fileStorageService = fileStorageService;
+            _itemRepository = itemRepository;
         }
         public void RenameFile(Item item, string newName, out string newRelativePath)
         {
@@ -48,7 +50,7 @@ namespace CloudCore.Services
             try
             {
                 // Get all child items
-                var childItems = await GetAllChildItemsRecursivelyAsync(context, parent.Id, parent.UserId);
+                var childItems = await _itemRepository.GetAllChildItemsAsync(parent.Id, parent.UserId);
 
                 // Get old path
                 var oldFolderPath = _fileStorageService.GetFolderPath(parent);
@@ -61,10 +63,13 @@ namespace CloudCore.Services
                 foreach (var item in childItems)
                 {
                     if (item.Type == "file")
-                    {
                         item.FilePath = _fileStorageService.GetNewFilePath(item.FilePath, newFolderPath, basePath);
-                    }
                 }
+
+                var filesToUpdate = childItems.Where(i => i.Type == "file").ToList();
+
+                if (filesToUpdate.Count > 0)
+                    context.UpdateRange(filesToUpdate);
 
                 parent.Name = newName;
                 context.Entry(parent).State = EntityState.Modified;
@@ -81,74 +86,6 @@ namespace CloudCore.Services
 
 
            
-        }
-
-        /// <summary>
-        /// Recursively retrieves all child items (files and folders) under a specified parent folder.
-        /// Traverses the folder hierarchy depth-first to collect all nested items.
-        /// </summary>
-        /// <param name="context">The database context for querying items</param>
-        /// <param name="parentId">The ID of the parent folder to search under</param>
-        /// <param name="userId">The user ID to filter items by</param>
-        /// <returns>A list of all child items found recursively under the parent folder</returns>
-        private static async Task<List<Item>> GetAllChildItemsRecursivelyAsync(CloudCoreDbContext context, int parentId, int userId, int maxDepth = 10000)
-        {
-            var userIdParam = new MySqlParameter("@UserId", userId);
-            var parentIdParam = new MySqlParameter("@ParentId", parentId);
-            var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
-
-            var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT 
-                                                            id, 
-                                                            name, 
-                                                            type, 
-                                                            parent_id, 
-                                                            user_id, 
-                                                            file_path, 
-                                                            file_size, 
-                                                            mime_type,
-                                                            is_deleted,
-                                                            1 as level
-                                                        FROM items
-                                                        WHERE user_id = @UserId
-                                                            AND parent_id = @ParentId
-                                                            AND is_deleted = FALSE
-    
-                                                        UNION ALL
-    
-                                                        SELECT 
-                                                            i.id, 
-                                                            i.name, 
-                                                            i.type, 
-                                                            i.parent_id, 
-                                                            i.user_id, 
-                                                            i.file_path, 
-                                                            i.file_size, 
-                                                            i.mime_type,
-                                                            i.is_deleted,
-                                                            ih.level + 1
-                                                        FROM items i
-                                                        INNER JOIN ItemsHierarchy ih ON i.parent_id = ih.id
-                                                        WHERE i.user_id = @UserId
-                                                            AND ih.type = 'folder'
-                                                            AND i.is_deleted = FALSE
-                                                            AND ih.level < @MaxDepth 
-                                                    )
-                                                    SELECT 
-                                                            id, 
-                                                            name, 
-                                                            type, 
-                                                            parent_id, 
-                                                            user_id, 
-                                                            file_path, 
-                                                            file_size, 
-                                                            mime_type,
-                                                            is_deleted
-                                                        FROM ItemsHierarchy 
-                                                        ORDER BY Level, Type DESC, Name;";
-
-            return await context.Items
-                .FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
-                .ToListAsync();
         }
 
     }

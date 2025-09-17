@@ -22,14 +22,16 @@ namespace CloudCore.Controllers
         private readonly IZipArchiveService _zipArchiveService;
         private readonly IFileRenameService _fileRenameService;
         private readonly IValidationService _validationService;
+        private readonly IItemRepository _itemRepository;
         
-        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService)
+        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService, IItemRepository itemRepository)
         {
             _contextFactory = contextFactory;
             _fileStorageService = fileStorageService;
             _zipArchiveService = zipArchiveService;
             _fileRenameService = fileRenameService;
             _validationService = validationService;
+            _itemRepository = itemRepository;
         }
 
         /// <summary>
@@ -64,7 +66,9 @@ namespace CloudCore.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required]int userId, int? parentId)
         {
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -106,7 +110,9 @@ namespace CloudCore.Controllers
         [HttpGet("{folderId}/downloadfolder")]
         public async Task<IActionResult> DownloadFolderAsync([Required]int userId,[Required]int folderId)
         {
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
             try
             {
                 using var context = _contextFactory.CreateDbContext();
@@ -140,8 +146,9 @@ namespace CloudCore.Controllers
         [HttpGet("{fileId}/download")]
         public async Task<IActionResult> DownloadFileAsync([Required] int userId, [Required] int fileId)
         {
-            VerifyUser(userId);
-
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
             try
             {
                 using var context = _contextFactory.CreateDbContext();
@@ -190,7 +197,9 @@ namespace CloudCore.Controllers
         [HttpPost("download/multiple")]
         public async Task<IActionResult> DownloadMultipleItemsAsZipAsync([Required] int userId, [FromBody] List<int> itemsId)
         {
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -258,7 +267,9 @@ namespace CloudCore.Controllers
         public async Task<IActionResult> RenameItemAsync([Required] int userId, [Required] int itemId,[StringLength(250)] [FromBody] string newName)
         {
 
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             var itemName = _validationService.ValidateItemName(newName);
             if (!itemName.IsValid)
@@ -390,7 +401,9 @@ namespace CloudCore.Controllers
         [HttpGet("{folderId}/size")]
         public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
         {
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -430,7 +443,9 @@ namespace CloudCore.Controllers
         [HttpPost("sizes")]
         public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
         {
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -467,7 +482,9 @@ namespace CloudCore.Controllers
         [HttpDelete ("{itemId}/delete")]
         public async Task<IActionResult> DeleteItemAsync(int userId, int itemId)
         {
-            VerifyUser(userId);
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -487,19 +504,11 @@ namespace CloudCore.Controllers
                 if (item.Type == "folder")
                 {
                     item.IsDeleted = true;
-
-                    // Get first generation child items
-                    var childItems = await context.Items
-                        .Where(i => i.ParentId == item.Id)
-                        .ToListAsync();
-
+                    var childItems = await _itemRepository.GetAllChildItemsAsync(itemId, userId);
                     foreach (var childItem in childItems)
-                    {
-                        if (childItem.Type == "file")
-                            childItem.IsDeleted = true;
-                        else if (childItem.Type == "folder")
-                            await DeleteItemAsync(userId, childItem.Id); // Delete all items in child folder
-                    }
+                        childItem.IsDeleted = true;
+                    context.UpdateRange(childItems);
+
                 }
                 await context.SaveChangesAsync();
                 return Ok();

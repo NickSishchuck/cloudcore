@@ -13,13 +13,15 @@ namespace CloudCore.Services
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
         private readonly IFileStorageService _fileStorageService;
         private readonly IValidationService _validationService;
+        private readonly IItemRepository _itemRepository;
 
 
-        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorage, IValidationService validationService)
+        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorage, IValidationService validationService, IItemRepository itemRepository)
         {
             _dbContextFactory = dbContextFactory;
             _fileStorageService = fileStorage;
             _validationService = validationService;
+            _itemRepository = itemRepository;
         }
 
         public async Task<FileStream> CreateFolderArchiveAsync(int userId, int folderId, string folderName)
@@ -170,31 +172,45 @@ namespace CloudCore.Services
         {
             using var _context = _dbContextFactory.CreateDbContext();
 
-            var items = await _context.Items
+            if (folderId.HasValue)
+            {
+                var allChildItems = await _itemRepository.GetAllChildItemsAsync(folderId.Value, userId);
+
+                var files = allChildItems.Where(item => item.Type == "file");
+
+                long totalSize = files.Sum(f => f.FileSize ?? 0);
+                int fileCount = files.Count();
+
+                return (totalSize, fileCount);
+            }
+            else
+            {
+                var items = await _context.Items
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
                 .ToListAsync();
 
-            long totalSize = 0;
-            int fileCount = 0;
-            foreach (var item in items)
-            {
-                if (item.Type == "file")
+                long totalSize = 0;
+                int fileCount = 0;
+                foreach (var item in items)
                 {
-                    totalSize += (long)item.FileSize;
-                    fileCount++;
+                    if (item.Type == "file")
+                    {
+                        totalSize += (long)item.FileSize;
+                        fileCount++;
+                    }
                 }
+
+                var subfolders = items.Where(i => i.Type == "folder").ToList();
+
+                foreach (var folder in subfolders)
+                {
+                    var (subSize, subCount) = await CalculateArchiveSizeAsync(userId, folder.Id);
+                    totalSize += subSize;
+                    fileCount += subCount;
+                }
+
+                return (totalSize, fileCount);
             }
-
-            var subfolders = items.Where(i => i.Type == "folder").ToList();
-
-            foreach (var folder in subfolders)
-            {
-                var (subSize, subCount) = await CalculateArchiveSizeAsync(userId, folder.Id);
-                totalSize += subSize;
-                fileCount += subCount;
-            }
-
-            return (totalSize, fileCount);
         }
 
         public async Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, List<Item> items)

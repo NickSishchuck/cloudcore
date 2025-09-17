@@ -41,4 +41,4 @@ INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_ty
     ('documents', 'folder', NULL, 2, NULL, NULL, NULL, FALSE);
 
 INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
-    ('resume.pdf', 'file', 6, 2, 'documents/resume.pdf', 51200, 'application/pdf', FALSE);
+    ('resume.pdf', 'file', 12, 2, 'documents/resume.pdf', 51200, 'application/pdf', FALSE);
