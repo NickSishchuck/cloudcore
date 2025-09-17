@@ -38,7 +38,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="path">The original path</param>
         /// <param name="searchString">The string to remove from the path</param>
         /// <returns>The modified path with the search string removed, or empty string if not found</returns>
-        public string RemoveFromFolderPath(string path, string searchString);
+        string RemoveFromFolderPath(string path, string searchString);
 
         // <summary>
         /// Creates a new file path by replacing the initial path segments with segments from a new folder path.

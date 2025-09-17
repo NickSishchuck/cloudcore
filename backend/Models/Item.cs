@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace CloudCore.Models;
 
@@ -23,9 +24,10 @@ public partial class Item
 
     public bool? IsDeleted { get; set; }
 
+    [JsonIgnore]
     public virtual ICollection<Item> InverseParent { get; set; } = new List<Item>();
-
+    [JsonIgnore]
     public virtual Item? Parent { get; set; }
-
+    [JsonIgnore]
     public virtual User User { get; set; } = null!;
 }

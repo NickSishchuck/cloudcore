@@ -4,19 +4,17 @@ using CloudCore.Models;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
+using MySqlConnector;
 
 namespace CloudCore.Services
 {
     public class FileRenameService : IFileRenameService
     {
         private readonly IFileStorageService _fileStorageService;
-        private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        private readonly IValidationService _validationService;
-        public FileRenameService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorageService, IValidationService validationService)
+
+        public FileRenameService(IFileStorageService fileStorageService)
         {
-            _dbContextFactory = dbContextFactory;
             _fileStorageService = fileStorageService;
-            _validationService = validationService;
         }
         public void RenameFile(Item item, string newName, out string newRelativePath)
         {
@@ -46,28 +44,41 @@ namespace CloudCore.Services
 
         public async Task RenameFolder(CloudCoreDbContext context, Item parent, string newName)
         {
-            // Get all child items
-            var childItems = await GetAllChildItemsRecursivelyAsync(context, parent.Id, parent.UserId);
-
-            // Get old path
-            var oldFolderPath = _fileStorageService.GetFolderPath(parent);
-
-            // Get new path
-            var newFolderPath = _fileStorageService.GetNewFolderPath(oldFolderPath, parent.Name, newName);
-
-            // Get user`s root folder
-            string basePath = _fileStorageService.GetUserStoragePath(parent.UserId);
-            foreach (var item in childItems)
+            using var transaction = context.Database.BeginTransaction();
+            try
             {
-                if (item.Type == "file")
-                item.FilePath = _fileStorageService.GetNewFilePath(item.FilePath, newFolderPath, basePath);
+                // Get all child items
+                var childItems = await GetAllChildItemsRecursivelyAsync(context, parent.Id, parent.UserId);
+
+                // Get old path
+                var oldFolderPath = _fileStorageService.GetFolderPath(parent);
+
+                // Get new path
+                var newFolderPath = _fileStorageService.GetNewFolderPath(oldFolderPath, parent.Name, newName);
+
+                // Get user`s root folder
+                string basePath = _fileStorageService.GetUserStoragePath(parent.UserId);
+                foreach (var item in childItems)
+                {
+                    if (item.Type == "file")
+                    {
+                        item.FilePath = _fileStorageService.GetNewFilePath(item.FilePath, newFolderPath, basePath);
+                    }
+                }
+
+                parent.Name = newName;
+                context.Entry(parent).State = EntityState.Modified;
+
+                await Task.Run(() => Directory.Move(oldFolderPath, newFolderPath));
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
             }
 
-            parent.Name = newName;
-            context.Entry(parent).State = EntityState.Modified;
-
-            Directory.Move(oldFolderPath, newFolderPath);
-            await context.SaveChangesAsync();
 
            
         }
@@ -80,26 +91,64 @@ namespace CloudCore.Services
         /// <param name="parentId">The ID of the parent folder to search under</param>
         /// <param name="userId">The user ID to filter items by</param>
         /// <returns>A list of all child items found recursively under the parent folder</returns>
-        private static async Task<List<Item>> GetAllChildItemsRecursivelyAsync(CloudCoreDbContext context, int parentId, int userId)
+        private static async Task<List<Item>> GetAllChildItemsRecursivelyAsync(CloudCoreDbContext context, int parentId, int userId, int maxDepth = 10000)
         {
-            var result = new List<Item>();
-            var directChildren = await context.Items
-                .Where(i => i.UserId == userId && i.ParentId == parentId)
+            var userIdParam = new MySqlParameter("@UserId", userId);
+            var parentIdParam = new MySqlParameter("@ParentId", parentId);
+            var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
+
+            var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT 
+                                                            id, 
+                                                            name, 
+                                                            type, 
+                                                            parent_id, 
+                                                            user_id, 
+                                                            file_path, 
+                                                            file_size, 
+                                                            mime_type,
+                                                            is_deleted,
+                                                            1 as level
+                                                        FROM items
+                                                        WHERE user_id = @UserId
+                                                            AND parent_id = @ParentId
+                                                            AND is_deleted = FALSE
+    
+                                                        UNION ALL
+    
+                                                        SELECT 
+                                                            i.id, 
+                                                            i.name, 
+                                                            i.type, 
+                                                            i.parent_id, 
+                                                            i.user_id, 
+                                                            i.file_path, 
+                                                            i.file_size, 
+                                                            i.mime_type,
+                                                            i.is_deleted,
+                                                            ih.level + 1
+                                                        FROM items i
+                                                        INNER JOIN ItemsHierarchy ih ON i.parent_id = ih.id
+                                                        WHERE i.user_id = @UserId
+                                                            AND ih.type = 'folder'
+                                                            AND i.is_deleted = FALSE
+                                                            AND ih.level < @MaxDepth 
+                                                    )
+                                                    SELECT 
+                                                            id, 
+                                                            name, 
+                                                            type, 
+                                                            parent_id, 
+                                                            user_id, 
+                                                            file_path, 
+                                                            file_size, 
+                                                            mime_type,
+                                                            is_deleted
+                                                        FROM ItemsHierarchy 
+                                                        ORDER BY Level, Type DESC, Name;";
+
+            return await context.Items
+                .FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
                 .ToListAsync();
-
-
-            foreach (var child in directChildren)
-            {
-                result.Add(child);
-
-                if (child.Type == "folder")
-                {
-                    var childItems = await GetAllChildItemsRecursivelyAsync(context, child.Id, userId);
-                    result.AddRange(childItems);
-                }
-            }
-
-            return result;
         }
 
     }
