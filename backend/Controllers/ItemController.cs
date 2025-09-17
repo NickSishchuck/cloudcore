@@ -22,14 +22,16 @@ namespace CloudCore.Controllers
         private readonly IZipArchiveService _zipArchiveService;
         private readonly IFileRenameService _fileRenameService;
         private readonly IValidationService _validationService;
+        private readonly IItemRepository _itemRepository;
         
-        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService)
+        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService, IItemRepository itemRepository)
         {
             _contextFactory = contextFactory;
             _fileStorageService = fileStorageService;
             _zipArchiveService = zipArchiveService;
             _fileRenameService = fileRenameService;
             _validationService = validationService;
+            _itemRepository = itemRepository;
         }
 
         /// <summary>
@@ -41,15 +43,7 @@ namespace CloudCore.Controllers
             return int.Parse(userIdClaim ?? "0");
         }
 
-
-        /// <summary>
-        /// Retrieves all items for a specific user within a given parent directory.
-        /// </summary>
-        /// <param name="userId">User identifier from route</param>
-        /// <param name="parentId">Parent directory ID (null for root level)</param>
-        /// <returns>List of user items or NotFound if no items exist</returns>
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required]int userId, int? parentId)
+        private ActionResult? VerifyUser(int userId)
         {
             var currentUserId = GetCurrentUserId();
 
@@ -61,6 +55,21 @@ namespace CloudCore.Controllers
                     errorCode = authValidation.ErrorCode,
                     timestamp = DateTime.UtcNow
                 });
+            return null;
+        }
+        /// <summary>
+        /// Retrieves all items for a specific user within a given parent directory.
+        /// </summary>
+        /// <param name="userId">User identifier from route</param>
+        /// <param name="parentId">Parent directory ID (null for root level)</param>
+        /// <returns>List of user items or NotFound if no items exist</returns>
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required]int userId, int? parentId)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
             try
             {
                 using var context = _contextFactory.CreateDbContext();
@@ -101,16 +110,9 @@ namespace CloudCore.Controllers
         [HttpGet("{folderId}/downloadfolder")]
         public async Task<IActionResult> DownloadFolderAsync([Required]int userId,[Required]int folderId)
         {
-            var currentUserId = GetCurrentUserId();
-
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-                return StatusCode(403, new
-                {
-                    message = authValidation.ErrorMessage,
-                    errorCode = authValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
             try
             {
                 using var context = _contextFactory.CreateDbContext();
@@ -144,17 +146,9 @@ namespace CloudCore.Controllers
         [HttpGet("{fileId}/download")]
         public async Task<IActionResult> DownloadFileAsync([Required] int userId, [Required] int fileId)
         {
-            var currentUserId = GetCurrentUserId();
-
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-                return StatusCode(403, new
-                {
-                    message = authValidation.ErrorMessage,
-                    errorCode = authValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
-
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
             try
             {
                 using var context = _contextFactory.CreateDbContext();
@@ -203,16 +197,9 @@ namespace CloudCore.Controllers
         [HttpPost("download/multiple")]
         public async Task<IActionResult> DownloadMultipleItemsAsZipAsync([Required] int userId, [FromBody] List<int> itemsId)
         {
-            var currentUserId = GetCurrentUserId();
-
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-                return StatusCode(403, new
-                {
-                    message = authValidation.ErrorMessage,
-                    errorCode = authValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -279,28 +266,10 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RenameItemAsync([Required] int userId, [Required] int itemId,[StringLength(250)] [FromBody] string newName)
         {
-            // Validate input
-            var nameValidation = _validationService.ValidateItemName(newName);
-            if (!nameValidation.IsValid)
-            {
-                return BadRequest(new
-                {
-                    message = nameValidation.ErrorMessage,
-                    errorCode = nameValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
-            }
 
-            // Authorization check
-            var currentUserId = GetCurrentUserId();
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-                return StatusCode(403, new
-                {
-                    message = authValidation.ErrorMessage,
-                    errorCode = authValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             var itemName = _validationService.ValidateItemName(newName);
             if (!itemName.IsValid)
@@ -432,16 +401,9 @@ namespace CloudCore.Controllers
         [HttpGet("{folderId}/size")]
         public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
         {
-            var currentUserId = GetCurrentUserId();
-
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-                return StatusCode(403, new
-                {
-                    message = authValidation.ErrorMessage,
-                    errorCode = authValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -481,15 +443,9 @@ namespace CloudCore.Controllers
         [HttpPost("sizes")]
         public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
         {
-            var currentUserId = GetCurrentUserId();
-            
-            if (currentUserId != userId)
-                return StatusCode(403, new
-                {
-                    message = "You can only access your own files",
-                    errorCode = "ACCESS_DENIED",
-                    timestamp = DateTime.UtcNow
-                });
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
 
             try
             {
@@ -516,6 +472,46 @@ namespace CloudCore.Controllers
                 }
 
                 return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete ("{itemId}/delete")]
+        public async Task<IActionResult> DeleteItemAsync(int userId, int itemId)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Get item 
+                var item = await context.Items 
+                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                    return NotFound();
+
+                if(item.Type == "file")
+                    item.IsDeleted = true;
+
+                if (item.Type == "folder")
+                {
+                    item.IsDeleted = true;
+                    var childItems = await _itemRepository.GetAllChildItemsAsync(itemId, userId);
+                    foreach (var childItem in childItems)
+                        childItem.IsDeleted = true;
+                    context.UpdateRange(childItems);
+
+                }
+                await context.SaveChangesAsync();
+                return Ok();
             }
             catch (Exception ex)
             {

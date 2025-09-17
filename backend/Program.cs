@@ -44,6 +44,7 @@ namespace CloudCore
             builder.Services.AddScoped<IZipArchiveService, ZipArchiveService>();
             builder.Services.AddScoped<IFileRenameService, FileRenameService>();
             builder.Services.AddScoped<IValidationService, ValidationService>();
+            builder.Services.AddScoped<IItemRepository, ItemRepository>();
 
             // Add JWT Authentication
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";

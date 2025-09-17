@@ -6,9 +6,6 @@
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
-    <ItemGroup>
-      <Compile Include="storage\users\user1\documents\coursework\coursework1\coursework1.pdf" />
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
