@@ -84,6 +84,7 @@ namespace CloudCore
             });
 
             var app = builder.Build();
+            app.UseMiddleware<GlobalErrorHandler>();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -91,15 +92,15 @@ namespace CloudCore
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-            
+
             // activate
             app.UseCors("AllowAll");
             app.UseRouting();
-            
+
             // Add authentication & authorization middleware
             app.UseAuthentication();
             app.UseAuthorization();
-            
+
             app.MapControllers();
 
             app.Run("http://0.0.0.0:5000");

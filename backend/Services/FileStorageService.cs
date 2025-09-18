@@ -15,11 +15,11 @@ namespace CloudCore.Services
             _dbContextFactory = dbContextFactory;
         }
 
-        
+
         public string GetFileFullPath(int userId, string relativePath)
         {
             // Get full path "/app/storage/users/user/1/documents/test.pdf"
-            var fullPath =  Path.Combine(GetUserStoragePath(userId), relativePath);
+            var fullPath = Path.Combine(GetUserStoragePath(userId), relativePath);
 
             var resolvedPath = Path.GetFullPath(fullPath);
 
@@ -28,7 +28,7 @@ namespace CloudCore.Services
 
             return resolvedPath;
         }
-        
+
         public string GetUserStoragePath(int userId)
         {
             // Get user`s root path "/app/storage/users/user/1"
@@ -37,7 +37,7 @@ namespace CloudCore.Services
 
         public string GetFolderPath(Item folder)
         {
-            
+
             var pathParts = new List<string>();
             var current = folder;
 
@@ -54,7 +54,7 @@ namespace CloudCore.Services
                     .FirstOrDefault();
             }
             pathParts.Reverse();
-            return Path.Combine(GetUserStoragePath(folder.UserId),Path.Combine(pathParts.ToArray()));
+            return Path.Combine(GetUserStoragePath(folder.UserId), Path.Combine(pathParts.ToArray()));
         }
 
 
