@@ -141,29 +141,15 @@ namespace CloudCore.Services
             if (string.IsNullOrEmpty(item.FilePath))
                 return;
 
-            try
-            {
-                var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
 
-                if (File.Exists(fullPath))
-                {
-                    var entry = zipArchive.CreateEntry(itemPath, CompressionLevel.Optimal);
-                    using var entryStream = entry.Open();
-                    using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
-                    await fileStream.CopyToAsync(entryStream);
-                }
-            }
-            catch (UnauthorizedAccessException)
+            var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
+
+            if (File.Exists(fullPath))
             {
-                throw;
-            }
-            catch (FileNotFoundException)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                throw;
+                var entry = zipArchive.CreateEntry(itemPath, CompressionLevel.Optimal);
+                using var entryStream = entry.Open();
+                using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+                await fileStream.CopyToAsync(entryStream);
             }
         }
 

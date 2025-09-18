@@ -29,7 +29,7 @@ public class AuthService : IAuthService
             return null;
 
         var token = GenerateJwtToken(user);
-        
+
         return new AuthResponse
         {
             Token = token,

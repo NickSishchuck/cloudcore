@@ -25,6 +25,6 @@ namespace CloudCore.Services.Interfaces
         /// <param name="parent">The folder item to rename</param>
         /// <param name="newName">The new name for the folder</param>
         /// <returns>A task representing the asynchronous operation</returns>
-        Task RenameFolder(CloudCoreDbContext context,Item parent, string newName);
+        Task RenameFolder(CloudCoreDbContext context, Item parent, string newName);
     }
 }

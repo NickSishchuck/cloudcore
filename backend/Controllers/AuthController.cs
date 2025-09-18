@@ -24,9 +24,9 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        
+
         if (result == null)
-            return Unauthorized("Invalid username or password");
+            return Unauthorized(ApiResponse.Error("Invalid username or password", "INVALID_CREDENTIALS"));
 
         return Ok(result);
     }
@@ -40,9 +40,9 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
-        
+
         if (result == null)
-            return BadRequest("Username or email already exists");
+            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS"));
 
         return Ok(result);
     }

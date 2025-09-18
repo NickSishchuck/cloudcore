@@ -11,12 +11,12 @@ namespace CloudCore.Services
         private const int MAX_FILES_IN_ARCHIVE = 10000;
         private const int MAX_NAME_LENGTH = 250;
 
-        private static readonly char[] InvalidFileNameChars = { '<', '>', ':', '\"', '|', '?', '*', '\0', ','};
+        private static readonly char[] InvalidFileNameChars = { '<', '>', ':', '\"', '|', '?', '*', '\0', ',' };
         private static readonly string[] ReservedNames = { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" };
 
         public ValidationResult ValidateItemName(string name)
         {
-            if(string.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(name))
                 return ValidationResult.Failure("Item name cannot be empty", "INVALID_NAME");
 
             if (name.Length > MAX_NAME_LENGTH)
@@ -110,7 +110,7 @@ namespace CloudCore.Services
                 return ValidationResult.Failure($"Archive size exceeds maximum allowed size of {FormatFileSize(MAX_ARCHIVE_SIZE)}", "ARCHIVE_TOO_LARGE");
 
             if (fileCount > MAX_FILES_IN_ARCHIVE)
-                return ValidationResult.Failure($"Too many files in archive (max {MAX_FILES_IN_ARCHIVE})", "TOO_MANY_FILES");
+                return ValidationResult.Failure($"Too many files in archive (max {MAX_FILES_IN_ARCHIVE})", "TOO_MANY_ITEMS");
 
             return ValidationResult.Success();
         }
