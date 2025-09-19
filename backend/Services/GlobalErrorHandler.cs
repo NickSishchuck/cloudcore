@@ -28,7 +28,7 @@ namespace CloudCore.Services
 
             var (statuscode, response) = exception switch
             {
-                MySqlException => (StatusCodes.Status500InternalServerError, ApiResponse.Error("Database error occurred", "DATABASE_ERROR")),
+                MySqlException mSqlEx => (StatusCodes.Status500InternalServerError, ApiResponse.Error($"Database error occurred: {mSqlEx.Message}", "DATABASE_ERROR")),
 
                 TimeoutException => (StatusCodes.Status408RequestTimeout, ApiResponse.Error("Request timeout", "TIMEOUT_ERROR")),
 
@@ -39,8 +39,6 @@ namespace CloudCore.Services
                 DirectoryNotFoundException dirNtFdEx => (StatusCodes.Status404NotFound, ApiResponse.Error($"Directory not found: {dirNtFdEx.Message}", "DIRECTORY_NOT_FOUND")),
 
                 IOException ioEx => (StatusCodes.Status409Conflict, ApiResponse.Error($"File system conflict occurred: {ioEx.Message}", "FILE_SYSTEM_CONFLICT")),
-
-                
 
                 _ => (StatusCodes.Status500InternalServerError,
                       ApiResponse.Error("Internal server error", "INTERNAL_ERROR"))

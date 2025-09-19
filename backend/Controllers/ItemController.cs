@@ -374,6 +374,53 @@ namespace CloudCore.Controllers
 
         }
 
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file,[FromForm] int? parentId = null)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
+            var fileValidation = _validationService.ValidateFile(file);
+            if (!fileValidation.IsValid)
+                return BadRequest(ApiResponse.Error(fileValidation.ErrorMessage, fileValidation.ErrorCode));
+
+            using var context = _contextFactory.CreateDbContext();
+
+            if (parentId.HasValue)
+            {
+                var parentValidation = await _validationService.ValidateItemExistsAsync(context, parentId.Value, userId);
+                if (!parentValidation.IsValid)
+                    return BadRequest(ApiResponse.Error(parentValidation.ErrorMessage, parentValidation.ErrorCode));
+            }
+
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, file.FileName, userId, parentId, null);
+            if (!uniquenessValidation.IsValid)
+                return Conflict(ApiResponse.Error(uniquenessValidation.ErrorMessage, uniquenessValidation.ErrorCode));
+
+            var savedFilePath = await _fileStorageService.SaveFileAsync(userId, file, parentId);
+
+            var item = new Item
+            {
+                Name = file.FileName,
+                Type = "file",
+                UserId = userId,
+                ParentId = parentId,
+                FilePath = savedFilePath,
+                FileSize = file.Length,
+                MimeType = !string.IsNullOrEmpty(file.ContentType) ? file.ContentType : _fileStorageService.GetMimeType(file.FileName),
+                //CreatedAt = DateTime.UtcNow,
+                //UpdatedAt = DateTime.UtcNow,
+                IsDeleted = false
+            };
+
+            context.Items.Add(item);
+            await context.SaveChangesAsync();
+
+            return Ok(ApiResponse.Ok());
+
+        }
+
 
     }
 }
