@@ -191,7 +191,8 @@ namespace CloudCore.Services
                 order++;
                 len = len / 1024;
             }
-            return $"{size:0.##} {sizes[order]}";
+            string format = order >= 2 ? "0.##" : "0.#";
+            return $"{len.ToString(format)} {sizes[order]}";
         }
 
     }

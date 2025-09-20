@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using MySqlConnector;
+using CloudCore.Services;
 
 namespace CloudCore.Controllers
 {
@@ -71,10 +72,12 @@ namespace CloudCore.Controllers
             using var context = _contextFactory.CreateDbContext();
             var userFiles = await context.Items
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
+                .OrderBy(item => item.Type)
+                .ThenBy(item => item.Name)
                 .ToListAsync();
 
             if (userFiles == null || userFiles.Count == 0)
-                return NotFound(ApiResponse.Error("No files found for this user", "ITEM_NOT_FOUND"));
+                return Ok(new List<Item>());
 
             return Ok(userFiles);
         }
@@ -375,7 +378,7 @@ namespace CloudCore.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file,[FromForm] int? parentId = null)
+        public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)
         {
             var authResult = VerifyUser(userId);
             if (authResult != null)
@@ -422,5 +425,83 @@ namespace CloudCore.Controllers
         }
 
 
+        // <summary>
+        /// Creates a new folder for the specified user.
+        /// </summary>
+        /// <param name="userId">The ID of the user creating the folder.</param>
+        /// <param name="request">The folder creation request containing folder name and optional parent ID.</param>
+        /// <returns>
+        /// Returns:
+        /// - 200 OK if the folder is successfully created.
+        /// - 400 Bad Request if the folder name is invalid or the parent folder does not exist.
+        /// - 409 Conflict if a folder with the same name already exists under the same parent.
+        /// </returns>
+        [HttpPost("createfolder")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> CreateFolderAsync([Required] int userId, [FromBody] FolderCreateRequest request)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null) return authResult;
+
+            var nameValidation = _validationService.ValidateItemName(request.Name);
+            if (!nameValidation.IsValid)
+            {
+                return BadRequest(ApiResponse.Error(nameValidation.ErrorMessage, nameValidation.ErrorCode));
+            }
+            using var context = _contextFactory.CreateDbContext();
+            using var transaction = context.Database.BeginTransaction();
+
+            try
+            {
+                // Validate parent folder exists if specified
+                if (request.ParentId.HasValue)
+                {
+                    var parentValidation = await _validationService.ValidateItemExistsAsync(context, request.ParentId.Value, userId);
+                    if (!parentValidation.IsValid)
+                    {
+                        return BadRequest(ApiResponse.Error(parentValidation.ErrorMessage, parentValidation.ErrorCode));
+                    }
+                }
+
+                // Check if folder with same name already exists
+                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, request.Name, userId, request.ParentId, null);
+                if (!uniquenessValidation.IsValid)
+                {
+                    return Conflict(ApiResponse.Error(uniquenessValidation.ErrorMessage, uniquenessValidation.ErrorCode));
+                }
+
+                var folder = new Item
+                {
+                    Name = request.Name,
+                    Type = "folder",
+                    UserId = userId,
+                    ParentId = request.ParentId,
+                    //CreatedAt = DateTime.UtcNow,
+                    //UpdatedAt = DateTime.UtcNow,
+                    IsDeleted = false
+                };
+
+                context.Items.Add(folder);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                string folderPath = _fileStorageService.GetFolderPath(folder);
+                Directory.CreateDirectory(folderPath);
+
+                return Ok(new
+                {
+                    message = "Folder created successfully",
+                    folderId = folder.Id,
+                    folderName = folder.Name
+                });
+            }
+            catch (Exception)
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
     }
 }
