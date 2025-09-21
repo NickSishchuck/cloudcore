@@ -2,6 +2,7 @@
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace CloudCore.Services
 {
@@ -40,19 +41,35 @@ namespace CloudCore.Services
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Item>> GetItemsAsync(int userId, int? parentId)
+        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize)
         {
             using var context = _dbContextFactory.CreateDbContext();
-            var userFiles = await context.Items
-                .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
-                .OrderBy(item => item.Type)
-                .ThenBy(item => item.Name)
+            var query = context.Items
+                .Where(i => i.UserId == userId && i.ParentId == parentId && i.IsDeleted == false)
+                .OrderBy(i => i.Type == "file" ? 1 : 0) 
+                .ThenBy(i => i.Name);
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            if (userFiles == null)
-                return new List<Item>();
-
-            return userFiles;
+            return new PaginatedResponse<Item>
+            {
+                Data = items,
+                Pagination = new PaginationMetadata
+                {
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages,
+                    TotalCount = totalCount,
+                    HasNext = page < totalPages,
+                    HasPrevious = page > 1
+                }
+            };
         }
     }
 }

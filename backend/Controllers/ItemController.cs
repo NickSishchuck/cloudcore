@@ -49,15 +49,18 @@ namespace CloudCore.Controllers
         /// <param name="parentId">Parent directory ID (null for root level)</param>
         /// <returns>List of user items or NotFound if no items exist</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required] int userId, int? parentId)
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required] int userId, int? parentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 30)
         {
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
 
-            var userFiles = await _itemDataService.GetItemsAsync(userId, parentId);
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
-            return Ok(userFiles);
+            var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize);
+
+            return Ok(result);
         }
 
         /// <summary>

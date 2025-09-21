@@ -14,6 +14,6 @@ namespace CloudCore.Services.Interfaces
         Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000);
 
 
-        Task<IEnumerable<Item>> GetItemsAsync(int userId, int? parentId);
+        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize);
     }
 }
