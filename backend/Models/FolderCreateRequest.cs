@@ -7,7 +7,6 @@ namespace CloudCore.Models
         [Required]
         [StringLength(250)]
         public string Name { get; set; }
-
         public int? ParentId { get; set; }
     }
 }

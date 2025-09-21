@@ -10,13 +10,13 @@ namespace CloudCore.Services
 {
     public class FileRenameService : IFileRenameService
     {
-        private readonly IFileStorageService _fileStorageService;
-        private readonly IItemRepository _itemRepository;
+        private readonly IItemStorageService _fileStorageService;
+        private readonly IItemDataService _itemDataService;
 
-        public FileRenameService(IFileStorageService fileStorageService, IItemRepository itemRepository)
+        public FileRenameService(IItemStorageService fileStorageService, IItemDataService itemDataService)
         {
             _fileStorageService = fileStorageService;
-            _itemRepository = itemRepository;
+            _itemDataService = itemDataService;
         }
         public void RenameFile(Item item, string newName, out string newRelativePath)
         {
@@ -50,7 +50,7 @@ namespace CloudCore.Services
             try
             {
                 // Get all child items
-                var childItems = await _itemRepository.GetAllChildItemsAsync(parent.Id, parent.UserId);
+                var childItems = await _itemDataService.GetAllChildItemsAsync(parent.Id, parent.UserId);
 
                 // Get old path
                 var oldFolderPath = _fileStorageService.GetFolderPath(parent);

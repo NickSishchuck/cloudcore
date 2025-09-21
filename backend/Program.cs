@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using CloudCore.Models;
 using CloudCore.Services.Interfaces;
@@ -8,6 +5,7 @@ using CloudCore.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+
 
 namespace CloudCore
 {
@@ -39,12 +37,13 @@ namespace CloudCore
             builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
             // Add services
-            builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+            builder.Services.AddScoped<IItemStorageService, ItemStorageService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IZipArchiveService, ZipArchiveService>();
             builder.Services.AddScoped<IFileRenameService, FileRenameService>();
             builder.Services.AddScoped<IValidationService, ValidationService>();
             builder.Services.AddScoped<IItemRepository, ItemRepository>();
+            builder.Services.AddScoped<IItemDataService, ItemDataService>();
 
             // Add JWT Authentication
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";

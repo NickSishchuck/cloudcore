@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CloudCore.Services
 {
-    public class FileStorageService : IFileStorageService
+    public class ItemStorageService : IItemStorageService
     {
         private readonly string _basePath;
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        public FileStorageService(IConfiguration configuration, IDbContextFactory<CloudCoreDbContext> dbContextFactory)
+        public ItemStorageService(IConfiguration configuration, IDbContextFactory<CloudCoreDbContext> dbContextFactory)
         {
             _basePath = configuration["FileStorage:BasePath"];
             _dbContextFactory = dbContextFactory;

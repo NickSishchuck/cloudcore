@@ -11,17 +11,17 @@ namespace CloudCore.Services
     {
 
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        private readonly IFileStorageService _fileStorageService;
+        private readonly IItemStorageService _fileStorageService;
         private readonly IValidationService _validationService;
-        private readonly IItemRepository _itemRepository;
+        private readonly IItemDataService _itemDataService;
 
 
-        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorage, IValidationService validationService, IItemRepository itemRepository)
+        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IItemStorageService fileStorage, IValidationService validationService, IItemDataService itemDataService)
         {
             _dbContextFactory = dbContextFactory;
             _fileStorageService = fileStorage;
             _validationService = validationService;
-            _itemRepository = itemRepository;
+            _itemDataService = itemDataService;
         }
 
         public async Task<FileStream> CreateFolderArchiveAsync(int userId, int folderId, string folderName)
@@ -160,7 +160,7 @@ namespace CloudCore.Services
 
             if (folderId.HasValue)
             {
-                var allChildItems = await _itemRepository.GetAllChildItemsAsync(folderId.Value, userId);
+                var allChildItems = await _itemDataService.GetAllChildItemsAsync(folderId.Value, userId);
 
                 var files = allChildItems.Where(item => item.Type == "file");
 

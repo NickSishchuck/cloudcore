@@ -1,17 +1,30 @@
-﻿using CloudCore.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using CloudCore.Models;
+using Microsoft.AspNetCore.Mvc;
+using static CloudCore.Models.ItemResultModels;
 
 namespace CloudCore.Services.Interfaces
 {
     public interface IItemRepository
     {
-        /// <summary>
-        /// Retrieves all child items (files and folders) under a specified parent folder.
-        /// </summary>
-        /// <param name="parentId">The ID of the parent folder to search under</param>
-        /// <param name="userId">The user ID to filter items by</param>
-        /// <param name="maxDepth">The maximal depth to search by</param>
-        /// <returns>A list of all child items found recursively under the parent folder</returns>
-        Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000);
+        
+        Task<(Stream archiveStream, string fileName)> DownloadFolderAsync(int userId, int folderId);
+
+        Task<FileDownloadResult> DownloadFileAsync(int userId, int fileId);
+
+        Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync( int userId,List<int> itemsId);
+
+        Task<RenameResult> RenameItemAsync(int userId, int itemId, string newName);
+
+        Task<FolderSizeResult> GetFolderSizeAsync(int userId, int folderId);
+
+        Task<ActionResult<Dictionary<int, FolderSizeResult>>> GetMultipleFolderSizesAsync(int userId, List<int> folderIds);
+
+        Task<DeleteResult> DeleteItemAsync(int userId, int itemId);
+
+        Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null);
+
+        Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request);
     }
 
 }

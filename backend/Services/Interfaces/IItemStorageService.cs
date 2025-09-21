@@ -2,7 +2,7 @@
 
 namespace CloudCore.Services.Interfaces
 {
-    public interface IFileStorageService
+    public interface IItemStorageService
     {
         /// <summary>
         /// Builds the absolute file path for the specified user by combining the user’s storage path 

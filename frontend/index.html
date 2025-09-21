@@ -1010,7 +1010,7 @@
                 code.textContent = 'UA';
                 btn.title = 'Перемкнути мову';
             } else {
-                flag.textContent = '🇺🇸';
+                flag.textContent = '🌐';
                 code.textContent = 'EN';
                 btn.title = 'Switch language';
             }
@@ -1023,6 +1023,28 @@
                     element.textContent = translations[currentLanguage][key];
                 }
             });
+            
+            let translationStyle = document.getElementById('translation-styles');
+            if (!translationStyle) {
+                translationStyle = document.createElement('style');
+                translationStyle.id = 'translation-styles';
+                document.head.appendChild(translationStyle);
+            }
+            
+            translationStyle.textContent = `
+                .file-container.dragover::before {
+                    content: "${t('dropFiles')}";
+                }
+                .file-container.dragover[data-drag-type="folder"]::before {
+                    content: "${t('dropFolder')}";
+                }
+                .file-container.dragover[data-drag-type="files"]::before {
+                    content: "${t('dropFilesOnly')}";
+                }
+                .file-container.dragover[data-drag-type="mixed"]::before {
+                    content: "${t('dropMixed')}";
+                } 
+            `;
 
             const searchBox = document.getElementById('searchBox');
             if (searchBox) {
@@ -1090,8 +1112,11 @@
                 document.getElementById('uploadFiles').addEventListener('click', () => this.triggerFileUpload());
                 document.getElementById('uploadFolder').addEventListener('click', () => this.triggerFolderUpload());
 
-                document.getElementById('languageBtn').addEventListener('click', switchLanguage);
-
+                document.getElementById('languageBtn').addEventListener('click', function() {
+                    switchLanguage();
+                    location.reload();
+                });
+                
                 document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
 
                 document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
@@ -1229,7 +1254,7 @@
                     if (item.type === 'file') {
                         sizeDisplay = item.fileSize ? this.formatFileSize(item.fileSize) : '';
                     } else {
-                        sizeDisplay = '<span class="folder-size-loading">${t(`calculating`)}...</span>';
+                        sizeDisplay = `<span class="folder-size-loading">${t('calculating')}...</span>`;
                     }
 
                     row.innerHTML = `
@@ -2051,7 +2076,7 @@
                         console.log(`${t('fileUploaded')}`, result);
                     } else {
 
-                        const error = await response.json().catch(() => ({ message: `${t('uploadFailde')}` }));
+                        const error = await response.json().catch(() => ({ message: `${t('uploadFailed')}` }));
 
                         if (response.status === 409) {
                             this.showNotification(`❌ ${file.name} ${t('alreadyExists')}`, 'error');
@@ -2410,7 +2435,6 @@
                 let errors = 0;
 
                 for (const file of files) {
-                    if (file.size > 0) {
                         const uploadSuccess = await this.uploadSingleFileToFolder(
                             file,
                             this.currentFolderId,
@@ -2420,7 +2444,6 @@
 
                         if (uploadSuccess) success++;
                         else errors++;
-                    }
                 }
 
                 return { success, errors };

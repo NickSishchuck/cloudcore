@@ -1,16 +1,9 @@
 using CloudCore.Models;
 using CloudCore.Services.Interfaces;
-using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using System.IO.Compression;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
-using MySqlConnector;
-using CloudCore.Services;
 
 namespace CloudCore.Controllers
 {
@@ -19,21 +12,15 @@ namespace CloudCore.Controllers
     [Authorize] // Require authentication for all endpoints
     public class ItemController : ControllerBase
     {
-        private readonly IDbContextFactory<CloudCoreDbContext> _contextFactory;
-        private readonly IFileStorageService _fileStorageService;
-        private readonly IZipArchiveService _zipArchiveService;
-        private readonly IFileRenameService _fileRenameService;
         private readonly IValidationService _validationService;
         private readonly IItemRepository _itemRepository;
+        private readonly IItemDataService _itemDataService;
 
-        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService, IItemRepository itemRepository)
+        public ItemController(IValidationService validationService, IItemRepository itemRepository, IItemDataService itemDataService)
         {
-            _contextFactory = contextFactory;
-            _fileStorageService = fileStorageService;
-            _zipArchiveService = zipArchiveService;
-            _fileRenameService = fileRenameService;
             _validationService = validationService;
             _itemRepository = itemRepository;
+            _itemDataService = itemDataService;
         }
 
         /// <summary>
@@ -68,16 +55,7 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-
-            using var context = _contextFactory.CreateDbContext();
-            var userFiles = await context.Items
-                .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
-                .OrderBy(item => item.Type)
-                .ThenBy(item => item.Name)
-                .ToListAsync();
-
-            if (userFiles == null || userFiles.Count == 0)
-                return Ok(new List<Item>());
+            var userFiles = await _itemDataService.GetItemsAsync(userId, parentId);
 
             return Ok(userFiles);
         }
@@ -108,19 +86,8 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            using var context = _contextFactory.CreateDbContext();
-            var folder = await context.Items
-                .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                .FirstOrDefaultAsync();
-
-            if (folder == null)
-                return NotFound(ApiResponse.Error("Folder not found", "ITEM_NOT_FOUND"));
-
-            var archiveStream = await _zipArchiveService.CreateFolderArchiveAsync(userId, folderId, folder.Name);
-            var fileName = $"{folder.Name}.zip";
+            var (archiveStream, fileName) = await _itemRepository.DownloadFolderAsync(userId, folderId);
             return File(archiveStream, "application/zip", fileName);
-
-
         }
 
         /// <summary>
@@ -136,20 +103,9 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            using var context = _contextFactory.CreateDbContext();
-            var item = await context.Items
-                .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
-                .FirstOrDefaultAsync();
+            var fileResult = await _itemRepository.DownloadFileAsync(userId, fileId);
 
-            if (item == null)
-                return NotFound(ApiResponse.Error("File not found", "ITEM_NOT_FOUND"));
-
-            var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
-
-            if (!System.IO.File.Exists(fullPath))
-                return NotFound(ApiResponse.Error("File not found", "ITEM_NOT_FOUND"));
-
-            return PhysicalFile(fullPath, item.MimeType ?? "application/octet-stream", item.Name, enableRangeProcessing: true);
+            return File(fileResult.Stream, fileResult.MimeType, fileResult.FileName, enableRangeProcessing: true);
         }
 
         /// <summary>
@@ -174,27 +130,7 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            using var context = _contextFactory.CreateDbContext();
-
-            var itemsValidation = await _validationService.ValidateItemIdsAsync(context, itemsId, userId);
-            if (!itemsValidation.IsValid)
-                return BadRequest(ApiResponse.Error(itemsValidation.ErrorMessage, itemsValidation.ErrorCode));
-
-
-            var items = await context.Items
-                 .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
-                 .ToListAsync();
-
-            if (items == null || items.Count == 0)
-                return NotFound(ApiResponse.Error("File not found", "ITEM_NOT_FOUND"));
-
-            var totalSize = items.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
-            var sizeValidation = _validationService.ValidateArchiveSize(totalSize, items.Count);
-            if (!sizeValidation.IsValid)
-                return BadRequest(ApiResponse.Error(sizeValidation.ErrorMessage, sizeValidation.ErrorCode));
-
-            var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items);
-            var fileName = $"selected_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
+            var (archiveStream, fileName) = await _itemRepository.DownloadMultipleItemsAsZipAsync(userId, itemsId);
 
             return File(archiveStream, "application/zip", fileName);
         }
@@ -219,52 +155,26 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            var itemName = _validationService.ValidateItemName(newName);
-            if (!itemName.IsValid)
-                return StatusCode(409, ApiResponse.Error(itemName.ErrorMessage, itemName.ErrorCode));
+            var result = await _itemRepository.RenameItemAsync(userId, itemId, newName);
 
-            using var context = _contextFactory.CreateDbContext();
-
-            var itemValidation = await _validationService.ValidateItemExistsAsync(context, itemId, userId);
-            if (!itemValidation.IsValid)
-                return NotFound(ApiResponse.Error(itemValidation.ErrorMessage, itemValidation.ErrorCode));
-
-            var item = await context.Items
-                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                .FirstOrDefaultAsync();
-
-            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, newName, userId, item.ParentId, itemId);
-            if (!uniquenessValidation.IsValid)
-                return Conflict(ApiResponse.Error(uniquenessValidation.ErrorMessage, uniquenessValidation.ErrorCode));
-
-            if (item.Type == "file")
+            if (!result.IsSuccess)
             {
-                _fileRenameService.RenameFile(item, newName, out string newRelativePath);
-                await context.SaveChangesAsync();
-
-                return Ok(new
+                return result.ErrorCode switch
                 {
-                    message = "File renamed successfully",
-                    itemId = item.Id,
-                    itemNewName = newName,
-                    timestamp = DateTime.UtcNow
-                });
+                    "ITEM_NOT_FOUND" => NotFound(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
+                };
             }
 
-            if (item.Type == "folder")
+            return Ok(new
             {
-                await _fileRenameService.RenameFolder(context, item, newName);
-
-                return Ok(new
-                {
-                    message = "Folder renamed successfully",
-                    itemId = item.Id,
-                    itemNewName = newName,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-
-            return BadRequest(ApiResponse.Error("Unsupported item type", "UNSUPPORTED_TYPE"));
+                message = result.Message,
+                code = result.ErrorCode,
+                itemId = result.ItemId,
+                itemNewName = result.NewName,
+                timestamp = result.Timestamp
+            });
 
         }
 
@@ -281,26 +191,8 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            using var context = _contextFactory.CreateDbContext();
-
-            // Verify the folder exists and belongs to the user
-            var folder = await context.Items
-                .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                .FirstOrDefaultAsync();
-
-            if (folder == null)
-                return NotFound(ApiResponse.Error("File not found", "ITEM_NOT_FOUND"));
-
-            // Calculate the total size recursively
-            var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folderId);
-
-            return Ok(new
-            {
-                folderId = folderId,
-                totalSize = totalSize,
-                fileCount = fileCount,
-                formattedSize = _validationService.FormatFileSize(totalSize)
-            });
+            var result = await _itemRepository.GetFolderSizeAsync(userId, folderId);
+            return Ok(result);
 
         }
 
@@ -317,29 +209,11 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            using var context = _contextFactory.CreateDbContext();
+            if(folderIds == null || folderIds.Count == 0)
+                return BadRequest(ApiResponse.Error("No folders specified", "NO_FOLDERS_SPECIFIED"));
 
-            // Verify all folders exist and belong to the user
-            var folders = await context.Items
-                .Where(i => folderIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                .ToListAsync();
-
-            var results = new Dictionary<int, object>();
-
-            foreach (var folder in folders)
-            {
-                var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folder.Id);
-
-                results[folder.Id] = new
-                {
-                    folderId = folder.Id,
-                    totalSize = totalSize,
-                    fileCount = fileCount,
-                    formattedSize = _validationService.FormatFileSize(totalSize)
-                };
-            }
-
-            return Ok(ApiResponse.Ok());
+            var results = await _itemRepository.GetMultipleFolderSizesAsync(userId, folderIds);
+            return Ok(results);
 
         }
 
@@ -350,30 +224,8 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            using var context = _contextFactory.CreateDbContext();
-
-            // Get item 
-            var item = await context.Items
-                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                .FirstOrDefaultAsync();
-
-            if (item == null)
-                return NotFound(ApiResponse.Error("File not found", "ITEM_NOT_FOUND"));
-
-            if (item.Type == "file")
-                item.IsDeleted = true;
-
-            if (item.Type == "folder")
-            {
-                item.IsDeleted = true;
-                var childItems = await _itemRepository.GetAllChildItemsAsync(itemId, userId);
-                foreach (var childItem in childItems)
-                    childItem.IsDeleted = true;
-                context.UpdateRange(childItems);
-
-            }
-            await context.SaveChangesAsync();
-            return Ok(ApiResponse.Ok());
+            var result = await _itemRepository.DeleteItemAsync(userId, itemId);
+            return Ok(result);
 
         }
 
@@ -384,43 +236,24 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            var fileValidation = _validationService.ValidateFile(file);
-            if (!fileValidation.IsValid)
-                return BadRequest(ApiResponse.Error(fileValidation.ErrorMessage, fileValidation.ErrorCode));
-
-            using var context = _contextFactory.CreateDbContext();
-
-            if (parentId.HasValue)
+            var result = await _itemRepository.UploadFileAsync(userId, file, parentId);
+            if (!result.IsSuccess)
             {
-                var parentValidation = await _validationService.ValidateItemExistsAsync(context, parentId.Value, userId);
-                if (!parentValidation.IsValid)
-                    return BadRequest(ApiResponse.Error(parentValidation.ErrorMessage, parentValidation.ErrorCode));
+                return result.ErrorCode switch
+                {
+                    "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
+                };
             }
 
-            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, file.FileName, userId, parentId, null);
-            if (!uniquenessValidation.IsValid)
-                return Conflict(ApiResponse.Error(uniquenessValidation.ErrorMessage, uniquenessValidation.ErrorCode));
-
-            var savedFilePath = await _fileStorageService.SaveFileAsync(userId, file, parentId);
-
-            var item = new Item
+            return Ok(new
             {
-                Name = file.FileName,
-                Type = "file",
-                UserId = userId,
-                ParentId = parentId,
-                FilePath = savedFilePath,
-                FileSize = file.Length,
-                MimeType = !string.IsNullOrEmpty(file.ContentType) ? file.ContentType : _fileStorageService.GetMimeType(file.FileName),
-                //CreatedAt = DateTime.UtcNow,
-                //UpdatedAt = DateTime.UtcNow,
-                IsDeleted = false
-            };
-
-            context.Items.Add(item);
-            await context.SaveChangesAsync();
-
-            return Ok(ApiResponse.Ok());
+                message = result.Message,
+                itemId = result.ItemId,
+                fileName = result.FileName,
+                timestamp = DateTime.UtcNow
+            });
 
         }
 
@@ -445,63 +278,24 @@ namespace CloudCore.Controllers
             var authResult = VerifyUser(userId);
             if (authResult != null) return authResult;
 
-            var nameValidation = _validationService.ValidateItemName(request.Name);
-            if (!nameValidation.IsValid)
+            var result = await _itemRepository.CreateFolderAsync(userId, request);
+            if (!result.IsSuccess)
             {
-                return BadRequest(ApiResponse.Error(nameValidation.ErrorMessage, nameValidation.ErrorCode));
-            }
-            using var context = _contextFactory.CreateDbContext();
-            using var transaction = context.Database.BeginTransaction();
-
-            try
-            {
-                // Validate parent folder exists if specified
-                if (request.ParentId.HasValue)
+                return result.ErrorCode switch
                 {
-                    var parentValidation = await _validationService.ValidateItemExistsAsync(context, request.ParentId.Value, userId);
-                    if (!parentValidation.IsValid)
-                    {
-                        return BadRequest(ApiResponse.Error(parentValidation.ErrorMessage, parentValidation.ErrorCode));
-                    }
-                }
-
-                // Check if folder with same name already exists
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, request.Name, userId, request.ParentId, null);
-                if (!uniquenessValidation.IsValid)
-                {
-                    return Conflict(ApiResponse.Error(uniquenessValidation.ErrorMessage, uniquenessValidation.ErrorCode));
-                }
-
-                var folder = new Item
-                {
-                    Name = request.Name,
-                    Type = "folder",
-                    UserId = userId,
-                    ParentId = request.ParentId,
-                    //CreatedAt = DateTime.UtcNow,
-                    //UpdatedAt = DateTime.UtcNow,
-                    IsDeleted = false
+                    "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
                 };
-
-                context.Items.Add(folder);
-                await context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                string folderPath = _fileStorageService.GetFolderPath(folder);
-                Directory.CreateDirectory(folderPath);
-
-                return Ok(new
-                {
-                    message = "Folder created successfully",
-                    folderId = folder.Id,
-                    folderName = folder.Name
-                });
             }
-            catch (Exception)
+            return Ok(new
             {
-                transaction.Rollback();
-                throw;
-            }
+                message = result.Message,
+                code = result.ErrorCode,
+                folderId = result.FolderId,
+                folderName = result.FolderName,
+                timestamp = DateTime.UtcNow
+            });
         }
     }
 }

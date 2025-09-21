@@ -65,14 +65,14 @@ namespace CloudCore.Services
 
         public ValidationResult ValidateFile(IFormFile file)
         {
-            if (file == null || file.Length == 0)
+            if (file == null)
                 return ValidationResult.Failure("File is required", "FILE_REQUIRED");
             if (file.Length > MAX_SIZE)
-                return ValidationResult.Failure($"File size exceeds maximum allowed size ({FormatFileSize(MAX_SIZE)})", "FILE_TOO_LARGE");
+                return ValidationResult.Failure($"File size exceeds maximum allowed size ({FormatFileSize(MAX_SIZE)})", ErrorCodes.FILE_TOO_LARGE);
 
             var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
             if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
-                return ValidationResult.Failure($"File type not supported. Allowed types: {string.Join(", ", AllowedExtensions)}", "INVALID_FILE_TYPE");
+                return ValidationResult.Failure($"File type not supported. Allowed types: {string.Join(", ", AllowedExtensions)}", ErrorCodes.INVALID_FILE_TYPE);
 
             var nameValidation = ValidateItemName(file.FileName);
             if (!nameValidation.IsValid)
@@ -83,23 +83,23 @@ namespace CloudCore.Services
         public ValidationResult ValidateItemName(string name)
         {
             if (string.IsNullOrEmpty(name))
-                return ValidationResult.Failure("Item name cannot be empty", "INVALID_NAME");
+                return ValidationResult.Failure("Item name cannot be empty", ErrorCodes.INVALID_NAME);
 
             if (name.Length > MAX_NAME_LENGTH)
-                return ValidationResult.Failure($"Item name cannot exceed {MAX_NAME_LENGTH} characters", "NAME_TOO_LONG");
+                return ValidationResult.Failure($"Item name cannot exceed {MAX_NAME_LENGTH} characters", ErrorCodes.NAME_TOO_LONG);
 
             foreach (var invalidChar in InvalidFileNameChars)
             {
                 if (name.Contains(invalidChar))
-                    return ValidationResult.Failure($"Item name contains invalid character: {invalidChar}", "INVALID_CHARACTER");
+                    return ValidationResult.Failure($"Item name contains invalid character: {invalidChar}", ErrorCodes.INVALID_CHARECTER);
             }
 
             var nameWithoutExtension = Path.GetFileNameWithoutExtension(name).ToUpper();
             if (ReservedNames.Contains(nameWithoutExtension))
-                return ValidationResult.Failure($"'{name}' is a reserved name", "RESERVED_NAME");
+                return ValidationResult.Failure($"'{name}' is a reserved name", ErrorCodes.RESERVED_NAME);
 
             if (name.StartsWith('.') || name.StartsWith(' ') || name.EndsWith('.') || name.EndsWith(' '))
-                return ValidationResult.Failure("Item name cannot start or end with a dot or space", "INVALID_NAME_FORMAT");
+                return ValidationResult.Failure("Item name cannot start or end with a dot or space", ErrorCodes.INVALID_NAME_FORMAT);
 
             return ValidationResult.Success();
         }
@@ -107,7 +107,7 @@ namespace CloudCore.Services
         public ValidationResult ValidateUserAuthorization(int currentUserId, int requestedUserId)
         {
             if (currentUserId != requestedUserId)
-                return ValidationResult.Failure("You can only access your own files", "ACCESS_DENIED");
+                return ValidationResult.Failure("You can only access your own files", ErrorCodes.ACCESS_DENIED);
 
             return ValidationResult.Success();
         }
@@ -130,7 +130,7 @@ namespace CloudCore.Services
                     "folder" => "Folder not found",
                     _ => "Item not found"
                 };
-                return ValidationResult.Failure(errorMessage, "ITEM_NOT_FOUND");
+                return ValidationResult.Failure(errorMessage, ErrorCodes.ITEM_NOT_FOUND);
             }
 
             return ValidationResult.Success();
@@ -139,17 +139,17 @@ namespace CloudCore.Services
         public async Task<ValidationResult> ValidateItemIdsAsync(CloudCoreDbContext context, List<int> itemIds, int userId)
         {
             if (itemIds == null || !itemIds.Any())
-                return ValidationResult.Failure("No items specified", "NO_ITEMS");
+                return ValidationResult.Failure("No items specified", ErrorCodes.NO_ITEMS);
 
             if (itemIds.Count > 100)
-                return ValidationResult.Failure("Too many items selected (max 100)", "TOO_MANY_ITEMS");
+                return ValidationResult.Failure("Too many items selected (max 100)", ErrorCodes.TOO_MANY_FILES);
 
             var existingItems = await context.Items
                 .Where(i => itemIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
                 .CountAsync();
 
             if (existingItems != itemIds.Count)
-                return ValidationResult.Failure("Some items not found or don't belong to you", "ITEMS_NOT_FOUND");
+                return ValidationResult.Failure("Some items not found or don't belong to you", ErrorCodes.ITEM_NOT_FOUND);
 
             return ValidationResult.Success();
         }
@@ -165,7 +165,7 @@ namespace CloudCore.Services
             var existingItem = await query.FirstOrDefaultAsync();
 
             if (existingItem != null)
-                return ValidationResult.Failure("An item with this name already exists in this location", "NAME_ALREADY_EXISTS");
+                return ValidationResult.Failure("An item with this name already exists in this location", ErrorCodes.NAME_ALREADY_EXISTS);
 
             return ValidationResult.Success();
         }
@@ -173,10 +173,10 @@ namespace CloudCore.Services
         public ValidationResult ValidateArchiveSize(long totalSize, int fileCount)
         {
             if (totalSize > MAX_SIZE)
-                return ValidationResult.Failure($"Archive size exceeds maximum allowed size of {FormatFileSize(MAX_SIZE)}", "ARCHIVE_TOO_LARGE");
+                return ValidationResult.Failure($"Archive size exceeds maximum allowed size of {FormatFileSize(MAX_SIZE)}", ErrorCodes.ARCHIVE_TOO_LARGE);
 
             if (fileCount > MAX_FILES_IN_ARCHIVE)
-                return ValidationResult.Failure($"Too many files in archive (max {MAX_FILES_IN_ARCHIVE})", "TOO_MANY_ITEMS");
+                return ValidationResult.Failure($"Too many files in archive (max {MAX_FILES_IN_ARCHIVE})", ErrorCodes.TOO_MANY_FILES);
 
             return ValidationResult.Success();
         }
