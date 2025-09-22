@@ -316,22 +316,29 @@
 
         .file-list th:nth-child(1),
         .file-list td:nth-child(1) {
-            width: 60%;
+            width: 50%;
         }
 
         /* Name */
         .file-list th:nth-child(2),
         .file-list td:nth-child(2) {
-            width: 20%;
+            width: 15%;
+        }
+
+        /* Created */
+        .file-list th:nth-child(3),
+        .file-list td:nth-child(3) {
+            width: 15%;
         }
 
         /* Modified */
-        .file-list th:nth-child(3),
-        .file-list td:nth-child(3) {
+        .file-list th:nth-child(4),
+        .file-list td:nth-child(4) {
             width: 20%;
         }
 
         /* Size */
+
 
         .file-list-header {
             background: #f8f9fa;
@@ -407,11 +414,17 @@
             position: sticky;
             top: 0;
             z-index: 2;
-            /* поверх строк */
             background: #f8f9fa;
-            /* как сейчас в теме */
             border-bottom: 1px solid #dadce0;
             box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .file-list-row.trash-mode {
+            cursor: default !important;
+        }
+
+        .file-list-row.trash-mode:hover {
+            background-color: transparent !important;
         }
 
         /* Loading and Empty States */
@@ -760,13 +773,7 @@
             padding: 16px;
             color: #5f6368;
         }
-        .file-list-row.trash-mode {
-    cursor: default !important;
-}
 
-.file-list-row.trash-mode:hover {
-    background-color: transparent !important;
-}
 
         .infinite-spinner {
             width: 22px;
@@ -878,6 +885,7 @@
                     <thead class="file-list-header">
                         <tr>
                             <th data-i18n="name" class="sortable">Name</th>
+                            <th data-i18n="created" class="sortable">Created</th>
                             <th data-i18n="modified" class="sortable">Modified</th>
                             <th data-i18n="size" class="sortable">Size</th>
                         </tr>
@@ -924,6 +932,7 @@
                 // File operations
                 name: 'Name',
                 modified: 'Modified',
+                created: 'Created',
                 size: 'Size',
                 downloadFile: 'Download',
                 downloadFolder: 'Download folder',
@@ -941,7 +950,7 @@
                 uploadGetStarted: 'Upload files or create folders to get started',
                 restoring: 'Restoring',
                 restored: 'restored',
-                
+
 
                 // Notifications
                 downloading: 'Downloading',
@@ -1011,6 +1020,7 @@
                 // File operations
                 name: 'Назва',
                 modified: 'Змінено',
+                created: 'Створено',
                 size: 'Розмір',
                 downloadFile: 'Завантажити',
                 downloadFolder: 'Завантажити папку',
@@ -1491,7 +1501,6 @@
                     size: document.querySelector('th[data-i18n="size"]')
                 };
 
-                // Снять активность и вернуть оригинальные подписи
                 Object.values(headers).forEach(h => {
                     if (!h) return;
                     h.classList.remove('active');
@@ -1499,7 +1508,7 @@
                     h.textContent = h.dataset.label;
                 });
 
-                // Поставить стрелку на активный столбец
+
                 const active = headers[this.sortBy];
                 if (active) {
                     active.classList.add('active');
@@ -1547,7 +1556,8 @@
 
                     row.innerHTML = `
       <td><span class="file-list-icon ${icon.class}">${icon.emoji}</span> ${item.name}</td>
-      <td>-</td>
+      <td>${this.formatDateTime(item.createdAt)}</td>
+    <td>${this.formatDateTime(item.updatedAt)}</td>
       <td id="size-${item.id}">${sizeDisplay}</td>
     `;
 
@@ -1569,6 +1579,34 @@
                     }
                 }, 60);
                 this.updateSortIndicators();
+            }
+
+            formatDateTime(dateString) {
+                if (!dateString) return '-';
+
+                const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const userLocale = navigator.language || 'en-US';
+
+                const utcString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+
+                const localDate = new Date(utcString);
+                const now = new Date();
+
+
+                if (localDate.toDateString() === now.toDateString()) {
+                    return localDate.toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else {
+
+                    return localDate.toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                }
             }
 
             async fetchBatchFolderSizes(folderIds) {
@@ -1698,8 +1736,8 @@
 
             handleFileDoubleClick(e, item) {
                 if (this.isTrashView) {
-                return;
-            }
+                    return;
+                }
                 if (item.type === 'folder') {
                     this.navigateToFolder(item);
                 } else {
@@ -1858,12 +1896,12 @@
             }
             removeItemFromCurrentView(itemId) {
                 this.allLoadedItems = this.allLoadedItems.filter(item => item.id !== itemId);
-                
+
                 const row = document.querySelector(`[data-item-id="${itemId}"]`);
                 if (row) {
                     row.remove();
                 }
-                
+
                 if (this.allLoadedItems.length === 0) {
                     this.showEmptyState();
                 }
@@ -2038,7 +2076,7 @@
                         this.showNotification(`✅ ${file.name} ${t('deleted')}`, 'success');
                         console.log('Deleted file:', file.name);
 
-                         await this.loadFiles(this.currentFolderId);
+                        await this.loadFiles(this.currentFolderId);
                     } else {
                         this.showNotification(`❌ ${result.message || t('failedDelete')}`, 'error');
                     }
@@ -2106,40 +2144,40 @@
                 homeBreadcrumb.href = '#';
 
                 if (this.isTrashView) {
-                homeBreadcrumb.textContent = t('trash');
-                homeBreadcrumb.style.cursor = 'default';
-                homeBreadcrumb.style.pointerEvents = 'none';
-                breadcrumbs.appendChild(homeBreadcrumb);
+                    homeBreadcrumb.textContent = t('trash');
+                    homeBreadcrumb.style.cursor = 'default';
+                    homeBreadcrumb.style.pointerEvents = 'none';
+                    breadcrumbs.appendChild(homeBreadcrumb);
                 }
-                else{
-                homeBreadcrumb.textContent = t('myDrive');;
-                homeBreadcrumb.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.navigateToRoot();
-                });
-                breadcrumbs.appendChild(homeBreadcrumb);
+                else {
+                    homeBreadcrumb.textContent = t('myDrive');;
+                    homeBreadcrumb.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.navigateToRoot();
+                    });
+                    breadcrumbs.appendChild(homeBreadcrumb);
 
-                this.breadcrumbPath.forEach((folder, index) => {
-                    const separator = document.createElement('span');
-                    separator.className = 'breadcrumb-separator';
-                    separator.textContent = ' > ';
-                    breadcrumbs.appendChild(separator);
+                    this.breadcrumbPath.forEach((folder, index) => {
+                        const separator = document.createElement('span');
+                        separator.className = 'breadcrumb-separator';
+                        separator.textContent = ' > ';
+                        breadcrumbs.appendChild(separator);
 
-                    const breadcrumb = document.createElement('a');
-                    breadcrumb.className = index === this.breadcrumbPath.length - 1 ? 'breadcrumb current' : 'breadcrumb';
-                    breadcrumb.href = '#';
-                    breadcrumb.textContent = folder.name;
+                        const breadcrumb = document.createElement('a');
+                        breadcrumb.className = index === this.breadcrumbPath.length - 1 ? 'breadcrumb current' : 'breadcrumb';
+                        breadcrumb.href = '#';
+                        breadcrumb.textContent = folder.name;
 
-                    if (index < this.breadcrumbPath.length - 1) {
-                        breadcrumb.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            this.navigateToFolderInPath(index);
-                        });
-                    }
+                        if (index < this.breadcrumbPath.length - 1) {
+                            breadcrumb.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                this.navigateToFolderInPath(index);
+                            });
+                        }
 
-                    breadcrumbs.appendChild(breadcrumb);
-                });
-            }
+                        breadcrumbs.appendChild(breadcrumb);
+                    });
+                }
             }
 
             navigateToRoot() {

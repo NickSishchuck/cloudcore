@@ -24,17 +24,17 @@ namespace CloudCore.Services.Implementations
             var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
             var isDeletedParam = new MySqlParameter("@IsDeleted", isDeleted);
 
-            var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT id, name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted,1 as level
+            var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted, 1 as level
                 FROM items
                 WHERE user_id = @UserId AND parent_id = @ParentId AND is_deleted = @IsDeleted
                 UNION ALL
 
-                SELECT i.id, i.name, i.type, i.parent_id, i.user_id, i.file_path, i.file_size, i.mime_type, i.is_deleted, ih.level + 1
+                SELECT i.id, i.name, i.type, i.parent_id, i.user_id, i.teamspace_id, i.file_path, i.file_size, i.mime_type, i.created_at, i.updated_at, i.deleted_at, i.access_level, i.is_deleted, ih.level + 1
                 FROM items i
                 INNER JOIN ItemsHierarchy ih ON i.parent_id = ih.id
                 WHERE i.user_id = @UserId AND ih.type = 'folder' AND i.is_deleted = @IsDeleted AND ih.level < @MaxDepth)
 
-                SELECT id, name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted
+                SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted
                 FROM ItemsHierarchy 
                 ORDER BY Level, Type DESC, Name;";
 

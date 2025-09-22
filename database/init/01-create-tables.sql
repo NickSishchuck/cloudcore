@@ -49,7 +49,9 @@ CREATE TABLE items (
    file_path VARCHAR(500) NULL,
    file_size BIGINT NULL,
    mime_type VARCHAR(100) NULL,
-
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   deleted_at TIMESTAMP NULL,
     -- Permissions and status
    access_level ENUM('private', 'team_read', 'team_write') DEFAULT 'private',
    is_deleted BOOLEAN DEFAULT FALSE,

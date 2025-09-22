@@ -14,7 +14,9 @@ namespace CloudCore.Mappers
                 Type = item.Type,
                 ParentId = item.ParentId,
                 FileSize = item.FileSize,
-                MimeType = item.MimeType
+                MimeType = item.MimeType,
+                CreatedAt = item.CreatedAt,
+                UpdatedAt = item.UpdatedAt
             };
         }
     }

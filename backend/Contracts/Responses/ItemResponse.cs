@@ -17,6 +17,10 @@ namespace CloudCore.Contracts.Responses
 
         public string? MimeType { get; set; }
 
+        public DateTime? CreatedAt { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
+
 
     }
 }
