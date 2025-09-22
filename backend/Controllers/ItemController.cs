@@ -188,23 +188,25 @@ namespace CloudCore.Controllers
 
         }
 
+
+        // WILL BE DELETED
         /// <summary>
         /// Gets the total size and file count for a directory
         /// </summary>
         /// <param name="userId">User identifier from route</param>
         /// <param name="folderId">Folder identifier to calculate size for</param>
         /// <returns>Object containing total size in bytes and file count</returns>
-        [HttpGet("{folderId}/size")]
-        public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
-        {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+        //[HttpGet("{folderId}/size")]
+        //public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
+        //{
+        //    var authResult = VerifyUser(userId);
+        //    if (authResult != null)
+        //        return authResult;
 
-            var result = await _itemRepository.GetFolderSizeAsync(userId, folderId);
-            return Ok(result);
+        //    var result = await _itemRepository.GetFolderSizeAsync(userId, folderId);
+        //    return Ok(result);
 
-        }
+        //}
 
         /// <summary>
         /// Gets sizes for multiple folders in a single request

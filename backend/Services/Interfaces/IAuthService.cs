@@ -1,4 +1,5 @@
-using CloudCore.Contracts.Auth;
+using CloudCore.Contracts.Requests;
+using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 

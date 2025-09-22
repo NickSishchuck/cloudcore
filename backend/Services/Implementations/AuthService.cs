@@ -1,5 +1,6 @@
 using BCrypt.Net;
-using CloudCore.Contracts.Auth;
+using CloudCore.Contracts.Requests;
+using CloudCore.Contracts.Responses;
 using CloudCore.Data.Context;
 using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
@@ -14,12 +15,10 @@ namespace CloudCore.Services.Implementations;
 public class AuthService : IAuthService
 {
     private readonly CloudCoreDbContext _context;
-    private readonly IConfiguration _configuration;
 
-    public AuthService(CloudCoreDbContext context, IConfiguration configuration)
+    public AuthService(CloudCoreDbContext context)
     {
         _context = context;
-        _configuration = configuration;
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
