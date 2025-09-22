@@ -1,4 +1,5 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 
 namespace CloudCore.Services.Interfaces
 {

@@ -1,4 +1,4 @@
-﻿namespace CloudCore.Models
+﻿namespace CloudCore.Common.Validation
 {
     public class ValidationResult
     {

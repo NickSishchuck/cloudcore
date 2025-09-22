@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using CloudCore.Models;
 using CloudCore.Services.Interfaces;
-using CloudCore.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using CloudCore.Middleware;
+using CloudCore.Services.Implementations;
+using CloudCore.Data.Context;
 
 
 namespace CloudCore

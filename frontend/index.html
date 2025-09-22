@@ -318,6 +318,8 @@
             color: #5f6368;
         }
 
+
+
         .file-list-row {
             border-bottom: 1px solid #f1f3f4;
             cursor: pointer;
@@ -374,13 +376,15 @@
         }
 
         .file-list thead.file-list-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;                  /* поверх строк */
-  background: #f8f9fa;         /* как сейчас в теме */
-  border-bottom: 1px solid #dadce0;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06);
-}
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            /* поверх строк */
+            background: #f8f9fa;
+            /* как сейчас в теме */
+            border-bottom: 1px solid #dadce0;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+        }
 
         /* Loading and Empty States */
         .loading {
@@ -838,9 +842,9 @@
                 <table class="file-list" id="fileList">
                     <thead class="file-list-header">
                         <tr>
-                            <th data-i18n="name">Name</th>
-                            <th data-i18n="modified">Modified</th>
-                            <th data-i18n="size">Size</th>
+                            <th data-i18n="name" class="sortable">Name</th>
+                            <th data-i18n="modified" class="sortable">Modified</th>
+                            <th data-i18n="size" class="sortable">Size</th>
                         </tr>
                     </thead>
                     <tbody id="fileListBody"></tbody>
@@ -1126,7 +1130,10 @@
                 this.hasNextPage = false;
                 this.isLoadingMore = false;
                 this.allLoadedItems = [];
-                this.scrollThreshold = 300; 
+                this.scrollThreshold = 300;
+
+                this.sortBy = 'name'; // name | modified | size
+                this.sortDir = 'asc'; // asc | desc
 
                 this.initializeAuth();
                 this.initializeLanguage();
@@ -1164,15 +1171,23 @@
                     this.hasNextPage = false;
                 }
 
-                if (resetPagination) this.showLoading(); else this.showInfiniteLoader(); 
+                if (resetPagination) this.showLoading();
+                else this.showInfiniteLoader();
 
                 try {
                     const base = `http://localhost:5000/user/${this.currentUserId}/mydrive`;
-                    const url = folderId != null
-                        ? `${base}?parentId=${folderId}&page=${this.currentPage}&pageSize=${this.pageSize}`
-                        : `${base}?page=${this.currentPage}&pageSize=${this.pageSize}`; 
 
-                    console.log('GET:', url); 
+                    const params = new URLSearchParams({
+                        page: String(this.currentPage),
+                        pageSize: String(this.pageSize),
+                        sortBy: this.sortBy,       // name | modified | size
+                        sortDir: this.sortDir      // asc | desc
+                    });
+                    if (folderId != null) params.set('parentId', String(folderId));
+                    const url = `${base}?${params.toString()}`;
+
+
+                    console.log('GET:', url);
 
                     const response = await fetch(url, {
                         method: 'GET',
@@ -1190,7 +1205,7 @@
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                     const result = await response.json();
-                    const newItems = Array.isArray(result?.data) ? result.data : []; 
+                    const newItems = Array.isArray(result?.data) ? result.data : [];
                     const pagination = result?.pagination;
 
                     if (pagination) {
@@ -1199,15 +1214,16 @@
                     } else {
                         this.totalPages = this.currentPage;
                         this.hasNextPage = false;
-                    } 
+                    }
 
                     if (resetPagination) {
                         this.allLoadedItems = newItems;
                     } else {
                         this.allLoadedItems.push(...newItems);
-                    } 
+                    }
 
-                    this.renderListView(resetPagination ? this.allLoadedItems : newItems); 
+                    this.renderListView(resetPagination ? this.allLoadedItems : newItems);
+                    this.updateSortIndicators();
 
                     this.currentFolderId = folderId;
 
@@ -1218,33 +1234,33 @@
                         if (distanceFromBottom <= 200 && this.hasNextPage && !this.isLoadingMore) {
                             this.loadMoreFiles();
                         }
-                    }, 80); 
+                    }, 80);
 
                     this.updateBreadcrumbs();
                 } catch (e) {
                     console.error('loadFiles error:', e);
                     this.showError('Failed to load files');
-                    throw e; 
+                    throw e;
                 } finally {
                     this.hideInfiniteLoader();
                     if (resetPagination) this.hideLoading();
-                } 
+                }
             }
 
             async loadMoreFiles() {
                 if (!this.hasNextPage) return;
-                if (this.isLoadingMore) return; 
+                if (this.isLoadingMore) return;
 
-                this.isLoadingMore = true; 
-                this.currentPage += 1; 
+                this.isLoadingMore = true;
+                this.currentPage += 1;
 
                 try {
-                    this.showInfiniteLoader(); 
-                    await this.loadFiles(this.currentFolderId, false); 
+                    this.showInfiniteLoader();
+                    await this.loadFiles(this.currentFolderId, false);
                 } catch (e) {
                     this.currentPage -= 1;
                 } finally {
-                    this.isLoadingMore = false; 
+                    this.isLoadingMore = false;
                 }
             }
 
@@ -1279,6 +1295,14 @@
             }
 
             initializeEventListeners() {
+
+                const thName = document.querySelector('th[data-i18n="name"]');
+                const thModified = document.querySelector('th[data-i18n="modified"]');
+                const thSize = document.querySelector('th[data-i18n="size"]');
+
+                thName?.addEventListener('click', () => this.applySort('name'));
+                thModified?.addEventListener('click', () => this.applySort('modified'));
+                thSize?.addEventListener('click', () => this.applySort('size'));
 
                 document.getElementById('newButton').addEventListener('click', (e) => this.toggleNewDropdown(e));
                 document.getElementById('uploadFiles').addEventListener('click', () => this.triggerFileUpload());
@@ -1316,16 +1340,26 @@
                 fileContainer.style.overflowY = 'auto';
                 if (!fileContainer.style.height) {
                     fileContainer.style.height = 'calc(100vh - 200px)';
-                } 
+                }
 
                 let scrollLock = false;
                 fileContainer.addEventListener('scroll', (e) => {
                     if (scrollLock) return;
                     scrollLock = true;
                     setTimeout(() => { this.handleScroll(e); scrollLock = false; }, 120);
-                }); 
+                });
 
                 this.setupDragAndDrop();
+            }
+            applySort(column) {
+                if (this.sortBy === column) {
+                    this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortBy = column;
+                    this.sortDir = 'asc';
+                }
+                this.currentPage = 1;
+                this.loadFiles(this.currentFolderId, true); // перезагрузка с новой сортировкой [file:1]
             }
 
             handleScroll(e) {
@@ -1336,11 +1370,11 @@
                 const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
                 const scrollPercentage = ((scrollTop + clientHeight) / scrollHeight) * 100;
 
-                if (this.isLoadingMore || !this.hasNextPage) return; 
+                if (this.isLoadingMore || !this.hasNextPage) return;
 
                 if (distanceFromBottom <= 200 || scrollPercentage >= 70) {
                     this.loadMoreFiles();
-                } 
+                }
             }
 
             showInfiniteLoader() {
@@ -1417,6 +1451,31 @@
                 }
             }
 
+
+            updateSortIndicators() {
+                const headers = {
+                    name: document.querySelector('th[data-i18n="name"]'),
+                    modified: document.querySelector('th[data-i18n="modified"]'),
+                    size: document.querySelector('th[data-i18n="size"]')
+                };
+
+                // Снять активность и вернуть оригинальные подписи
+                Object.values(headers).forEach(h => {
+                    if (!h) return;
+                    h.classList.remove('active');
+                    if (!h.dataset.label) h.dataset.label = h.textContent.trim();
+                    h.textContent = h.dataset.label;
+                });
+
+                // Поставить стрелку на активный столбец
+                const active = headers[this.sortBy];
+                if (active) {
+                    active.classList.add('active');
+                    const arrow = this.sortDir === 'asc' ? '▲' : '▼';
+                    active.textContent = `${active.dataset.label} ${arrow}`;
+                }
+            }
+
             updateFolderSizeDisplay(folderId, sizeData) {
                 const sizeElement = document.getElementById(`size-${folderId}`);
                 if (!sizeElement) return;
@@ -1433,13 +1492,13 @@
             renderListView(items) {
                 const listBody = document.getElementById('fileListBody');
                 const fileList = document.getElementById('fileList');
-                if (!listBody || !fileList) return; 
+                if (!listBody || !fileList) return;
 
                 if (this.currentPage === 1) {
                     listBody.innerHTML = '';
                 }
 
-                const itemsToRender = Array.isArray(items) ? items : []; 
+                const itemsToRender = Array.isArray(items) ? items : [];
                 fileList.style.display = 'table';
                 fileList.style.width = '100%';
 
@@ -1452,7 +1511,7 @@
                     const icon = this.getFileIcon(item);
                     const sizeDisplay = item.type === 'file'
                         ? (item.fileSize ? this.formatFileSize(item.fileSize) : '-')
-                        : `<span class="folder-size-loading">${t('calculating') || 'Calculating...'}</span>`; 
+                        : `<span class="folder-size-loading">${t('calculating') || 'Calculating...'}</span>`;
 
                     row.innerHTML = `
       <td><span class="file-list-icon ${icon.class}">${icon.emoji}</span> ${item.name}</td>
@@ -1462,11 +1521,11 @@
 
                     row.addEventListener('click', (e) => this.handleFileClick(e, item));
                     row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
-                    row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item)); 
+                    row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
 
                     listBody.appendChild(row);
 
-                    if (item.type === 'folder') this.fetchFolderSize(item.id); 
+                    if (item.type === 'folder') this.fetchFolderSize(item.id);
                 });
 
                 setTimeout(() => {
@@ -1476,7 +1535,8 @@
                     if (distanceFromBottom <= 200 && this.hasNextPage && !this.isLoadingMore) {
                         this.loadMoreFiles();
                     }
-                }, 60); 
+                }, 60);
+                this.updateSortIndicators();
             }
 
             async fetchBatchFolderSizes(folderIds) {

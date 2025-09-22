@@ -1,10 +1,11 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Contracts.Responses;
+using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
-namespace CloudCore.Services
+namespace CloudCore.Services.Implementations
 {
     public class ItemDataService : IItemDataService
     {
@@ -41,13 +42,39 @@ namespace CloudCore.Services
                 .ToListAsync();
         }
 
-        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize)
+        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir)
         {
             using var context = _dbContextFactory.CreateDbContext();
             var query = context.Items
                 .Where(i => i.UserId == userId && i.ParentId == parentId && i.IsDeleted == false)
-                .OrderBy(i => i.Type == "file" ? 1 : 0) 
-                .ThenBy(i => i.Name);
+                .OrderBy(i => i.Type == "file" ? 1 : 0);
+
+
+            bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            switch ((sortBy ?? "name").ToLowerInvariant())
+            {
+                case "size":
+                case "filesize":
+                    query = desc
+                        ? query.ThenByDescending(i => i.FileSize ?? 0)
+                        : query.ThenBy(i => i.FileSize ?? 0);
+                    break;
+
+                case "modified":
+                case "updatedat":
+                    
+                    //query = desc
+                    //    ? query.ThenByDescending(i => i.UpdatedAt)
+                    //    : query.ThenBy(i => i.UpdatedAt);
+                    break;
+
+                case "name":
+                default:
+                    query = desc
+                        ? query.ThenByDescending(i => i.Name)
+                        : query.ThenBy(i => i.Name);
+                    break;
+            }
 
             var totalCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace CloudCore.Models;
+namespace CloudCore.Domain.Entities;
 
 public partial class User
 {

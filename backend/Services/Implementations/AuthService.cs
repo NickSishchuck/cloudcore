@@ -1,5 +1,7 @@
 using BCrypt.Net;
-using CloudCore.Models;
+using CloudCore.Contracts.Auth;
+using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -7,7 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace CloudCore.Services;
+namespace CloudCore.Services.Implementations;
 
 public class AuthService : IAuthService
 {

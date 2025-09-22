@@ -1,4 +1,6 @@
-﻿using CloudCore.Models;
+﻿using System.Globalization;
+using CloudCore.Contracts.Responses;
+using CloudCore.Domain.Entities;
 
 namespace CloudCore.Services.Interfaces
 {
@@ -14,6 +16,6 @@ namespace CloudCore.Services.Interfaces
         Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000);
 
 
-        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize);
+        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc");
     }
 }

@@ -1,6 +1,6 @@
-﻿namespace CloudCore.Models
+﻿namespace CloudCore.Contracts.Responses
 {
-    public class ItemResultModels
+    public class ItemResultResponses
     {
         public abstract class ServiceResult
         {

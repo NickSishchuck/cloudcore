@@ -1,9 +1,11 @@
 ﻿using System.Xml.Linq;
-using CloudCore.Models;
+using CloudCore.Common.Errors;
+using CloudCore.Common.Validation;
+using CloudCore.Data.Context;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace CloudCore.Services
+namespace CloudCore.Services.Implementations
 {
     public class ValidationService : IValidationService
     {

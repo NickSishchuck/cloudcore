@@ -1,4 +1,4 @@
-﻿namespace CloudCore.Models
+﻿namespace CloudCore.Contracts.Responses
 {
     public class ApiResponse
     {

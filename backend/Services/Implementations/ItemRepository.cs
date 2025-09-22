@@ -1,15 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.IO;
-using CloudCore.Models;
+﻿using CloudCore.Common.Errors;
+using CloudCore.Contracts.Requests;
+using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.Extensions.Localization;
-using MySqlConnector;
-using static CloudCore.Models.ItemResultModels;
+using static CloudCore.Contracts.Responses.ItemResultResponses;
 
-namespace CloudCore.Services
+namespace CloudCore.Services.Implementations
 {
     public class ItemRepository : IItemRepository
     {
@@ -57,7 +55,7 @@ namespace CloudCore.Services
 
             var fullPath = _itemStorageService.GetFileFullPath(userId, item.FilePath);
 
-            if (!System.IO.File.Exists(fullPath))
+            if (!File.Exists(fullPath))
                 throw new FileNotFoundException("File not found");
 
             var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);

@@ -1,9 +1,10 @@
 ﻿using System.Threading.Tasks;
-using CloudCore.Models;
+using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace CloudCore.Services
+namespace CloudCore.Services.Implementations
 {
     public class ItemStorageService : IItemStorageService
     {

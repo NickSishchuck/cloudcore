@@ -1,4 +1,5 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Common.Validation;
+using CloudCore.Data.Context;
 
 namespace CloudCore.Services.Interfaces
 {

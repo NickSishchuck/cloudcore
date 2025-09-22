@@ -1,4 +1,4 @@
-﻿namespace CloudCore.Models
+﻿namespace CloudCore.Common.Errors
 {
     public static class ErrorCodes
     {

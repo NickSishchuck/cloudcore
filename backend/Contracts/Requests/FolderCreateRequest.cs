@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CloudCore.Models
+namespace CloudCore.Contracts.Requests
 {
     public class FolderCreateRequest
     {

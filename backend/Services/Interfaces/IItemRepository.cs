@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using CloudCore.Models;
+using CloudCore.Contracts.Requests;
 using Microsoft.AspNetCore.Mvc;
-using static CloudCore.Models.ItemResultModels;
+using static CloudCore.Contracts.Responses.ItemResultResponses;
 
 namespace CloudCore.Services.Interfaces
 {

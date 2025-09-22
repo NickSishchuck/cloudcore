@@ -1,4 +1,4 @@
-namespace CloudCore.Models;
+namespace CloudCore.Contracts.Auth;
 
 public class LoginRequest
 {
