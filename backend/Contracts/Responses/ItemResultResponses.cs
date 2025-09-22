@@ -35,6 +35,10 @@
         {
         }
 
+        public class RestoreResult : ServiceResult
+        { 
+        }
+
         public class UploadResult : ServiceResult
         {
             public int ItemId { get; set; }

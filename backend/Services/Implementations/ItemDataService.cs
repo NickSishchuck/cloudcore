@@ -16,22 +16,23 @@ namespace CloudCore.Services.Implementations
             _dbContextFactory = dbContextFactory;
         }
 
-        public async Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000)
+        public async Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000, bool isDeleted = false)
         {
             using var context = _dbContextFactory.CreateDbContext();
             var userIdParam = new MySqlParameter("@UserId", userId);
             var parentIdParam = new MySqlParameter("@ParentId", parentId);
             var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
+            var isDeletedParam = new MySqlParameter("@IsDeleted", isDeleted);
 
             var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT id, name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted,1 as level
                 FROM items
-                WHERE user_id = @UserId AND parent_id = @ParentId AND is_deleted = FALSE
+                WHERE user_id = @UserId AND parent_id = @ParentId AND is_deleted = @IsDeleted
                 UNION ALL
 
                 SELECT i.id, i.name, i.type, i.parent_id, i.user_id, i.file_path, i.file_size, i.mime_type, i.is_deleted, ih.level + 1
                 FROM items i
                 INNER JOIN ItemsHierarchy ih ON i.parent_id = ih.id
-                WHERE i.user_id = @UserId AND ih.type = 'folder' AND i.is_deleted = FALSE AND ih.level < @MaxDepth)
+                WHERE i.user_id = @UserId AND ih.type = 'folder' AND i.is_deleted = @IsDeleted AND ih.level < @MaxDepth)
 
                 SELECT id, name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted
                 FROM ItemsHierarchy 
@@ -42,37 +43,41 @@ namespace CloudCore.Services.Implementations
                 .ToListAsync();
         }
 
-        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir)
+        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false)
         {
             using var context = _dbContextFactory.CreateDbContext();
             var query = context.Items
-                .Where(i => i.UserId == userId && i.ParentId == parentId && i.IsDeleted == false)
-                .OrderBy(i => i.Type == "file" ? 1 : 0);
+               .Where(i => i.UserId == userId);
 
+            if (isTrashFolder == true)
+                query = query.Where(i => i.IsDeleted == true);
+            else
+                query = query.Where(i => i.IsDeleted == false && i.ParentId == parentId);
 
             bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = query.OrderBy(i => i.Type == "folder" ? 0 : 1);
+
             switch ((sortBy ?? "name").ToLowerInvariant())
             {
                 case "size":
                 case "filesize":
                     query = desc
-                        ? query.ThenByDescending(i => i.FileSize ?? 0)
-                        : query.ThenBy(i => i.FileSize ?? 0);
+                        ? query.OrderByDescending(i => i.FileSize ?? 0)
+                        : query.OrderBy(i => i.FileSize ?? 0);
                     break;
 
-                case "modified":
-                case "updatedat":
-                    
-                    //query = desc
-                    //    ? query.ThenByDescending(i => i.UpdatedAt)
-                    //    : query.ThenBy(i => i.UpdatedAt);
-                    break;
+                //case "modified":
+                //case "updatedat":
+                //    query = desc
+                //        ? query.OrderByDescending(i => i.UpdatedAt)
+                //        : query.OrderBy(i => i.UpdatedAt);
+                //    break;
 
                 case "name":
                 default:
                     query = desc
-                        ? query.ThenByDescending(i => i.Name)
-                        : query.ThenBy(i => i.Name);
+                        ? query.OrderByDescending(i => i.Name)
+                        : query.OrderBy(i => i.Name);
                     break;
             }
 

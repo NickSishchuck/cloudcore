@@ -13,9 +13,9 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user ID to filter items by</param>
         /// <param name="maxDepth">The maximal depth to search by</param>
         /// <returns>A list of all child items found recursively under the parent folder</returns>
-        Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000);
+        Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000, bool isDeleted = false);
 
 
-        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc");
+        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false);
     }
 }

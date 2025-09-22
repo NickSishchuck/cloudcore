@@ -25,6 +25,8 @@ namespace CloudCore.Services.Interfaces
         Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null);
 
         Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request);
+
+        Task<RestoreResult> RestoreItemAsync(int userId, int itemId);
     }
 
 }

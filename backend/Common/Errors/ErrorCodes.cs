@@ -27,6 +27,7 @@
         public const string UPLOADED_SUCCESSFULLY = "UPLOADED_SUCCESSFULLY";
         public const string CREATED_SUCCESSFULLY = "CREATED_SUCCESSFULLY";
         public const string DELETED_SUCCESSFULLY = "DELETED_SUCCESSFULLY";
+        public const string RESTORED_SUCCESSFULLY = "RESTORED_SUCCESSFULLY";
 
         public const string ACCESS_DENIED = "ACCESS_DENIED";
     }

@@ -221,7 +221,7 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            if(folderIds == null || folderIds.Count == 0)
+            if (folderIds == null || folderIds.Count == 0)
                 return BadRequest(ApiResponse.Error("No folders specified", "NO_FOLDERS_SPECIFIED"));
 
             var results = await _itemRepository.GetMultipleFolderSizesAsync(userId, folderIds);
@@ -308,6 +308,36 @@ namespace CloudCore.Controllers
                 folderName = result.FolderName,
                 timestamp = DateTime.UtcNow
             });
+        }
+
+        [HttpGet("trash")]
+        public async Task<ActionResult<IEnumerable<Item>>> GetDeletedItemsAsync([Required] int userId, int? parentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 30, [FromQuery] string? sortBy = "name", [FromQuery] string? sortDir = "asc")
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null) 
+                return authResult;
+
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 30;
+
+            var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, true);
+
+            return Ok(new PaginatedResponse<ItemResponse>
+            {
+                Data = result.Data.Select(i => i.ToResponseDto()),
+                Pagination = result.Pagination
+            });
+        }
+
+        [HttpPut("{itemId}/restore")]
+        public async Task<IActionResult> RestoreItemAsync(int userId, int itemId)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
+            var result = await _itemRepository.RestoreItemAsync(userId, itemId);
+            return Ok(result);
         }
     }
 }

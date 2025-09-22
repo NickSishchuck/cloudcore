@@ -256,6 +256,47 @@ namespace CloudCore.Services.Implementations
             };
         }
 
+        public async Task<RestoreResult> RestoreItemAsync(int userId, int itemId)
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+
+            var item = await context.Items
+                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == true)
+                .FirstOrDefaultAsync();
+
+            if (item == null)
+            {
+                return new RestoreResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "File not found"
+                };
+            }
+
+            if (item.Type == "file")
+            {
+                item.IsDeleted = false;
+            }
+            else if (item.Type == "folder")
+            {
+                item.IsDeleted = false;
+                var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
+                foreach (var childItem in childItems)
+                    childItem.IsDeleted = false;
+                context.UpdateRange(childItems);
+            }
+
+            await context.SaveChangesAsync();
+
+            return new RestoreResult
+            {
+                IsSuccess = true,
+                ErrorCode = ErrorCodes.RESTORED_SUCCESSFULLY,
+                Message = "Item restored successfully"
+            };
+        }
+
         public async Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request)
         {
             var nameValidation = _validationService.ValidateItemName(request.Name);

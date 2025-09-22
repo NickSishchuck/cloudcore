@@ -301,24 +301,37 @@
 
         /* List View */
         .file-list {
-            table-layout: fixed;            
+            table-layout: fixed;
             width: 100%;
             width: 100%;
             border-collapse: collapse;
         }
+
         .file-list th,
         .file-list td {
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;        
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
 
         .file-list th:nth-child(1),
-        .file-list td:nth-child(1) { width: 60%; }   /* Name */
+        .file-list td:nth-child(1) {
+            width: 60%;
+        }
+
+        /* Name */
         .file-list th:nth-child(2),
-        .file-list td:nth-child(2) { width: 20%; }   /* Modified */
+        .file-list td:nth-child(2) {
+            width: 20%;
+        }
+
+        /* Modified */
         .file-list th:nth-child(3),
-        .file-list td:nth-child(3) { width: 20%; }   /* Size */
+        .file-list td:nth-child(3) {
+            width: 20%;
+        }
+
+        /* Size */
 
         .file-list-header {
             background: #f8f9fa;
@@ -747,6 +760,13 @@
             padding: 16px;
             color: #5f6368;
         }
+        .file-list-row.trash-mode {
+    cursor: default !important;
+}
+
+.file-list-row.trash-mode:hover {
+    background-color: transparent !important;
+}
 
         .infinite-spinner {
             width: 22px;
@@ -911,12 +931,17 @@
                 delete: 'Delete',
                 deleteFile: 'Delete file',
                 deleteFolder: 'Delete folder',
+                restore: 'Restore',
+                deletePermanently: 'Delete permanently',
 
                 // Messages
                 loading: 'Loading...',
                 calculating: 'Calculating...',
                 emptyFolder: 'This folder is empty',
                 uploadGetStarted: 'Upload files or create folders to get started',
+                restoring: 'Restoring',
+                restored: 'restored',
+                
 
                 // Notifications
                 downloading: 'Downloading',
@@ -959,6 +984,7 @@
                 networkErrorUploading: 'Network error uploading',
                 noItemsDropped: 'No items dropped',
                 failedToLoadFiles: 'Failed to load files',
+                restoringError: 'Restoring error',
 
                 // Other
                 creatingArchive: 'Creating archive for',
@@ -992,12 +1018,16 @@
                 delete: 'Видалити',
                 deleteFile: 'Видалити файл',
                 deleteFolder: 'Видалити папку',
+                restore: 'Відновити',
+                deletePermanently: 'Видалити назавжди',
+                restoring: 'Відновлення',
 
                 // Messages
                 loading: 'Завантаження...',
                 calculating: 'Обчислення...',
                 emptyFolder: 'Ця папка порожня',
                 uploadGetStarted: 'Завантажте файли або створіть папки для початку роботи',
+                restored: 'відновлено',
 
                 // Notifications
                 downloading: 'Завантажується',
@@ -1040,6 +1070,7 @@
                 networkErrorUploading: 'Помилка мережі при завантаженні',
                 noItemsDropped: 'Елементи не перетягнуто',
                 failedToLoadFiles: 'Помилка завантаження файлів',
+                restoringError: 'Помилка відновлення',
 
                 // Other
                 creatingArchive: 'Створення архіву для',
@@ -1138,6 +1169,7 @@
                 this.currentUser = null;
                 this.currentContextItem = null;
                 this.folderSizeCache = new Map();
+                this.isTrashView = false;
 
                 this.currentPage = 1;
                 this.pageSize = 30;
@@ -1177,7 +1209,7 @@
                 if (loader) loader.style.display = 'none';
             }
 
-            async loadFiles(folderId = null, resetPagination = true) {
+            async loadFiles(folderId = null, resetPagination = true, isTrashView = false) {
                 console.log('loadFiles:', { folderId, resetPagination, currentPage: this.currentPage });
                 if (resetPagination) {
                     this.currentPage = 1;
@@ -1190,17 +1222,28 @@
                 else this.showInfiniteLoader();
 
                 try {
-                    const base = `http://localhost:5000/user/${this.currentUserId}/mydrive`;
 
+                    this.isTrashView = isTrashView;
+                    let url;
                     const params = new URLSearchParams({
                         page: String(this.currentPage),
                         pageSize: String(this.pageSize),
-                        sortBy: this.sortBy,       // name | modified | size
-                        sortDir: this.sortDir      // asc | desc
+                        sortBy: this.sortBy, // name, modified, size
+                        sortDir: this.sortDir // asc, desc
                     });
-                    if (folderId != null) params.set('parentId', String(folderId));
-                    const url = `${base}?${params.toString()}`;
-                    
+
+                    if (isTrashView) {
+                        // Загрузка удаленных файлов
+                        url = `http://localhost:5000/user/${this.currentUserId}/mydrive/trash?${params.toString()}`;
+                    } else {
+                        // Обычная загрузка файлов
+                        const base = `http://localhost:5000/user/${this.currentUserId}/mydrive`;
+                        if (folderId !== null) {
+                            params.set('parentId', String(folderId));
+                        }
+                        url = `${base}?${params.toString()}`;
+                    }
+
 
 
                     console.log('GET:', url);
@@ -1279,7 +1322,7 @@
                     this.isLoadingMore = false;
                 }
             }
-            
+
 
 
             initializeAuth() {
@@ -1333,6 +1376,7 @@
                 document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
 
                 document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
+
 
                 document.addEventListener('click', (e) => this.handleDocumentClick(e));
                 // Close context menu on click anywhere
@@ -1437,7 +1481,7 @@
                 }
             }
 
-            
+
 
 
             updateSortIndicators() {
@@ -1492,7 +1536,7 @@
 
                 itemsToRender.forEach(item => {
                     const row = document.createElement('tr');
-                    row.className = 'file-list-row';
+                    row.className = `file-list-row ${this.isTrashView ? 'trash-mode' : ''}`;
                     row.dataset.itemId = item.id;
                     row.dataset.itemType = item.type;
 
@@ -1653,6 +1697,9 @@
             }
 
             handleFileDoubleClick(e, item) {
+                if (this.isTrashView) {
+                return;
+            }
                 if (item.type === 'folder') {
                     this.navigateToFolder(item);
                 } else {
@@ -1680,61 +1727,72 @@
 
                 const menu = document.getElementById('contextMenu');
 
-                // Create context menu content based on item type
-                if (item.type === 'folder') {
+                if (this.isTrashView) {
                     menu.innerHTML = `
-            <div class="context-menu-item" data-action="download-folder">
-                <span class="context-menu-icon">📦</span>
-                <span>${t('downloadFolder')}</span>
+            <div class="context-menu-item" data-action="restore">
+                <span class="context-menu-icon">🔄</span>
+                <span>${t('restore')}</span>
             </div>
             <div class="context-menu-separator"></div>
-            <div class="context-menu-item" data-action="rename-folder">
-                <span class="context-menu-icon">✏️</span>
-                <span>${t('rename')}</span>
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item danger" data-action="delete-folder">
-                <span class="context-menu-icon">🗑️</span>
-                <span>${t('deleteFolder')}</span>
+            <div class="context-menu-item danger" data-action="delete-permanently">
+                <span class="context-menu-icon">❌</span>
+                <span>${t('deletePermanently')}</span>
             </div>
         `;
                 } else {
-                    menu.innerHTML = `
-            <div class="context-menu-item" data-action="download-file">
-                <span class="context-menu-icon">⬇️</span>
-                <span>${t('downloadFile')}</span>
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item" data-action="rename-file">
-                <span class="context-menu-icon">✏️</span>
-                <span>${t('rename')}</span>
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item danger" data-action="delete-file">
-                <span class="context-menu-icon">🗑️</span>
-                <span>${t('delete')}</span>
-            </div>
-        `;
+                    if (item.type === 'folder') {
+                        menu.innerHTML = `
+                <div class="context-menu-item" data-action="download-folder">
+                    <span class="context-menu-icon">⬇️</span>
+                    <span>${t('downloadFolder')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="rename-folder">
+                    <span class="context-menu-icon">✏️</span>
+                    <span>${t('rename')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item danger" data-action="delete-folder">
+                    <span class="context-menu-icon">🗑️</span>
+                    <span>${t('deleteFolder')}</span>
+                </div>
+            `;
+                    } else {
+                        menu.innerHTML = `
+                <div class="context-menu-item" data-action="download-file">
+                    <span class="context-menu-icon">⬇️</span>
+                    <span>${t('downloadFile')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="rename-file">
+                    <span class="context-menu-icon">✏️</span>
+                    <span>${t('rename')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item danger" data-action="delete-file">
+                    <span class="context-menu-icon">🗑️</span>
+                    <span>${t('delete')}</span>
+                </div>
+            `;
+                    }
                 }
 
                 updateUILanguage();
-                // Add event listeners to context menu items
+
                 menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
                     menuItem.addEventListener('click', (e) => this.handleContextMenuClick(e, item));
                 });
 
-                // Position and show menu
                 menu.style.display = 'block';
-                menu.style.left = e.pageX + 'px';
-                menu.style.top = e.pageY + 'px';
+                menu.style.left = `${e.pageX}px`;
+                menu.style.top = `${e.pageY}px`;
 
-                // Ensure menu stays within viewport
                 const rect = menu.getBoundingClientRect();
                 if (rect.right > window.innerWidth) {
-                    menu.style.left = (e.pageX - rect.width) + 'px';
+                    menu.style.left = `${e.pageX - rect.width}px`;
                 }
                 if (rect.bottom > window.innerHeight) {
-                    menu.style.top = (e.pageY - rect.height) + 'px';
+                    menu.style.top = `${e.pageY - rect.height}px`;
                 }
             }
 
@@ -1759,9 +1817,56 @@
                     case 'delete-folder':
                         this.deleteFolder(item);
                         break;
+                    case 'restore':
+                        this.restoreItem(item);
+                        break;
                 }
 
                 this.hideContextMenu();
+            }
+            async restoreItem(item) {
+                try {
+                    this.showNotification(`${t('restoring')} ${item.name}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${item.id}/restore`;
+
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        this.logout();
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.showNotification(`✅ ${item.name} ${t('restored')}`, 'success');
+                        this.removeItemFromCurrentView(item.id);
+                    } else {
+                        this.showNotification(`❌ ${t('restoringError')}: ${result.message}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error restoring item:', error);
+                    this.showNotification(`❌ ${t('restoringError')}: ${item.name}`, 'error');
+                }
+            }
+            removeItemFromCurrentView(itemId) {
+                this.allLoadedItems = this.allLoadedItems.filter(item => item.id !== itemId);
+                
+                const row = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (row) {
+                    row.remove();
+                }
+                
+                if (this.allLoadedItems.length === 0) {
+                    this.showEmptyState();
+                }
             }
 
             async renameItem(item) {
@@ -1929,11 +2034,11 @@
 
                     const result = await response.json();
 
-                    if (result.success) {
+                    if (result.isSuccess) {
                         this.showNotification(`✅ ${file.name} ${t('deleted')}`, 'success');
                         console.log('Deleted file:', file.name);
 
-                        await this.loadFiles(this.currentFolderId);
+                         await this.loadFiles(this.currentFolderId);
                     } else {
                         this.showNotification(`❌ ${result.message || t('failedDelete')}`, 'error');
                     }
@@ -1963,7 +2068,7 @@
 
                     const result = await response.json();
 
-                    if (result.success) {
+                    if (result.isSuccess) {
                         this.showNotification(`✅ ${folder.name} ${t('deleted')}`, 'success');
                         console.log('Deleted folder:', folder.name);
 
@@ -1999,6 +2104,14 @@
                 const homeBreadcrumb = document.createElement('a');
                 homeBreadcrumb.className = 'breadcrumb';
                 homeBreadcrumb.href = '#';
+
+                if (this.isTrashView) {
+                homeBreadcrumb.textContent = t('trash');
+                homeBreadcrumb.style.cursor = 'default';
+                homeBreadcrumb.style.pointerEvents = 'none';
+                breadcrumbs.appendChild(homeBreadcrumb);
+                }
+                else{
                 homeBreadcrumb.textContent = t('myDrive');;
                 homeBreadcrumb.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -2026,6 +2139,7 @@
 
                     breadcrumbs.appendChild(breadcrumb);
                 });
+            }
             }
 
             navigateToRoot() {
@@ -2741,8 +2855,15 @@
                 const section = e.currentTarget.dataset.section;
                 if (section === 'mydrive') {
                     this.navigateToRoot();
-                } else {
-                    console.log('Section not implemented:', section);
+                }
+                else if (section === 'sharedwithme') {
+                    this.showNotification(`${t('notImplemented')} Shared with Me`, 'info');
+                }
+                else if (section === 'recent') {
+                    this.showNotification(`${t('notImplemented')} Recent`, 'info');
+                }
+                else if (section === 'trash') {
+                    this.loadFiles(null, true, true);
                 }
             }
 
