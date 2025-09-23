@@ -17,11 +17,6 @@ namespace CloudCore.Services.Interfaces
         /// </exception>
         string GetUserStoragePath(int userId);
 
-        /// <summary>
-        /// Builds the path for the specified user.
-        /// </summary>
-        /// <param name="userId">The user identifier.</param>
-        /// <returns>The user directory path.</returns>
         string GetFileFullPath(int userId, string relativePath);
 
         /// <summary>
@@ -30,7 +25,7 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="folder">The folder item to build the path for</param>
         /// <returns>The complete file system path to the folder</returns>
-        string GetFolderPathAsync(Item folder);
+        Task<string> GetFolderPathAsync(Item folder);
 
         /// <summary>
         /// Removes the last occurrence of a specified string from a folder path.

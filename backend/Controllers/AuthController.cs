@@ -1,8 +1,10 @@
 
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 
 namespace CloudCore.Controllers;
 
@@ -11,10 +13,12 @@ namespace CloudCore.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -25,11 +29,15 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
+        _logger.LogInformation($"Login attempt for user: {request.Username}.");
         var result = await _authService.LoginAsync(request);
 
         if (result == null)
+        {
+            _logger.LogWarning($"Failed login attempt for user: {request.Username}.");
             return Unauthorized(ApiResponse.Error("Invalid username or password", "INVALID_CREDENTIALS"));
-
+        }
+        _logger.LogInformation($"User {request.Username} (ID: {result.UserId}) logged in successfully.");
         return Ok(result);
     }
 
@@ -41,11 +49,15 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
+        _logger.LogInformation($"Register attempt for user: {request.Username}, (Email: {request.Email}).");
         var result = await _authService.RegisterAsync(request);
 
         if (result == null)
-            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS"));
-
+        {
+            _logger.LogWarning($"Failed register attempt for user: {request.Username}, (Email: {request.Email})");
+            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS")); 
+        }
+        _logger.LogInformation($"User {request.Username} (ID: {result.UserId}) registered successfully.");
         return Ok(result);
     }
 }

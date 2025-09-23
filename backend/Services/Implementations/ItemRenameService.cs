@@ -58,7 +58,7 @@ namespace CloudCore.Services.Implementations
             var childItems = await _itemDataService.GetAllChildItemsAsync(parent.Id, parent.UserId);
 
             // Get old path
-            var oldFolderPath = _fileStorageService.GetFolderPathAsync(parent);
+            var oldFolderPath = await _fileStorageService.GetFolderPathAsync(parent);
 
             // Get new path
             var newFolderPath = _fileStorageService.GetNewFolderPath(oldFolderPath, parent.Name, newName);

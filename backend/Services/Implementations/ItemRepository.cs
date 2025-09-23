@@ -413,7 +413,7 @@ namespace CloudCore.Services.Implementations
                 await context.SaveChangesAsync();
                 
 
-                string folderPath = _itemStorageService.GetFolderPathAsync(folder);
+                string folderPath = await _itemStorageService.GetFolderPathAsync(folder);
                 Directory.CreateDirectory(folderPath);
 
                 await transaction.CommitAsync();

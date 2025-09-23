@@ -6,7 +6,9 @@ using System.Text;
 using CloudCore.Middleware;
 using CloudCore.Services.Implementations;
 using CloudCore.Data.Context;
-
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
 
 namespace CloudCore
 {
@@ -19,91 +21,151 @@ namespace CloudCore
         /// <returns></returns>
         public static async Task Main(string[] args)
         {
-            // Download .env configuration file
-            DotNetEnv.Env.Load("../.env");
+           
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+                .WriteTo.Console()//new CompactJsonFormatter())
+                .WriteTo.File(
+                    //formatter: new CompactJsonFormatter(),
+                    "logs/cloudCore.txt",
+                    rollingInterval: RollingInterval.Day,
+                    fileSizeLimitBytes: 10 * 1024 * 1024, 
+                    rollOnFileSizeLimit: true,
+                    retainedFileCountLimit: 31
+                    )
+                //.Enrich.FromLogContext()
+                .CreateLogger();
 
-            // Load db connection string
-            var host = Environment.GetEnvironmentVariable("DB_HOST");
-            var port = Environment.GetEnvironmentVariable("DB_PORT");
-            var database = Environment.GetEnvironmentVariable("DB_NAME");
-            var user = Environment.GetEnvironmentVariable("DB_USER");
-            var password = Environment.GetEnvironmentVariable("DB_PASSWORD");
+            try
+            {
 
-            var connectionString = $"Server={host};Port={port};Database={database};Uid={user};Pwd={password};";
+                Log.Information("Starting CloudCore application");
 
-            // Create web
-            var builder = WebApplication.CreateBuilder(args);
+                // Download .env configuration file
+                DotNetEnv.Env.Load("../.env");
 
-            // Add db context (in case of multiple use of context, context factory provided)
-            builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+                // Load db connection string
+                var host = Environment.GetEnvironmentVariable("DB_HOST");
+                var port = Environment.GetEnvironmentVariable("DB_PORT");
+                var database = Environment.GetEnvironmentVariable("DB_NAME");
+                var user = Environment.GetEnvironmentVariable("DB_USER");
+                var password = Environment.GetEnvironmentVariable("DB_PASSWORD");
 
-            // Add services
-            builder.Services.AddScoped<IItemStorageService, ItemStorageService>();
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IZipArchiveService, ZipArchiveService>();
-            builder.Services.AddScoped<IItemRenameService, ItemRenameService>();
-            builder.Services.AddScoped<IValidationService, ValidationService>();
-            builder.Services.AddScoped<IItemRepository, ItemRepository>();
-            builder.Services.AddScoped<IItemDataService, ItemDataService>();
-
-            // Add JWT Authentication
-            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+                if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(database))
                 {
-                    options.TokenValidationParameters = new TokenValidationParameters
+                    Log.Error("Required environment variables are missing. DB_HOST: {Host}, DB_NAME: {Database}", host, database);
+                    throw new InvalidOperationException("Database connection parameters are not configured");
+                }
+
+                Log.Information("Database connection configured for {Host}:{Port}/{Database}", host, port, database);
+
+                var connectionString = $"Server={host};Port={port};Database={database};Uid={user};Pwd={password};";
+
+
+
+                // Create web
+                var builder = WebApplication.CreateBuilder(args);
+
+                builder.Host.UseSerilog();
+
+                // Add db context (in case of multiple use of context, context factory provided)
+                builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+                // Add services
+                builder.Services.AddScoped<IItemStorageService, ItemStorageService>();
+                builder.Services.AddScoped<IAuthService, AuthService>();
+                builder.Services.AddScoped<IZipArchiveService, ZipArchiveService>();
+                builder.Services.AddScoped<IItemRenameService, ItemRenameService>();
+                builder.Services.AddScoped<IValidationService, ValidationService>();
+                builder.Services.AddScoped<IItemRepository, ItemRepository>();
+                builder.Services.AddScoped<IItemDataService, ItemDataService>();
+                builder.Services.AddScoped<ITrashCleanupService, TrashCleanupService>();
+
+                // Add JWT Authentication
+                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+                builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                    .AddJwtBearer(options =>
                     {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = "CloudCore",
-                        ValidAudience = "CloudCore",
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-                    };
-                });
+                        options.TokenValidationParameters = new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
+                            ValidateAudience = true,
+                            ValidateLifetime = true,
+                            ValidateIssuerSigningKey = true,
+                            ValidIssuer = "CloudCore",
+                            ValidAudience = "CloudCore",
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                        };
+                    });
 
-            // Add authorization
-            builder.Services.AddAuthorization();
+                // Add authorization
+                builder.Services.AddAuthorization();
 
-            // Add controllers and endpoints
-            builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
+                // Add controllers and endpoints
+                builder.Services.AddControllers();
+                builder.Services.AddEndpointsApiExplorer();
 
-            builder.Services.AddSwaggerGen();
+                builder.Services.AddSwaggerGen();
 
-            // Add all policy !!!
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll", policy =>
+                // Add all policy !!!
+                builder.Services.AddCors(options =>
                 {
-                    policy.AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader();
+                    options.AddPolicy("AllowAll", policy =>
+                    {
+                        policy.AllowAnyOrigin()
+                            .AllowAnyMethod()
+                            .AllowAnyHeader();
+                    });
                 });
-            });
 
-            var app = builder.Build();
-            app.UseMiddleware<GlobalErrorHandler>();
+                var app = builder.Build();
+                //app.UseSerilogRequestLogging(options =>
+                //{
+                //    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+                //    {
+                //        diagnosticContext.Set("agent", httpContext.Request.Headers["User-Agent"].FirstOrDefault());
+                //        diagnosticContext.Set("client", httpContext.Connection.RemoteIpAddress?.ToString());
+                //        diagnosticContext.Set("user", httpContext.User?.Identity?.Name);
+                //        diagnosticContext.Set("request", $"{httpContext.Request.Method} {httpContext.Request.Path}");
+                //        diagnosticContext.Set("referer", httpContext.Request.Headers["Referer"].FirstOrDefault());
+                //        diagnosticContext.Set("size", httpContext.Response.ContentLength);
+                //        diagnosticContext.Set("status", httpContext.Response.StatusCode);
+                //    };
+                //});
+                app.UseMiddleware<GlobalErrorHandler>();
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                // Configure the HTTP request pipeline.
+                if (app.Environment.IsDevelopment())
+                {
+                    app.UseSwagger();
+                    app.UseSwaggerUI();
+                }
+
+
+                // activate
+                app.UseCors("AllowAll");
+                app.UseRouting();
+
+                // Add authentication & authorization middleware
+                app.UseAuthentication();
+                app.UseAuthorization();
+
+                app.MapControllers();
+
+                Log.Information("Starting server on http://0.0.0.0:5000");
+
+                app.Run("http://0.0.0.0:5000");
             }
-
-            // activate
-            app.UseCors("AllowAll");
-            app.UseRouting();
-
-            // Add authentication & authorization middleware
-            app.UseAuthentication();
-            app.UseAuthorization();
-
-            app.MapControllers();
-
-            app.Run("http://0.0.0.0:5000");
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Application failed to start");
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }

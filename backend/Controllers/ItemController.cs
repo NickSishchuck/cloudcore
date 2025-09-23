@@ -18,12 +18,14 @@ namespace CloudCore.Controllers
         private readonly IValidationService _validationService;
         private readonly IItemRepository _itemRepository;
         private readonly IItemDataService _itemDataService;
+        private readonly ILogger<ItemController> _logger;
 
-        public ItemController(IValidationService validationService, IItemRepository itemRepository, IItemDataService itemDataService)
+        public ItemController(IValidationService validationService, IItemRepository itemRepository, IItemDataService itemDataService, ILogger<ItemController> logger)
         {
             _validationService = validationService;
             _itemRepository = itemRepository;
             _itemDataService = itemDataService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -39,10 +41,14 @@ namespace CloudCore.Controllers
         {
             var currentUserId = GetCurrentUserId();
 
+            _logger.LogInformation($"Verifying user authorization. Target User ID: {userId}, Requester User ID: {currentUserId}.");
             var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
             if (!authValidation.IsValid)
+            {
+                _logger.LogWarning($"User authorization failed. Error: {authValidation.ErrorMessage}, Code: {authValidation.ErrorCode}, Target User ID: {userId}, Requester User ID: {currentUserId}.");
                 return StatusCode(403, ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode));
-
+            }
+            _logger.LogInformation($"User authorization successful for Target User ID: {userId}.");
             return null;
         }
         /// <summary>
@@ -58,11 +64,14 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("Fetching items for User ID: {UserId}, Parent ID: {ParentId}, Page: {Page}, PageSize: {PageSize}.", userId, parentId, page, pageSize);
+
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
             var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir);
 
+            _logger.LogInformation("Successfully fetched {ItemCount} items for User ID: {UserId}.", result.Data.Count(), userId);
             return Ok(new PaginatedResponse<ItemResponse>
             {
                 Data = result.Data.Select(i => i.ToResponseDto()),
@@ -96,7 +105,10 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} initiated download for Folder ID: {FolderId}.", userId, folderId);
             var (archiveStream, fileName) = await _itemRepository.DownloadFolderAsync(userId, folderId);
+
+            _logger.LogInformation("Successfully created archive '{FileName}' for User ID: {UserId}.", fileName, userId);
             return File(archiveStream, "application/zip", fileName);
         }
 
@@ -113,7 +125,11 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} initiated download for File ID: {FileId}.", userId, fileId);
+
             var fileResult = await _itemRepository.DownloadFileAsync(userId, fileId);
+
+            _logger.LogInformation("Serving file '{FileName}' for User ID: {UserId}.", fileResult.FileName, userId);
 
             return File(fileResult.Stream, fileResult.MimeType, fileResult.FileName, enableRangeProcessing: true);
         }
@@ -140,7 +156,10 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} initiated download for {ItemCount} items.", userId, itemsId.Count);
             var (archiveStream, fileName) = await _itemRepository.DownloadMultipleItemsAsZipAsync(userId, itemsId);
+            _logger.LogInformation("Successfully created archive '{FileName}' with multiple items for User ID: {UserId}.", fileName, userId);
+
 
             return File(archiveStream, "application/zip", fileName);
         }
@@ -165,10 +184,12 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} attempting to rename Item ID: {ItemId} to '{NewName}'.", userId, itemId, newName);
             var result = await _itemRepository.RenameItemAsync(userId, itemId, newName);
 
             if (!result.IsSuccess)
             {
+                _logger.LogWarning("Failed to rename Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
                 return result.ErrorCode switch
                 {
                     "ITEM_NOT_FOUND" => NotFound(ApiResponse.Error(result.Message, result.ErrorCode)),
@@ -176,6 +197,8 @@ namespace CloudCore.Controllers
                     _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
                 };
             }
+
+            _logger.LogInformation("Successfully renamed Item ID: {ItemId} to '{NewName}' for User ID: {UserId}.", itemId, newName, userId);
 
             return Ok(new
             {
@@ -236,7 +259,11 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} attempting to delete Item ID: {ItemId}.", userId, itemId);
+
             var result = await _itemRepository.DeleteItemAsync(userId, itemId);
+            _logger.LogInformation("Item ID: {ItemId} successfully moved to trash for User ID: {UserId}.", itemId, userId);
+
             return Ok(result);
 
         }
@@ -248,9 +275,12 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} attempting to upload file '{FileName}' to Parent ID: {ParentId}.", userId, file.FileName, parentId);
+
             var result = await _itemRepository.UploadFileAsync(userId, file, parentId);
             if (!result.IsSuccess)
             {
+                _logger.LogWarning("Failed to upload file '{FileName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", file.FileName, userId, result.Message, result.ErrorCode);
                 return result.ErrorCode switch
                 {
                     "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
@@ -258,6 +288,8 @@ namespace CloudCore.Controllers
                     _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
                 };
             }
+
+            _logger.LogInformation("User {UserId} successfully uploaded file '{FileName}' with new Item ID: {ItemId}.", userId, file.FileName, result.ItemId);
 
             return Ok(new
             {
@@ -290,9 +322,13 @@ namespace CloudCore.Controllers
             var authResult = VerifyUser(userId);
             if (authResult != null) return authResult;
 
+
+            _logger.LogInformation("User {UserId} attempting to create folder '{FolderName}' in Parent ID: {ParentId}.", userId, request.Name, request.ParentId);
+
             var result = await _itemRepository.CreateFolderAsync(userId, request);
             if (!result.IsSuccess)
             {
+                _logger.LogWarning("Failed to create folder '{FolderName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", request.Name, userId, result.Message, result.ErrorCode);
                 return result.ErrorCode switch
                 {
                     "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
@@ -300,6 +336,9 @@ namespace CloudCore.Controllers
                     _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
                 };
             }
+
+            _logger.LogInformation("User {UserId} successfully created folder '{FolderName}' with new Folder ID: {FolderId}.", userId, request.Name, result.FolderId);
+
             return Ok(new
             {
                 message = result.Message,
@@ -317,10 +356,14 @@ namespace CloudCore.Controllers
             if (authResult != null) 
                 return authResult;
 
+            _logger.LogInformation("Fetching trash items for User ID: {UserId}, Page: {Page}, PageSize: {PageSize}.", userId, page, pageSize);
+
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
             var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, true);
+
+            _logger.LogInformation("Successfully fetched {ItemCount} trash items for User ID: {UserId}.", result.Data.Count(), userId);
 
             return Ok(new PaginatedResponse<ItemResponse>
             {
@@ -336,7 +379,14 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
+            _logger.LogInformation("User {UserId} attempting to restore Item ID: {ItemId}.", userId, itemId);
             var result = await _itemRepository.RestoreItemAsync(userId, itemId);
+
+            if (!result.IsSuccess)
+                _logger.LogWarning("Failed to restore Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
+            else
+                _logger.LogInformation("Item ID: {ItemId} successfully restored for User ID: {UserId}.", itemId, userId);
+
             return Ok(result);
         }
     }

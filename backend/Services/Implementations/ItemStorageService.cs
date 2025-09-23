@@ -36,7 +36,7 @@ namespace CloudCore.Services.Implementations
             return Path.Combine(_basePath, "users", $"user{userId}");
         }
 
-        public string GetFolderPathAsync(Item folder)
+        public async Task<string> GetFolderPathAsync(Item folder)
         {
 
             var pathParts = new List<string>();
@@ -50,10 +50,10 @@ namespace CloudCore.Services.Implementations
                 if (current.ParentId == null)
                     break;
 
-                current = context.Items
+                current = await context.Items
                     .AsNoTracking()
                     .Where(i => i.Id == current.ParentId)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
             }
             pathParts.Reverse();
             return Path.Combine(GetUserStoragePath(folder.UserId), Path.Combine(pathParts.ToArray()));
@@ -109,7 +109,7 @@ namespace CloudCore.Services.Implementations
                     .FirstOrDefaultAsync();
 
                 if (parentFolder != null)
-                    targetDirectory = GetFolderPathAsync(parentFolder);
+                    targetDirectory = await GetFolderPathAsync(parentFolder);
                 else
                     throw new DirectoryNotFoundException();
             }
