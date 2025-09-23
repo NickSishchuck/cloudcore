@@ -41,7 +41,7 @@ namespace CloudCore
             builder.Services.AddScoped<IItemStorageService, ItemStorageService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IZipArchiveService, ZipArchiveService>();
-            builder.Services.AddScoped<IFileRenameService, FileRenameService>();
+            builder.Services.AddScoped<IItemRenameService, ItemRenameService>();
             builder.Services.AddScoped<IValidationService, ValidationService>();
             builder.Services.AddScoped<IItemRepository, ItemRepository>();
             builder.Services.AddScoped<IItemDataService, ItemDataService>();

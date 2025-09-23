@@ -36,7 +36,7 @@ namespace CloudCore.Services.Implementations
             return Path.Combine(_basePath, "users", $"user{userId}");
         }
 
-        public string GetFolderPath(Item folder)
+        public string GetFolderPathAsync(Item folder)
         {
 
             var pathParts = new List<string>();
@@ -51,6 +51,7 @@ namespace CloudCore.Services.Implementations
                     break;
 
                 current = context.Items
+                    .AsNoTracking()
                     .Where(i => i.Id == current.ParentId)
                     .FirstOrDefault();
             }
@@ -103,11 +104,12 @@ namespace CloudCore.Services.Implementations
             {
                 using var context = _dbContextFactory.CreateDbContext();
                 var parentFolder = await context.Items
+                    .AsNoTracking()
                     .Where(i => i.Id == parentId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                     .FirstOrDefaultAsync();
 
                 if (parentFolder != null)
-                    targetDirectory = GetFolderPath(parentFolder);
+                    targetDirectory = GetFolderPathAsync(parentFolder);
                 else
                     throw new DirectoryNotFoundException();
             }

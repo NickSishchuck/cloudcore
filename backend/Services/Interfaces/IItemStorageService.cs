@@ -30,7 +30,7 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="folder">The folder item to build the path for</param>
         /// <returns>The complete file system path to the folder</returns>
-        string GetFolderPath(Item folder);
+        string GetFolderPathAsync(Item folder);
 
         /// <summary>
         /// Removes the last occurrence of a specified string from a folder path.

@@ -117,6 +117,7 @@ namespace CloudCore.Services.Implementations
         public async Task<ValidationResult> ValidateItemExistsAsync(CloudCoreDbContext context, int itemId, int userId, string itemType = null)
         {
             var query = context.Items
+                .AsNoTracking()
                 .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false);
 
             if (!string.IsNullOrEmpty(itemType))
@@ -147,6 +148,7 @@ namespace CloudCore.Services.Implementations
                 return ValidationResult.Failure("Too many items selected (max 100)", ErrorCodes.TOO_MANY_FILES);
 
             var existingItems = await context.Items
+                .AsNoTracking()
                 .Where(i => itemIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
                 .CountAsync();
 

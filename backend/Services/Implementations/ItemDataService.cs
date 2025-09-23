@@ -40,6 +40,7 @@ namespace CloudCore.Services.Implementations
 
             return await context.Items
                 .FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -47,10 +48,13 @@ namespace CloudCore.Services.Implementations
         {
             using var context = _dbContextFactory.CreateDbContext();
             var query = context.Items
-               .Where(i => i.UserId == userId);
+                .AsNoTracking()
+                .Where(i => i.UserId == userId);
 
             if (isTrashFolder == true)
-                query = query.Where(i => i.IsDeleted == true);
+                query = query.Where(i => i.IsDeleted == true && (i.ParentId == null || context.Items
+                    .AsNoTracking()
+                    .Any(p => p.Id == i.ParentId && p.IsDeleted == false)));
             else
                 query = query.Where(i => i.IsDeleted == false && i.ParentId == parentId);
 
@@ -66,12 +70,12 @@ namespace CloudCore.Services.Implementations
                         : query.OrderBy(i => i.FileSize ?? 0);
                     break;
 
-                //case "modified":
-                //case "updatedat":
-                //    query = desc
-                //        ? query.OrderByDescending(i => i.UpdatedAt)
-                //        : query.OrderBy(i => i.UpdatedAt);
-                //    break;
+                case "modified":
+                case "updatedat":
+                    query = desc
+                        ? query.OrderByDescending(i => i.UpdatedAt)
+                        : query.OrderBy(i => i.UpdatedAt);
+                    break;
 
                 case "name":
                 default:
@@ -102,6 +106,17 @@ namespace CloudCore.Services.Implementations
                     HasPrevious = page > 1
                 }
             };
+        }
+
+        public async Task<Item?> GetItemAsync(int userId, int itemtId)
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+            var item = await context.Items
+                .AsNoTracking()
+                .Where(i => i.Id == itemtId && i.UserId == userId)
+                .FirstOrDefaultAsync();
+            
+            return item;
         }
     }
 }

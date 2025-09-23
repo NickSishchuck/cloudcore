@@ -100,6 +100,7 @@ namespace CloudCore.Services.Implementations
 
             // Get all items in the folder
             var items = await _context.Items
+                .AsNoTracking()
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
                 .ToListAsync();
 
@@ -173,8 +174,9 @@ namespace CloudCore.Services.Implementations
             else
             {
                 var items = await _context.Items
-                .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
-                .ToListAsync();
+                    .AsNoTracking()
+                    .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
+                    .ToListAsync();
 
                 long totalSize = 0;
                 int fileCount = 0;

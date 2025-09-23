@@ -15,6 +15,7 @@
         public const string FOLDER_NOT_FOUND = "FOLDER_NOT_FOUND";
         public const string UNSUPPORTED_TYPE = "UNSUPPORTED_TYPE";
         public const string NO_ITEMS = "NO_ITEMS";
+        public const string PARENT_FOLDER_DELETED = "PARENT_FOLDER_DELETED";
 
 
 

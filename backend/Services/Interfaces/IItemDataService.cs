@@ -17,5 +17,7 @@ namespace CloudCore.Services.Interfaces
 
 
         Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false);
+
+        Task<Item?> GetItemAsync(int userId, int itemtId);
     }
 }

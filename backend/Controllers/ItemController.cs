@@ -214,20 +214,20 @@ namespace CloudCore.Controllers
         /// <param name="userId">User identifier from route</param>
         /// <param name="folderIds">List of folder IDs to calculate sizes for</param>
         /// <returns>Dictionary of folder sizes</returns>
-        [HttpPost("sizes")]
-        public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
-        {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+        //[HttpPost("sizes")]
+        //public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
+        //{
+        //    var authResult = VerifyUser(userId);
+        //    if (authResult != null)
+        //        return authResult;
 
-            if (folderIds == null || folderIds.Count == 0)
-                return BadRequest(ApiResponse.Error("No folders specified", "NO_FOLDERS_SPECIFIED"));
+        //    if (folderIds == null || folderIds.Count == 0)
+        //        return BadRequest(ApiResponse.Error("No folders specified", "NO_FOLDERS_SPECIFIED"));
 
-            var results = await _itemRepository.GetMultipleFolderSizesAsync(userId, folderIds);
-            return Ok(results);
+        //    var results = await _itemRepository.GetMultipleFolderSizesAsync(userId, folderIds);
+        //    return Ok(results);
 
-        }
+        //}
 
         [HttpDelete("{itemId}/delete")]
         public async Task<IActionResult> DeleteItemAsync(int userId, int itemId)

@@ -15,9 +15,9 @@ namespace CloudCore.Services.Implementations
         private readonly IZipArchiveService _zipArchiveService;
         private readonly IItemStorageService _itemStorageService;
         private readonly IValidationService _validationService;
-        private readonly IFileRenameService _fileRenameService;
+        private readonly IItemRenameService _fileRenameService;
         private readonly IItemDataService _itemDataService;
-        public ItemRepository(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IZipArchiveService zipArchiveService, IItemStorageService itemStorageService, IValidationService validationService, IFileRenameService fileRenameService, IItemDataService itemDataService) 
+        public ItemRepository(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IZipArchiveService zipArchiveService, IItemStorageService itemStorageService, IValidationService validationService, IItemRenameService fileRenameService, IItemDataService itemDataService)
         {
             _dbContextFactory = dbContextFactory;
             _zipArchiveService = zipArchiveService;
@@ -26,11 +26,12 @@ namespace CloudCore.Services.Implementations
             _fileRenameService = fileRenameService;
             _itemDataService = itemDataService;
         }
-        
+
         public async Task<(Stream archiveStream, string fileName)> DownloadFolderAsync(int userId, int folderId)
         {
             using var context = _dbContextFactory.CreateDbContext();
             var folder = await context.Items
+                .AsNoTracking()
                 .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                 .FirstOrDefaultAsync();
 
@@ -47,6 +48,7 @@ namespace CloudCore.Services.Implementations
         {
             using var context = _dbContextFactory.CreateDbContext();
             var item = await context.Items
+                .AsNoTracking()
                 .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
                 .FirstOrDefaultAsync();
 
@@ -77,8 +79,9 @@ namespace CloudCore.Services.Implementations
                 throw new InvalidOperationException(itemsValidation.ErrorMessage);
 
             var items = await context.Items
-                 .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
-                 .ToListAsync();
+                .AsNoTracking()
+                .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
+                .ToListAsync();
 
             if (items == null || items.Count == 0)
                 throw new FileNotFoundException("File not found");
@@ -104,60 +107,71 @@ namespace CloudCore.Services.Implementations
                     ErrorCode = itemName.ErrorCode,
                     Message = itemName.ErrorMessage
                 };
+
             using var context = _dbContextFactory.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            try
+            {
 
-            var itemValidation = await _validationService.ValidateItemExistsAsync(context, itemId, userId);
-            if (!itemValidation.IsValid)
+                var itemValidation = await _validationService.ValidateItemExistsAsync(context, itemId, userId);
+                if (!itemValidation.IsValid)
+                    return new RenameResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = itemName.ErrorCode,
+                        Message = itemName.ErrorMessage
+                    };
+
+                var item = await context.Items
+                        .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
+                        .FirstOrDefaultAsync();
+
+                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, newName, userId, item.ParentId, itemId);
+                if (!uniquenessValidation.IsValid)
+                    return new RenameResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = uniquenessValidation.ErrorCode,
+                        Message = uniquenessValidation.ErrorMessage
+                    };
+
+                string successMessage;
+                if (item.Type == "file")
+                {
+                    await _fileRenameService.RenameFileAsync(item, newName);
+                    await context.SaveChangesAsync();
+                    successMessage = "File renamed successfully";
+                }
+                else if (item.Type == "folder")
+                {
+                    await _fileRenameService.RenameFolderAsync(context, item, newName);
+                    successMessage = "Folder renamed successfully";
+                }
+                else
+                {
+                    return new RenameResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.UNSUPPORTED_TYPE,
+                        Message = "Unsupported item type"
+                    };
+                }
+                await transaction.CommitAsync();
+
                 return new RenameResult
                 {
-                    IsSuccess = false,
-                    ErrorCode = itemName.ErrorCode,
-                    Message = itemName.ErrorMessage
-                };
-
-            var item = await context.Items
-                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                    .FirstOrDefaultAsync();
-
-            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, newName, userId, item.ParentId, itemId);
-            if (!uniquenessValidation.IsValid)
-                return new RenameResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
-                };
-
-            string successMessage;
-            if (item.Type == "file")
-            {
-                _fileRenameService.RenameFile(item, newName, out string newRelativePath);
-                await context.SaveChangesAsync();
-                successMessage = "File renamed successfully";
-            }
-            else if (item.Type == "folder")
-            {
-                await _fileRenameService.RenameFolder(context, item, newName);
-                successMessage = "Folder renamed successfully";
-            }
-            else
-            {
-                return new RenameResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.UNSUPPORTED_TYPE,
-                    Message = "Unsupported item type"
+                    IsSuccess = true,
+                    Message = successMessage,
+                    ItemId = item.Id,
+                    NewName = newName,
+                    Timestamp = DateTime.UtcNow
                 };
             }
-
-            return new RenameResult
+            catch(Exception)
             {
-                IsSuccess = true,
-                Message = successMessage,
-                ItemId = item.Id,
-                NewName = newName,
-                Timestamp = DateTime.UtcNow
-            };
+                await transaction.RollbackAsync();
+                throw;
+            }
 
         }
 
@@ -167,6 +181,7 @@ namespace CloudCore.Services.Implementations
 
             // Verify the folder exists and belongs to the user
             var folder = await context.Items
+                .AsNoTracking()
                 .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                 .FirstOrDefaultAsync();
 
@@ -190,6 +205,7 @@ namespace CloudCore.Services.Implementations
             using var context = _dbContextFactory.CreateDbContext();
 
             var folders = await context.Items
+                .AsNoTracking()
                 .Where(i => folderIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
                 .ToListAsync();
 
@@ -220,81 +236,127 @@ namespace CloudCore.Services.Implementations
         public async Task<DeleteResult> DeleteItemAsync(int userId, int itemId)
         {
             using var context = _dbContextFactory.CreateDbContext();
-
-            var item = await context.Items
-                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                .FirstOrDefaultAsync();
-
-            if (item == null)
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            try
             {
+                var item = await context.Items
+                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                {
+                    return new DeleteResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                        Message = "File not found"
+                    };
+                }
+
+                if (item.Type == "file")
+                {
+                    item.IsDeleted = true;
+                    item.DeletedAt = DateTime.UtcNow;
+                }
+                else if (item.Type == "folder")
+                {
+                    item.IsDeleted = true;
+                    item.DeletedAt = DateTime.UtcNow;
+                    var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
+                    foreach (var childItem in childItems)
+                    {
+                        childItem.IsDeleted = true;
+                        childItem.DeletedAt = DateTime.UtcNow;
+                    }
+                    context.UpdateRange(childItems);
+                }
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
                 return new DeleteResult
                 {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "File not found"
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
+                    Message = "Item deleted successfully"
                 };
             }
-
-            if (item.Type == "file")
-                item.IsDeleted = true;
-            else if (item.Type == "folder")
+            catch (Exception)
             {
-                item.IsDeleted = true;
-                var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
-                foreach (var childItem in childItems)
-                    childItem.IsDeleted = true;
-                context.UpdateRange(childItems);
+                await transaction.RollbackAsync();
+                throw;
             }
-
-            await context.SaveChangesAsync();
-
-            return new DeleteResult
-            {
-                IsSuccess = true,
-                ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
-                Message = "Item deleted successfully"
-            };
         }
 
         public async Task<RestoreResult> RestoreItemAsync(int userId, int itemId)
         {
             using var context = _dbContextFactory.CreateDbContext();
-
-            var item = await context.Items
-                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == true)
-                .FirstOrDefaultAsync();
-
-            if (item == null)
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            try
             {
+                var item = await context.Items
+                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == true)
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                {
+                    return new RestoreResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                        Message = "File not found"
+                    };
+                }
+
+                item.IsDeleted = false;
+                item.DeletedAt = null;
+                if (item.Type == "file")
+                {
+                    if (item.ParentId != null)
+                    {
+                        var parent = await _itemDataService.GetItemAsync(userId, (int)item.ParentId);
+                        if (item.ParentId.HasValue)
+                        {
+                            if (parent != null && parent.IsDeleted == true)
+                            {
+                                return new RestoreResult
+                                {
+                                    IsSuccess = false,
+                                    ErrorCode = ErrorCodes.PARENT_FOLDER_DELETED,
+                                    Message = "Cannot restore file because its parent folder was also deleted."
+                                };
+                            }
+
+                        }
+                    }
+                }
+                else if (item.Type == "folder")
+                {
+                    item.IsDeleted = false;
+                    item.DeletedAt = null;
+                    var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
+                    foreach (var childItem in childItems)
+                    {
+                        childItem.IsDeleted = false;
+                        childItem.DeletedAt = null;
+                    }
+                    context.UpdateRange(childItems);
+                }
+
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
                 return new RestoreResult
                 {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "File not found"
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.RESTORED_SUCCESSFULLY,
+                    Message = "Item restored successfully"
                 };
             }
-
-            if (item.Type == "file")
+            catch (Exception)
             {
-                item.IsDeleted = false;
+                await transaction.RollbackAsync();
+                throw;
             }
-            else if (item.Type == "folder")
-            {
-                item.IsDeleted = false;
-                var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
-                foreach (var childItem in childItems)
-                    childItem.IsDeleted = false;
-                context.UpdateRange(childItems);
-            }
-
-            await context.SaveChangesAsync();
-
-            return new RestoreResult
-            {
-                IsSuccess = true,
-                ErrorCode = ErrorCodes.RESTORED_SUCCESSFULLY,
-                Message = "Item restored successfully"
-            };
         }
 
         public async Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request)
@@ -309,7 +371,7 @@ namespace CloudCore.Services.Implementations
                 };
 
             using var context = _dbContextFactory.CreateDbContext();
-            using var transaction = context.Database.BeginTransaction();
+            await using var transaction = await context.Database.BeginTransactionAsync();
 
             try
             {
@@ -342,17 +404,19 @@ namespace CloudCore.Services.Implementations
                     Type = "folder",
                     UserId = userId,
                     ParentId = request.ParentId,
-                    //CreatedAt = DateTime.UtcNow,
-                    //UpdatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                     IsDeleted = false
                 };
 
                 context.Items.Add(folder);
                 await context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                
 
-                string folderPath = _itemStorageService.GetFolderPath(folder);
+                string folderPath = _itemStorageService.GetFolderPathAsync(folder);
                 Directory.CreateDirectory(folderPath);
+
+                await transaction.CommitAsync();
 
                 return new CreateFolderResult
                 {
@@ -365,7 +429,7 @@ namespace CloudCore.Services.Implementations
             }
             catch (Exception)
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
@@ -381,58 +445,89 @@ namespace CloudCore.Services.Implementations
                     Message = fileValidation.ErrorMessage
                 };
 
-            using var context = _dbContextFactory.CreateDbContext();
 
-            if (parentId.HasValue)
+            using var context = _dbContextFactory.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            string savedFilePath = null;
+            try
             {
-                var parentValidation = await _validationService.ValidateItemExistsAsync(context, parentId.Value, userId);
-                if (!parentValidation.IsValid)
+                if (parentId.HasValue)
+                {
+                    var parentValidation = await _validationService.ValidateItemExistsAsync(context, parentId.Value, userId);
+                    if (!parentValidation.IsValid)
+                    {
+                        return new UploadResult
+                        {
+                            IsSuccess = false,
+                            ErrorCode = parentValidation.ErrorCode,
+                            Message = parentValidation.ErrorMessage
+                        };
+                    }
+                }
+
+                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, file.FileName, userId, parentId, null);
+                if (!uniquenessValidation.IsValid)
                 {
                     return new UploadResult
                     {
                         IsSuccess = false,
-                        ErrorCode = parentValidation.ErrorCode,
-                        Message = parentValidation.ErrorMessage
+                        ErrorCode = uniquenessValidation.ErrorCode,
+                        Message = uniquenessValidation.ErrorMessage
                     };
                 }
-            }
 
-            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, file.FileName, userId, parentId, null);
-            if (!uniquenessValidation.IsValid)
-            {
+                savedFilePath = await _itemStorageService.SaveFileAsync(userId, file, parentId);
+
+                var item = new Item
+                {
+                    Name = file.FileName,
+                    Type = "file",
+                    UserId = userId,
+                    TeamspaceId = null,
+                    ParentId = parentId,
+                    FilePath = savedFilePath,
+                    FileSize = file.Length,
+                    MimeType = !string.IsNullOrEmpty(file.ContentType) ? file.ContentType : _itemStorageService.GetMimeType(file.FileName),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    IsDeleted = false
+                };
+
+                context.Items.Add(item);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
                 return new UploadResult
                 {
-                    IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.UPLOADED_SUCCESSFULLY,
+                    Message = "File uploaded successfully",
+                    ItemId = item.Id,
+                    FileName = item.Name
                 };
             }
-
-            var savedFilePath = await _itemStorageService.SaveFileAsync(userId, file, parentId);
-
-            var item = new Item
+            catch(Exception)
             {
-                Name = file.FileName,
-                Type = "file",
-                UserId = userId,
-                ParentId = parentId,
-                FilePath = savedFilePath,
-                FileSize = file.Length,
-                MimeType = !string.IsNullOrEmpty(file.ContentType) ? file.ContentType : _itemStorageService.GetMimeType(file.FileName),
-                IsDeleted = false
-            };
+                await transaction.RollbackAsync();
+                if (savedFilePath != null)
+                {
+                    try
+                    {
+                        var fullPath = _itemStorageService.GetFileFullPath(userId, savedFilePath);
+                        if (File.Exists(fullPath))
+                        {
+                            File.Delete(fullPath);
+                            Console.WriteLine($"[CLEANUP] Orphaned file '{fullPath}' deleted successfully.");
+                        }
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        Console.WriteLine($"[CRITICAL] Failed to cleanup orphaned file '{savedFilePath}': {cleanupEx.Message}");
+                    }
+                }
 
-            context.Items.Add(item);
-            await context.SaveChangesAsync();
-
-            return new UploadResult
-            {
-                IsSuccess = true,
-                ErrorCode = ErrorCodes.UPLOADED_SUCCESSFULLY,
-                Message = "File uploaded successfully",
-                ItemId = item.Id,
-                FileName = item.Name
-            };
+                throw;
+            }
         }
     }
 }
