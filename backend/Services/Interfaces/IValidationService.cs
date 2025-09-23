@@ -5,118 +5,36 @@ namespace CloudCore.Services.Interfaces
 {
     public interface IValidationService
     {
-
+        // <summary>
+        /// Validates an uploaded file based on predefined rules.
+        /// </summary>
+        /// <param name="file">The IFormFile object representing the uploaded file.</param>
+        /// <returns>A ValidationResult indicating success or failure with an error code.</returns>
+        /// <remarks>Checks include null-checks, file size against MAX_SIZE, and allowed file extensions.</remarks>
         ValidationResult ValidateFile(IFormFile file);
 
         /// <summary>
         /// Validates the format and content of a file or folder name.
         /// </summary>
-        /// <param name="fileName">The name to validate (file or folder name)</param>
-        /// <returns>
-        /// A ValidationResult indicating whether the name is valid.
-        /// Returns success if valid, or failure with specific error details if invalid.
-        /// </returns>
-        /// <remarks>
-        /// Validates against:
-        /// - Null, empty, or whitespace-only names
-        /// - Names exceeding maximum length (255 characters)
-        /// - Invalid characters (&lt;, &gt;, :, ", |, ?, *, \0, ,)
-        /// - Reserved Windows names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
-        /// - Names starting or ending with dots or spaces
-        /// </remarks>
+        /// <param name="fileName">The name of the item to validate.</param>
+        /// <returns>A ValidationResult indicating success or failure.</returns>
+        /// <remarks>Checks for max length, invalid characters, reserved names, and leading/trailing spaces or dots.</remarks>
         ValidationResult ValidateItemName(string fileName);
 
         /// <summary>
-        /// Validates that the current user has authorization to access resources for the requested user.
+        /// Validates if a user is authorized to perform an action on a resource.
         /// </summary>
-        /// <param name="currentUserId">The ID of the currently authenticated user from the JWT token</param>
-        /// <param name="requestedUserId">The ID of the user whose resources are being accessed</param>
-        /// <returns>
-        /// A ValidationResult indicating whether access is authorized.
-        /// Returns success if the user IDs match, or failure with ACCESS_DENIED error if they don't.
-        /// </returns>
-        /// <remarks>
-        /// Implements the principle that users can only access their own resources.
-        /// This prevents unauthorized access to other users' files and folders.
-        /// </remarks>
+        /// <param name="currentUserId">The ID of the user making the request.</param>
+        /// <param name="requestedUserId">The ID of the user who owns the resource.</param>
+        /// <returns>A ValidationResult indicating if access is granted or denied.</returns>
         ValidationResult ValidateUserAuthorization(int currentUserId, int requestedUserId);
 
         /// <summary>
-        /// Validates that a specific item exists in the database and belongs to the specified user.
+        /// Validates if an archive to be created meets size and file count constraints.
         /// </summary>
-        /// <param name="context">The database context for querying items</param>
-        /// <param name="itemId">The ID of the item to validate</param>
-        /// <param name="userId">The ID of the user who should own the item</param>
-        /// <param name="itemType">Optional filter for item type ("file" or "folder"). If null, any type is accepted.</param>
-        /// <returns>
-        /// A task that resolves to a ValidationResult indicating whether the item exists and is accessible.
-        /// Returns success if found, or failure with ITEM_NOT_FOUND error if not found or inaccessible.
-        /// </returns>
-        /// <remarks>
-        /// Checks that the item:
-        /// - Exists in the database
-        /// - Belongs to the specified user
-        /// - Is not soft-deleted (IsDeleted = false)
-        /// - Matches the specified type if itemType parameter is provided
-        /// </remarks>
-        Task<ValidationResult> ValidateItemExistsAsync(CloudCoreDbContext context, int itemId, int userId, string itemType = null);
-
-
-        /// <summary>
-        /// Validates a list of item IDs to ensure they all exist and belong to the specified user.
-        /// </summary>
-        /// <param name="context">The database context for querying items</param>
-        /// <param name="itemIds">List of item IDs to validate</param>
-        /// <param name="userId">The ID of the user who should own all items</param>
-        /// <returns>
-        /// A task that resolves to a ValidationResult indicating whether all items are valid and accessible.
-        /// Returns success if all items are found and belong to the user, or failure with specific error details.
-        /// </returns>
-        /// <remarks>
-        /// Validates that:
-        /// - The list is not null or empty
-        /// - The list doesn't exceed the maximum allowed count (100 items)
-        /// - All specified items exist in the database
-        /// - All items belong to the specified user
-        /// - All items are not soft-deleted
-        /// </remarks>
-        Task<ValidationResult> ValidateItemIdsAsync(CloudCoreDbContext context, List<int> itemIds, int userId);
-
-
-        /// <summary>
-        /// Validates that a name is unique within a specific directory for a user.
-        /// </summary>
-        /// <param name="context">The database context for querying items</param>
-        /// <param name="name">The name to check for uniqueness</param>
-        /// <param name="userId">The ID of the user who owns the directory</param>
-        /// <param name="parentId">The ID of the parent directory (null for root level)</param>
-        /// <param name="excludeItemId">Optional ID of an item to exclude from the uniqueness check (used for rename operations)</param>
-        /// <returns>
-        /// A task that resolves to a ValidationResult indicating whether the name is unique in the specified location.
-        /// Returns success if unique, or failure with NAME_ALREADY_EXISTS error if a conflict exists.
-        /// </returns>
-        /// <remarks>
-        /// Used primarily for rename and create operations to prevent naming conflicts.
-        /// The excludeItemId parameter allows checking uniqueness while excluding the item being renamed.
-        /// Checks are case-sensitive and scoped to the specific parent directory and user.
-        /// </remarks>
-        Task<ValidationResult> ValidateNameUniquenessAsync(CloudCoreDbContext context, string name, int userId, int? parentId, int? excludeItemId = null);
-
-        /// <summary>
-        /// Validates that an archive operation meets size and file count limits.
-        /// </summary>
-        /// <param name="totalSize">Total size of all files to be included in the archive, in bytes</param>
-        /// <param name="fileCount">Total number of files to be included in the archive</param>
-        /// <returns>
-        /// A ValidationResult indicating whether the archive parameters are within acceptable limits.
-        /// Returns success if within limits, or failure with specific error details if limits are exceeded.
-        /// </returns>
-        /// <remarks>
-        /// Validates against system-defined limits:
-        /// - Maximum archive size: 2GB (2,147,483,648 bytes)
-        /// - Maximum file count: 10,000 files
-        /// These limits prevent resource exhaustion and improve system stability.
-        /// </remarks>
+        /// <param name="totalSize">The total size in bytes of all files in the archive.</param>
+        /// <param name="fileCount">The total number of files in the archive.</param>
+        /// <returns>A ValidationResult indicating success or failure.</returns>
         ValidationResult ValidateArchiveSize(long totalSize, int fileCount);
 
         /// <summary>
@@ -141,6 +59,39 @@ namespace CloudCore.Services.Interfaces
         /// FormatFileSize(1048576) returns "1 MB"
         /// </example>
         string FormatFileSize(long size);
+
+
+
+
+        /// <summary>
+        /// Asynchronously checks if a specific item exists, is active, and belongs to the user.
+        /// </summary>
+        /// <param name="itemId">The ID of the item to check.</param>
+        /// <param name="userId">The ID of the user who should own the item.</param>
+        /// <param name="itemType">Optional. The type of the item to check for (e.g., "file" or "folder").</param>
+        /// <returns>A Task representing the asynchronous operation, containing a ValidationResult.</returns>
+        Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string itemType = null);
+
+        /// <summary>
+        /// Asynchronously validates a list of item IDs, ensuring all exist and belong to the user.
+        /// </summary>
+        /// <param name="itemIds">A list of item IDs to validate.</param>
+        /// <param name="userId">The ID of the user who should own all the items.</param>
+        /// <returns>A Task representing the asynchronous operation, containing a ValidationResult.</returns>
+        Task<ValidationResult> ValidateItemIdsAsync(List<int> itemIds, int userId);
+
+        /// <summary>
+        /// Asynchronously checks if a given name is unique for a specific item type within a parent folder.
+        /// </summary>
+        /// <param name="name">The name to check for uniqueness.</param>
+        /// <param name="itemType">The type of the item (e.g., "file" or "folder").</param>
+        /// <param name="userId">The ID of the user.</param>
+        /// <param name="parentId">The ID of the parent folder where the item will reside. Null for the root directory.</param>
+        /// <param name="excludeItemId">Optional. The ID of an item to exclude from the check, used during rename operations.</param>
+        /// <returns>A Task representing the asynchronous operation, containing a ValidationResult.</returns>
+        Task<ValidationResult> ValidateNameUniquenessAsync(string name, string itemType, int userId, int? parentId, int? excludeItemId = null, bool includeDeleted = false);
+
+
 
     }
 }

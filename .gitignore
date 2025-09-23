@@ -4,5 +4,6 @@
 .vs/
 backend/bin/
 backend/obj/
+backend/logs
 Properties/
 TODO/

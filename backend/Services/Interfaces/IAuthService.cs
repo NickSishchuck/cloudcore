@@ -10,6 +10,8 @@ namespace CloudCore.Services.Interfaces;
 /// </summary>
 public interface IAuthService
 {
+    #region Login/Register
+
     /// <summary>
     /// Authenticates a user with username and password
     /// </summary>
@@ -23,6 +25,10 @@ public interface IAuthService
     /// <param name="request">Registration request containing new user data</param>
     /// <returns>Authentication response with JWT token and created user information, or null if registration fails</returns>
     Task<AuthResponse?> RegisterAsync(RegisterRequest request);
+
+    #endregion
+
+    #region Password/JWT
 
     /// <summary>
     /// Creates a secure password hash for database storage
@@ -45,5 +51,6 @@ public interface IAuthService
     /// <param name="user">User for whom to create the token</param>
     /// <returns>JWT token string containing user claims</returns>
     string GenerateJwtToken(User user);
+    #endregion
 
 }

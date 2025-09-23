@@ -24,6 +24,7 @@
 
         public const string FILE_TOO_LARGE = "FILE_TOO_LARGE";
         public const string INVALID_FILE_TYPE = "INVALID_FILE_TYPE";
+        public const string FILE_REQUIRED = "FILE_REQUIRED";
 
         public const string UPLOADED_SUCCESSFULLY = "UPLOADED_SUCCESSFULLY";
         public const string CREATED_SUCCESSFULLY = "CREATED_SUCCESSFULLY";
@@ -31,5 +32,8 @@
         public const string RESTORED_SUCCESSFULLY = "RESTORED_SUCCESSFULLY";
 
         public const string ACCESS_DENIED = "ACCESS_DENIED";
+        public const string OPERATION_FAILED = "OPERATION_FAILED";
+        public const string UNEXPECTED_ERROR = "UNEXPECTED_ERROR";
+        public const string IO_ERROR = "IO_ERROR";
     }
 }

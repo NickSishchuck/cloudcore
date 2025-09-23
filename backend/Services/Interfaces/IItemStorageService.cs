@@ -1,9 +1,16 @@
-﻿using CloudCore.Domain.Entities;
+﻿using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 
 namespace CloudCore.Services.Interfaces
 {
+    /// <summary>
+    /// Defines a service for direct interaction with the physical file storage system.
+    /// This service abstracts away the details of file and directory manipulation on disk.
+    /// </summary>
     public interface IItemStorageService
     {
+        #region Path Management
+
         /// <summary>
         /// Builds the absolute file path for the specified user by combining the user’s storage path 
         /// with the provided relative path. Validates the path to prevent directory traversal outside 
@@ -18,19 +25,14 @@ namespace CloudCore.Services.Interfaces
         string GetUserStoragePath(int userId);
 
         /// <summary>
-        /// Builds the path for the specified user.
+        /// Combines the user's root storage path with a relative path to create a full, absolute path.
+        /// Includes validation to prevent path traversal attacks.
         /// </summary>
-        /// <param name="userId">The user identifier.</param>
-        /// <returns>The user directory path.</returns>
+        /// <param name="userId">The ID of the user.</param>
+        /// <param name="relativePath">The relative path within the user's storage (e.g., "documents/report.pdf").</param>
+        /// <returns>The secure, absolute file path on the disk.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown if the resulting path is outside the user's designated storage area.</exception>
         string GetFileFullPath(int userId, string relativePath);
-
-        /// <summary>
-        /// Builds the complete folder path by traversing up the folder hierarchy from the given folder to the root.
-        /// Combines folder names with the user's base storage path.
-        /// </summary>
-        /// <param name="folder">The folder item to build the path for</param>
-        /// <returns>The complete file system path to the folder</returns>
-        string GetFolderPathAsync(Item folder);
 
         /// <summary>
         /// Removes the last occurrence of a specified string from a folder path.
@@ -59,15 +61,48 @@ namespace CloudCore.Services.Interfaces
         /// <returns>The new folder path with the replaced name</returns>
         string GetNewFolderPath(string path, string searchString, string newName);
 
+        #endregion
+
+        #region File and Folder Operations
 
         /// <summary>
-        /// Asynchronously saves an uploaded file to the user's storage directory with proper folder structure
+        /// Asynchronously saves an uploaded file to the specified target directory within the user's storage.
         /// </summary>
-        /// <param name="userId">The unique identifier of the user who owns the file</param>
-        /// <param name="file">The uploaded file from the HTTP request to be saved to disk</param>
-        /// <param name="parentId">The optional parent folder ID where the file should be stored. If null, saves to user's root directory</param>
-        /// <returns>
-        Task<string> SaveFileAsync(int userId, IFormFile file, int? parentId);
+        /// <param name="userId">The ID of the user uploading the file.</param>
+        /// <param name="targetDirectory">The relative path of the directory to save the file in.</param>
+        /// <param name="file">The uploaded file.</param>
+        /// <returns>The relative path where the file was saved.</returns>
+        Task<string> SaveFileAsync(int userId, string targetDirectory, IFormFile file);
+
+        /// <summary>
+        /// Attempts to create a new directory at the specified relative path within the user's storage.
+        /// </summary>
+        /// <param name="userId">The ID of the user.</param>
+        /// <param name="relativePath">The relative path of the folder to create.</param>
+        /// <returns>True if the folder was created successfully; otherwise, false.</returns>
+        bool TryCreateFolder(int userId, string relativePath);
+
+        /// <summary>
+        /// Physically deletes an item (file or directory) from the disk.
+        /// If the item is a folder, it will be deleted recursively.
+        /// </summary>
+        /// <param name="item">The item entity to be deleted.</param>
+        /// <param name="folderPath">Optional. The absolute path to the item if already known.</param>
+        void DeleteItemPhysicaly(Item item, string folderPath = null);
+
+        /// <summary>
+        /// Physically renames a file or folder on the disk.
+        /// </summary>
+        /// <param name="item">The item to be renamed.</param>
+        /// <param name="newName">The new name for the item.</param>
+        /// <param name="childItems">Not used in this implementation but kept for interface consistency.</param>
+        /// <param name="folderPath">The current absolute path of the item. Required for renaming.</param>
+        /// <returns>The new relative path of the renamed item.</returns>
+        string RenameItemPhysicaly(Item item, string newName, IEnumerable<Item> childItems = null, string folderPath = null);
+
+        #endregion
+
+        #region Utility Methods
 
         /// <summary>
         /// Determines the MIME type of a file based on its file extension
@@ -78,6 +113,6 @@ namespace CloudCore.Services.Interfaces
         /// Returns "application/octet-stream" for unknown or unsupported file extensions
         /// </returns>
         string GetMimeType(string fileName);
-
+        #endregion
     }
 }

@@ -1,533 +1,464 @@
-﻿using CloudCore.Common.Errors;
-using CloudCore.Contracts.Requests;
+﻿using System.IO;
+using CloudCore.Contracts.Responses;
 using CloudCore.Data.Context;
 using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using static CloudCore.Contracts.Responses.ItemResultResponses;
+using MySqlConnector;
+using Sprache;
 
 namespace CloudCore.Services.Implementations
 {
     public class ItemRepository : IItemRepository
     {
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        private readonly IZipArchiveService _zipArchiveService;
-        private readonly IItemStorageService _itemStorageService;
-        private readonly IValidationService _validationService;
-        private readonly IItemRenameService _fileRenameService;
-        private readonly IItemDataService _itemDataService;
-        public ItemRepository(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IZipArchiveService zipArchiveService, IItemStorageService itemStorageService, IValidationService validationService, IItemRenameService fileRenameService, IItemDataService itemDataService)
+        private readonly ILogger<ItemRepository> _logger;
+
+        public ItemRepository(IDbContextFactory<CloudCoreDbContext> dbContextFactory, ILogger<ItemRepository> logger)
         {
             _dbContextFactory = dbContextFactory;
-            _zipArchiveService = zipArchiveService;
-            _itemStorageService = itemStorageService;
-            _validationService = validationService;
-            _fileRenameService = fileRenameService;
-            _itemDataService = itemDataService;
+            _logger = logger;
         }
 
-        public async Task<(Stream archiveStream, string fileName)> DownloadFolderAsync(int userId, int folderId)
+        public async Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000)
         {
+            _logger.LogInformation("Fetching all child items. UserId={UserId}, ParentId={ParentId}, MaxDepth={MaxDepth}", userId, parentId, maxDepth);
             using var context = _dbContextFactory.CreateDbContext();
-            var folder = await context.Items
+            var userIdParam = new MySqlParameter("@UserId", userId);
+            var parentIdParam = new MySqlParameter("@ParentId", parentId);
+            var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
+
+            var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted, 1 as level
+                FROM items
+                WHERE user_id = @UserId AND parent_id = @ParentId
+                UNION ALL
+
+                SELECT i.id, i.name, i.type, i.parent_id, i.user_id, i.teamspace_id, i.file_path, i.file_size, i.mime_type, i.created_at, i.updated_at, i.deleted_at, i.access_level, i.is_deleted, ih.level + 1
+                FROM items i
+                INNER JOIN ItemsHierarchy ih ON i.parent_id = ih.id
+                WHERE i.user_id = @UserId AND ih.type = 'folder' AND ih.level < @MaxDepth)
+
+                SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted
+                FROM ItemsHierarchy 
+                ORDER BY Level, Type DESC, Name;"
+            ;
+
+            var result = await context.Items
+                .FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
                 .AsNoTracking()
-                .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
-            if (folder == null)
-                throw new FileNotFoundException("Folder not found");
-
-            var archiveStream = await _zipArchiveService.CreateFolderArchiveAsync(userId, folderId, folder.Name);
-            var fileName = $"{folder.Name}.zip";
-
-            return (archiveStream, fileName);
+            _logger.LogInformation("Fetched {Count} child items for ParentId={ParentId}, UserId={UserId}", result.Count, parentId, userId);
+            return result;
         }
 
-        public async Task<FileDownloadResult> DownloadFileAsync(int userId, int fileId)
+        public async Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false)
+        {
+            _logger.LogInformation("Fetching items. UserId={UserId}, ParentId={ParentId}, Page={Page}, PageSize={PageSize}, SortBy={SortBy}, SortDir={SortDir}, IsTrashFolder={IsTrashFolder}", userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder);
+
+            using var context = _dbContextFactory.CreateDbContext();
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.UserId == userId);
+
+            if (isTrashFolder == true)
+            {
+                _logger.LogInformation("Querying trash folder items for UserId={UserId}", userId);
+                query = query.Where(i => i.IsDeleted == true && (i.ParentId == null || context.Items
+                    .AsNoTracking()
+                    .Any(p => p.Id == i.ParentId && p.IsDeleted == false)));
+            }
+            else
+
+                query = query.Where(i => i.IsDeleted == false && i.ParentId == parentId);
+
+
+            bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = query.OrderBy(i => i.Type == "folder" ? 0 : 1);
+
+            switch ((sortBy ?? "name").ToLowerInvariant())
+            {
+                case "size":
+                case "filesize":
+                    query = desc
+                        ? query.OrderByDescending(i => i.FileSize ?? 0)
+                        : query.OrderBy(i => i.FileSize ?? 0);
+                    break;
+
+                case "modified":
+                case "updatedat":
+                    query = desc
+                        ? query.OrderByDescending(i => i.UpdatedAt)
+                        : query.OrderBy(i => i.UpdatedAt);
+                    break;
+
+                case "name":
+                default:
+                    query = desc
+                        ? query.OrderByDescending(i => i.Name)
+                        : query.OrderBy(i => i.Name);
+                    break;
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            _logger.LogInformation("Fetched {Count} items. UserId={UserId}, ParentId={ParentId}, TotalCount={TotalCount}", items.Count, userId, parentId, totalCount);
+
+            return (items, totalCount);
+        }
+
+        public async Task<Item?> GetItemAsync(int userId, int itemId, string? itemType)
         {
             using var context = _dbContextFactory.CreateDbContext();
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.Id == itemId && i.UserId == userId);
+            if (!string.IsNullOrWhiteSpace(itemType))
+            {
+                query = query.Where(i => i.Type == itemType);
+            }
+
+            _logger.LogInformation("Fetching item. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+
+            var item = await query.FirstOrDefaultAsync();
+            if (item == null)
+                _logger.LogWarning("Item not found. UserId={UserId}, ItemId={ItemId}, ItemType={ItemType}", userId, itemId, itemType);
+            else
+                _logger.LogInformation("Item retrieved successfully. ItemId={ItemId}, Name={Name}, Type={Type}", item.Id, item.Name, item.Type);
+
+            return item;
+        }
+
+        public async Task<Item?> GetDeletedItemAsync(int userId, int itemId)
+        {
+            _logger.LogInformation("Fetching deleted item. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+            using var context = _dbContextFactory.CreateDbContext();
+
             var item = await context.Items
                 .AsNoTracking()
-                .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
+                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == true)
                 .FirstOrDefaultAsync();
-
             if (item == null)
-                throw new FileNotFoundException("File not found");
+                _logger.LogWarning("Item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+            else
+                _logger.LogInformation("Item retrieved successfully. ItemId={ItemId}, Name={Name}", item.Id, item.Name);
 
-            var fullPath = _itemStorageService.GetFileFullPath(userId, item.FilePath);
-
-            if (!File.Exists(fullPath))
-                throw new FileNotFoundException("File not found");
-
-            var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
-            return new FileDownloadResult
-            {
-                Stream = fileStream,
-                FileName = item.Name,
-                MimeType = item.MimeType ?? "application/octet-stream"
-            };
-
+            return item;
         }
 
-        public async Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync(int userId, List<int> itemsId)
+        public async Task<IEnumerable<Item>> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds)
         {
-            using var context = _dbContextFactory.CreateDbContext();
+            if (itemsIds == null || itemsIds.Count == 0)
+            {
+                _logger.LogWarning("GetItemsByIdsForUserAsync called with an empty or null list of IDs for UserId: {UserId}", userId);
+                return Enumerable.Empty<Item>();
+            }
 
-            var itemsValidation = await _validationService.ValidateItemIdsAsync(context, itemsId, userId);
-            if (!itemsValidation.IsValid)
-                throw new InvalidOperationException(itemsValidation.ErrorMessage);
+            _logger.LogInformation( "Fetching {ItemCount} items by IDs for UserId: {UserId}", itemsIds.Count, userId);
+
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
             var items = await context.Items
                 .AsNoTracking()
-                .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
+                .Where(i => i.UserId == userId && i.IsDeleted == false && itemsIds.Contains(i.Id))       
                 .ToListAsync();
 
-            if (items == null || items.Count == 0)
-                throw new FileNotFoundException("File not found");
+            _logger.LogInformation("Found {FoundCount} out of {RequestedCount} items for UserId: {UserId}", items.Count, itemsIds.Count, userId);
 
-            var totalSize = items.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
-            var sizeValidation = _validationService.ValidateArchiveSize(totalSize, items.Count);
-            if (!sizeValidation.IsValid)
-                throw new InvalidOperationException(sizeValidation.ErrorMessage);
-
-            var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items);
-            var fileName = $"selected_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-
-            return (archiveStream, fileName);
+            return items;
         }
 
-        public async Task<RenameResult> RenameItemAsync(int userId, int itemId, string newName)
+        public async Task<IEnumerable<Item>> GetDeletedItemsByIdsAsync(List<int> itemsIds)
         {
-            var itemName = _validationService.ValidateItemName(newName);
-            if (!itemName.IsValid)
-                return new RenameResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = itemName.ErrorCode,
-                    Message = itemName.ErrorMessage
-                };
-
-            using var context = _dbContextFactory.CreateDbContext();
-            await using var transaction = await context.Database.BeginTransactionAsync();
-            try
+            if (itemsIds == null || itemsIds.Count == 0)
             {
-
-                var itemValidation = await _validationService.ValidateItemExistsAsync(context, itemId, userId);
-                if (!itemValidation.IsValid)
-                    return new RenameResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = itemName.ErrorCode,
-                        Message = itemName.ErrorMessage
-                    };
-
-                var item = await context.Items
-                        .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                        .FirstOrDefaultAsync();
-
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, newName, userId, item.ParentId, itemId);
-                if (!uniquenessValidation.IsValid)
-                    return new RenameResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = uniquenessValidation.ErrorCode,
-                        Message = uniquenessValidation.ErrorMessage
-                    };
-
-                string successMessage;
-                if (item.Type == "file")
-                {
-                    await _fileRenameService.RenameFileAsync(item, newName);
-                    await context.SaveChangesAsync();
-                    successMessage = "File renamed successfully";
-                }
-                else if (item.Type == "folder")
-                {
-                    await _fileRenameService.RenameFolderAsync(context, item, newName);
-                    successMessage = "Folder renamed successfully";
-                }
-                else
-                {
-                    return new RenameResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = ErrorCodes.UNSUPPORTED_TYPE,
-                        Message = "Unsupported item type"
-                    };
-                }
-                await transaction.CommitAsync();
-
-                return new RenameResult
-                {
-                    IsSuccess = true,
-                    Message = successMessage,
-                    ItemId = item.Id,
-                    NewName = newName,
-                    Timestamp = DateTime.UtcNow
-                };
-            }
-            catch(Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
+                _logger.LogWarning("GetDeletedItemsByIdsAsync called with an empty or null list of IDs.");
+                return Enumerable.Empty<Item>();
             }
 
-        }
+            _logger.LogInformation("Fetching {ItemCount} deleted items by IDs.", itemsIds.Count);
 
-        public async Task<FolderSizeResult> GetFolderSizeAsync(int userId, int folderId)
-        {
-            using var context = _dbContextFactory.CreateDbContext();
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-            // Verify the folder exists and belongs to the user
-            var folder = await context.Items
+            var items = await context.Items
                 .AsNoTracking()
-                .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                .FirstOrDefaultAsync();
-
-            if (folder == null)
-                throw new FileNotFoundException("File not found");
-
-            // Calculate the total size recursively
-            var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folderId);
-
-            return new FolderSizeResult
-            {
-                FolderId = folderId,
-                TotalSize = totalSize,
-                FileCount = fileCount,
-                FormattedSize = _validationService.FormatFileSize(totalSize)
-            };
-        }
-
-        public async Task<ActionResult<Dictionary<int, FolderSizeResult>>> GetMultipleFolderSizesAsync(int userId, List<int> folderIds)
-        {
-            using var context = _dbContextFactory.CreateDbContext();
-
-            var folders = await context.Items
-                .AsNoTracking()
-                .Where(i => folderIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
+                .Where(i => i.IsDeleted == true && itemsIds.Contains(i.Id))
                 .ToListAsync();
 
-            var results = new Dictionary<int, FolderSizeResult>();
+            _logger.LogInformation("Found {FoundCount} out of {RequestedCount} items.", items.Count, itemsIds.Count);
 
-            var tasks = folders.Select(async folder =>
-            {
-                var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folder.Id);
-                return new { folder.Id, totalSize, fileCount };
-            });
+            return items;
 
-            var taskResults = await Task.WhenAll(tasks);
-
-            foreach (var result in taskResults)
-            {
-                results[result.Id] = new FolderSizeResult
-                {
-                    FolderId = result.Id,
-                    TotalSize = result.totalSize,
-                    FileCount = result.fileCount,
-                    FormattedSize = _validationService.FormatFileSize(result.totalSize)
-                };
-            }
-
-            return results;
         }
 
-        public async Task<DeleteResult> DeleteItemAsync(int userId, int itemId)
+        public async Task<string> GetFolderPathAsync(Item folder)
+        {
+            _logger.LogInformation("Building folder path. FolderId={FolderId}, Name={FolderName}", folder.Id, folder.Name);
+
+            using var context = _dbContextFactory.CreateDbContext();
+            var sql = @"
+                WITH RECURSIVE FolderHierarchy AS (
+                    SELECT id, name, parent_id, 0 as level
+                    FROM items 
+                    WHERE id = @folderId
+            
+                    UNION ALL
+            
+                    SELECT p.id, p.name, p.parent_id, fh.level + 1
+                    FROM items p
+                    INNER JOIN FolderHierarchy fh ON p.id = fh.parent_id
+                )
+                SELECT name 
+                FROM FolderHierarchy 
+                ORDER BY level DESC";
+
+            var folderIdParam = new MySqlParameter("@folderId", folder.Id);
+
+            var pathParts = await context.Database
+                .SqlQueryRaw<string>(sql, folderIdParam)
+                .ToListAsync();
+
+            var path = Path.Combine(pathParts.ToArray());
+            _logger.LogInformation("Folder path built: {Path}", path);
+            // WITHOUT USERPATH!!!
+            return path;
+        }
+
+        public async Task<bool> IsNameUniqueAsync(string name, int userId, string itemType, int? parentId, int? excludeItemId = null)
+        {
+            _logger.LogInformation(
+            "Checking name uniqueness. Name: {Name}, Type: {ItemType}, UserId: {UserId}, ParentId: {ParentId}, ExcludeItemId: {ExcludeItemId}",
+            name, itemType, userId, parentId, excludeItemId);
+
+            var context = _dbContextFactory.CreateDbContext();
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.Name == name && i.Type == itemType && i.UserId == userId && i.ParentId == parentId && i.IsDeleted == false);
+
+            if (excludeItemId.HasValue)
+            {
+                query = query.Where(i => i.Id != excludeItemId.Value);
+            }
+
+            var isDuplicate = await query.AnyAsync();
+
+            if (isDuplicate)
+            {
+                _logger.LogWarning(
+                    "Name uniqueness check failed: An item of type {ItemType} with name '{Name}' already exists for UserId {UserId} in ParentId {ParentId}.",
+                    itemType, name, userId, parentId);
+                return false;
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Name uniqueness check successful: Name '{Name}' is available for {ItemType} for UserId {UserId}.",
+                    name, itemType, userId);
+                return true;
+            }
+        }
+
+        public async Task<bool> ItemExistsAsync(int itemId, int userId, string itemType)
+        {
+            _logger.LogInformation("Checking existence for ItemId: {ItemId}, UserId: {UserId}, Type: {ItemType}", itemId, userId, itemType);
+
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false);
+
+            if (!string.IsNullOrEmpty(itemType))
+            {
+                query = query.Where(i => i.Type == itemType);
+            }
+
+            var exists = await query.AnyAsync();
+
+            _logger.LogInformation("Item {ItemId} existence check result: {Exists}", itemId, exists);
+            return exists;
+
+        }
+
+        public async Task<int> CountExistingItemsAsync(List<int> itemIds, int userId)
+        {
+            int providedCount = itemIds?.Count ?? 0;
+            _logger.LogInformation( "Counting existing items for UserId: {UserId}. Provided IDs count: {ProvidedCount}", userId, providedCount);
+
+            if (providedCount == 0)
+            {
+                _logger.LogWarning("No item IDs provided to count for UserId: {UserId}", userId);
+                return 0;
+            }
+
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+            var foundCount = await context.Items
+                .AsNoTracking()
+                .CountAsync(i => itemIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false);
+
+            _logger.LogInformation("Found {FoundCount} existing items out of {ProvidedCount} provided for UserId: {UserId}", foundCount, providedCount, userId);
+            return foundCount;
+        }
+
+        public async Task<bool> DoesItemExistByNameAsync(string name, string itemType, int userId, int? parentId, int? excludeItemId = null, bool includeDeleted = false)
+        {
+
+            _logger.LogInformation("Checking for item by name. Name: '{Name}', Type: {ItemType}, UserId: {UserId}, ParentId: {ParentId}, IncludeDeleted: {IncludeDeleted}", name, itemType, userId, parentId, includeDeleted);
+
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.Name == name && i.Type == itemType && i.UserId == userId && i.ParentId == parentId);
+
+            if (!includeDeleted)
+            {
+                query = query.Where(i => i.IsDeleted == false);
+            }
+
+            if (excludeItemId.HasValue)
+            {
+                query = query.Where(i => i.Id != excludeItemId.Value);
+            }
+
+            var exists = await query.AnyAsync();
+
+            if (exists)
+                _logger.LogWarning("Duplicate found for name '{Name}' with IncludeDeleted={IncludeDeleted}", name, includeDeleted);
+            else
+                _logger.LogInformation("No duplicate found for name '{Name}' with IncludeDeleted={IncludeDeleted}", name, includeDeleted);
+
+            return exists;
+        }
+
+        public async Task<(long totalSize, int fileCount)> CalculateArchiveSizeAsync(int userId, int? folderId)
+        {
+            using var _context = _dbContextFactory.CreateDbContext();
+
+            if (folderId.HasValue)
+            {
+                var allChildItems = await GetAllChildItemsAsync(folderId.Value, userId);
+
+                var files = allChildItems.Where(item => item.Type == "file");
+
+                long totalSize = files.Sum(f => f.FileSize ?? 0);
+                int fileCount = files.Count();
+
+                return (totalSize, fileCount);
+            }
+            else
+            {
+                var items = await _context.Items
+                    .AsNoTracking()
+                    .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
+                    .ToListAsync();
+
+                long totalSize = 0;
+                int fileCount = 0;
+                foreach (var item in items)
+                {
+                    if (item.Type == "file")
+                    {
+                        totalSize += (long)item.FileSize;
+                        fileCount++;
+                    }
+                }
+
+                var subfolders = items.Where(i => i.Type == "folder").ToList();
+
+                foreach (var folder in subfolders)
+                {
+                    var (subSize, subCount) = await CalculateArchiveSizeAsync(userId, folder.Id);
+                    totalSize += subSize;
+                    fileCount += subCount;
+                }
+
+                return (totalSize, fileCount);
+            }
+        }
+
+        public async Task AddItemInTranscationAsync(Item item)
         {
             using var context = _dbContextFactory.CreateDbContext();
             await using var transaction = await context.Database.BeginTransactionAsync();
+            _logger.LogInformation("Starting transaction to add ItemName={ItemName}.", item.Name);
             try
             {
-                var item = await context.Items
-                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                    .FirstOrDefaultAsync();
-
-                if (item == null)
-                {
-                    return new DeleteResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                        Message = "File not found"
-                    };
-                }
-
-                if (item.Type == "file")
-                {
-                    item.IsDeleted = true;
-                    item.DeletedAt = DateTime.UtcNow;
-                }
-                else if (item.Type == "folder")
-                {
-                    item.IsDeleted = true;
-                    item.DeletedAt = DateTime.UtcNow;
-                    var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
-                    foreach (var childItem in childItems)
-                    {
-                        childItem.IsDeleted = true;
-                        childItem.DeletedAt = DateTime.UtcNow;
-                    }
-                    context.UpdateRange(childItems);
-                }
+                context.Update(item);
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                return new DeleteResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
-                    Message = "Item deleted successfully"
-                };
+                _logger.LogInformation("Transaction committed successfully. Item added.");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                _logger.LogError(ex, "Transaction failed. Failed to add item");
                 throw;
             }
         }
 
-        public async Task<RestoreResult> RestoreItemAsync(int userId, int itemId)
+        public async Task UpdateItemsInTransactionAsync(List<Item> items)
         {
             using var context = _dbContextFactory.CreateDbContext();
             await using var transaction = await context.Database.BeginTransactionAsync();
+
+            _logger.LogInformation("Starting transaction to update {ItemCount} items.", items.Count);
             try
             {
-                var item = await context.Items
-                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == true)
-                    .FirstOrDefaultAsync();
-
-                if (item == null)
-                {
-                    return new RestoreResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                        Message = "File not found"
-                    };
-                }
-
-                item.IsDeleted = false;
-                item.DeletedAt = null;
-                if (item.Type == "file")
-                {
-                    if (item.ParentId != null)
-                    {
-                        var parent = await _itemDataService.GetItemAsync(userId, (int)item.ParentId);
-                        if (item.ParentId.HasValue)
-                        {
-                            if (parent != null && parent.IsDeleted == true)
-                            {
-                                return new RestoreResult
-                                {
-                                    IsSuccess = false,
-                                    ErrorCode = ErrorCodes.PARENT_FOLDER_DELETED,
-                                    Message = "Cannot restore file because its parent folder was also deleted."
-                                };
-                            }
-
-                        }
-                    }
-                }
-                else if (item.Type == "folder")
-                {
-                    item.IsDeleted = false;
-                    item.DeletedAt = null;
-                    var childItems = await _itemDataService.GetAllChildItemsAsync(itemId, userId);
-                    foreach (var childItem in childItems)
-                    {
-                        childItem.IsDeleted = false;
-                        childItem.DeletedAt = null;
-                    }
-                    context.UpdateRange(childItems);
-                }
-
+                context.UpdateRange(items);
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                return new RestoreResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.RESTORED_SUCCESSFULLY,
-                    Message = "Item restored successfully"
-                };
+                _logger.LogInformation("Transaction committed successfully. Updated {ItemCount} items.", items.Count);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                _logger.LogError(ex, "Transaction failed. Rolled back changes for {ItemCount} items.", items.Count);
+                throw;
+            }
+
+        }
+
+        public async Task DeleteItemPermanentlyAsync(Item item)
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            _logger.LogInformation("Starting transaction to delete ItemID={ItemId}.", item.Id);
+            try
+            {
+                context.Remove(item);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                _logger.LogInformation("Transaction committed successfully. Deleted ItemID={ItemId}.", item.Id);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Transaction failed. Rolled back changes for ItemID={ItemId}.", item.Id);
                 throw;
             }
         }
 
-        public async Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request)
+        public async Task<List<int>> GetExpiredItemIdsAsync(DateTime thresholdDate)
         {
-            var nameValidation = _validationService.ValidateItemName(request.Name);
-            if (!nameValidation.IsValid)
-                return new CreateFolderResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = nameValidation.ErrorCode,
-                    Message = nameValidation.ErrorMessage
-                };
-
-            using var context = _dbContextFactory.CreateDbContext();
-            await using var transaction = await context.Database.BeginTransactionAsync();
-
-            try
-            {
-                // Validate parent folder exists if specified
-                if (request.ParentId.HasValue)
-                {
-                    var parentValidation = await _validationService.ValidateItemExistsAsync(context, request.ParentId.Value, userId);
-                    if (!parentValidation.IsValid)
-                        return new CreateFolderResult
-                        {
-                            IsSuccess = false,
-                            ErrorCode = parentValidation.ErrorCode,
-                            Message = parentValidation.ErrorMessage
-                        };
-                }
-
-                // Check if folder with same name already exists
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, request.Name, userId, request.ParentId, null);
-                if (!uniquenessValidation.IsValid)
-                    return new CreateFolderResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = uniquenessValidation.ErrorCode,
-                        Message = uniquenessValidation.ErrorMessage
-                    };
-
-                var folder = new Item
-                {
-                    Name = request.Name,
-                    Type = "folder",
-                    UserId = userId,
-                    ParentId = request.ParentId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    IsDeleted = false
-                };
-
-                context.Items.Add(folder);
-                await context.SaveChangesAsync();
-                
-
-                string folderPath = _itemStorageService.GetFolderPathAsync(folder);
-                Directory.CreateDirectory(folderPath);
-
-                await transaction.CommitAsync();
-
-                return new CreateFolderResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.CREATED_SUCCESSFULLY,
-                    Message = "Folder created successfully",
-                    FolderId = folder.Id,
-                    FolderName = folder.Name
-                };
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.Items
+                .AsNoTracking()
+                .Where(i => i.IsDeleted == true && i.DeletedAt <= thresholdDate)
+                .Select(i => i.Id)
+                .ToListAsync();
         }
 
-        public async Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null)
+        public async Task<int> DeleteItemsByIdsAsync(List<int> itemIds)
         {
-            var fileValidation = _validationService.ValidateFile(file);
-            if (!fileValidation.IsValid)
-                return new UploadResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = fileValidation.ErrorCode,
-                    Message = fileValidation.ErrorMessage
-                };
-
-
-            using var context = _dbContextFactory.CreateDbContext();
-            await using var transaction = await context.Database.BeginTransactionAsync();
-
-            string savedFilePath = null;
-            try
-            {
-                if (parentId.HasValue)
-                {
-                    var parentValidation = await _validationService.ValidateItemExistsAsync(context, parentId.Value, userId);
-                    if (!parentValidation.IsValid)
-                    {
-                        return new UploadResult
-                        {
-                            IsSuccess = false,
-                            ErrorCode = parentValidation.ErrorCode,
-                            Message = parentValidation.ErrorMessage
-                        };
-                    }
-                }
-
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(context, file.FileName, userId, parentId, null);
-                if (!uniquenessValidation.IsValid)
-                {
-                    return new UploadResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = uniquenessValidation.ErrorCode,
-                        Message = uniquenessValidation.ErrorMessage
-                    };
-                }
-
-                savedFilePath = await _itemStorageService.SaveFileAsync(userId, file, parentId);
-
-                var item = new Item
-                {
-                    Name = file.FileName,
-                    Type = "file",
-                    UserId = userId,
-                    TeamspaceId = null,
-                    ParentId = parentId,
-                    FilePath = savedFilePath,
-                    FileSize = file.Length,
-                    MimeType = !string.IsNullOrEmpty(file.ContentType) ? file.ContentType : _itemStorageService.GetMimeType(file.FileName),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    IsDeleted = false
-                };
-
-                context.Items.Add(item);
-                await context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return new UploadResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.UPLOADED_SUCCESSFULLY,
-                    Message = "File uploaded successfully",
-                    ItemId = item.Id,
-                    FileName = item.Name
-                };
-            }
-            catch(Exception)
-            {
-                await transaction.RollbackAsync();
-                if (savedFilePath != null)
-                {
-                    try
-                    {
-                        var fullPath = _itemStorageService.GetFileFullPath(userId, savedFilePath);
-                        if (File.Exists(fullPath))
-                        {
-                            File.Delete(fullPath);
-                            Console.WriteLine($"[CLEANUP] Orphaned file '{fullPath}' deleted successfully.");
-                        }
-                    }
-                    catch (Exception cleanupEx)
-                    {
-                        Console.WriteLine($"[CRITICAL] Failed to cleanup orphaned file '{savedFilePath}': {cleanupEx.Message}");
-                    }
-                }
-
-                throw;
-            }
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.Items
+                .Where(i => itemIds.Contains(i.Id))
+                .ExecuteDeleteAsync();
         }
     }
 }
