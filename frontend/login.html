@@ -9,6 +9,12 @@
 </head>
 <body>
 <div class="login-container">
+    <div class="language-switcher">
+        <button class="language-btn" id="languageBtn" onclick="switchLanguage()" title="Switch language">
+            <span class="language-flag" id="langFlag">🌐</span>
+            <span class="language-code" id="langCode">EN</span>
+        </button>
+    </div>
     <h1>☁️ CloudCore</h1>
 
     <div id="error-message" class="error" style="display: none;"></div>
@@ -16,26 +22,101 @@
 
     <form class="login-form" id="loginForm">
         <div class="form-group">
-            <label for="username">Username</label>
+            <label for="username" data-i18n="username">Username</label>
             <input type="text" id="username" name="username">
         </div>
 
         <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password" data-i18n="password">Password</label>
             <input type="password" id="password" name="password" >
         </div>
 
-        <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+        <button type="submit" class="btn btn-primary" id="loginBtn" data-i18n="signIn">Sign In</button>
     </form>
     
 
-    <div class="login-link">
-        Don't have an account? <a href="register.html">Create account</a>
+    <div class="login-link"><span data-i18n="noAccount">Don't have an account? </span>
+        <a href="register.html" data-i18n="createAccount">Create account</a>
     </div>
 </div>
 
 <script>
     const API_URL = 'http://localhost:5000';
+    let currentLanguage = localStorage.getItem('cloudcore-language') || 'en';
+
+    // Translation object
+    const translations = {
+        en: {
+            title: 'CloudCore - Sign In',
+            username: 'Username',
+            password: 'Password',
+            signIn: 'Sign In',
+            signingIn: 'Signing in...',
+            noAccount: "Don't have an account?",
+            createAccount: 'Create account',
+            welcomeBack: 'Welcome back, {username}!',
+            signInFailed: 'Sign in failed. Please check your credentials.',
+            connectionError: 'Unable to connect to server. Please try again.',
+            loginSuccessful: '🎉 Login successful!',
+            invalidCredentials: 'Invalid username or password'
+        },
+        uk: {
+            title: 'CloudCore - Вхід',
+            username: 'Ім\'я користувача',
+            password: 'Пароль',
+            signIn: 'Увійти',
+            signingIn: 'Входжу...',
+            noAccount: 'Немає облікового запису?',
+            createAccount: 'Створити обліковий запис',
+            welcomeBack: 'З поверненням, {username}!',
+            signInFailed: 'Помилка входу. Перевірте свої облікові дані.',
+            connectionError: 'Неможливо підключитися до сервера. Спробуйте ще раз.',
+            loginSuccessful: '🎉 Успішний вхід!',
+            invalidCredentials: 'Неправильне ім\'я користувача або пароль'
+        }
+    };
+
+    function t(key) {
+        return translations[currentLanguage][key] || key;
+    }
+
+    // Language switching function - exactly like in main system
+    function switchLanguage() {
+        currentLanguage = currentLanguage === 'en' ? 'uk' : 'en';
+        localStorage.setItem('cloudcore-language', currentLanguage);
+        updateLanguageButton();
+        updateUILanguage();
+    }
+
+    // Update language button display - same as main system
+    function updateLanguageButton() {
+        const btn = document.getElementById('languageBtn');
+        const flag = btn.querySelector('.language-flag');
+        const code = btn.querySelector('.language-code');
+        
+        if (currentLanguage === 'uk') {
+            flag.textContent = '🇺🇦';
+            code.textContent = 'UA';
+            btn.title = '[translate:Перемкнути мову]';
+        } else {
+            flag.textContent = '🌐';
+            code.textContent = 'EN';
+            btn.title = 'Switch language';
+        }
+    }
+
+    // Update UI language - using data-i18n pattern like main system
+    function updateUILanguage() {
+        document.title = currentLanguage === 'uk' ? 'CloudCore - Вхід' : 'CloudCore - Sign In';
+        
+        // Update all elements with data-i18n attributes
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            if (translations[currentLanguage][key]) {
+                element.textContent = translations[currentLanguage][key];
+            }
+        });
+    }
 
     // Auto-fill demo credentials
     function fillCredentials(username, password) {
@@ -75,7 +156,7 @@
 
         // Disable button and show loading
         loginBtn.disabled = true;
-        loginBtn.textContent = 'Signing in...';
+        loginBtn.textContent = t('signingIn');
         hideMessages();
 
         try {
@@ -104,7 +185,7 @@
                 console.log('JWT Token:', data.token);
                 console.log('User Info:', data);
 
-                showSuccess(`Welcome back, ${data.username}!`);
+                showSuccess(t('welcomeBack').replace('{username}', data.username));
 
                 // Redirect to main page after 1 second
                 setTimeout(() => {
@@ -113,16 +194,28 @@
 
             } else {
                 // Login failed
-                showError(data.message || 'Sign in failed. Please check your credentials.');
+                let errorMessage = t('signInFailed'); // default message
+                
+                if (data.message) {
+                    // Check if the server error matches the known invalid credentials message
+                    if (data.message.toLowerCase().includes('invalid username or password') ||
+                        data.message.toLowerCase().includes('invalid credentials')) {
+                        errorMessage = t('invalidCredentials');
+                    } else {
+                        errorMessage = data.message; // Use server message if available
+                    }
+                }
+                
+                showError(errorMessage);
             }
 
         } catch (error) {
             console.error('Login error:', error);
-            showError('Unable to connect to server. Please try again.');
+            showError(t('connectionError'));
         } finally {
             // Re-enable button
             loginBtn.disabled = false;
-            loginBtn.textContent = 'Sign In';
+            loginBtn.textContent = t('signIn');
         }
     });
 
@@ -132,7 +225,12 @@
         if (token) {
             console.log('User already logged in, redirecting...');
             window.location.href = 'index.html';
+            return;
         }
+
+        // Initialize language system
+        updateLanguageButton();
+        updateUILanguage();
     });
 </script>
 </body>

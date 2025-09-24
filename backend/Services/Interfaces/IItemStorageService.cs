@@ -1,8 +1,8 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Domain.Entities;
 
 namespace CloudCore.Services.Interfaces
 {
-    public interface IFileStorageService
+    public interface IItemStorageService
     {
         /// <summary>
         /// Builds the absolute file path for the specified user by combining the user’s storage path 
@@ -17,11 +17,6 @@ namespace CloudCore.Services.Interfaces
         /// </exception>
         string GetUserStoragePath(int userId);
 
-        /// <summary>
-        /// Builds the path for the specified user.
-        /// </summary>
-        /// <param name="userId">The user identifier.</param>
-        /// <returns>The user directory path.</returns>
         string GetFileFullPath(int userId, string relativePath);
 
         /// <summary>
@@ -30,7 +25,7 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="folder">The folder item to build the path for</param>
         /// <returns>The complete file system path to the folder</returns>
-        string GetFolderPath(Item folder);
+        Task<string> GetFolderPathAsync(Item folder);
 
         /// <summary>
         /// Removes the last occurrence of a specified string from a folder path.
@@ -58,6 +53,26 @@ namespace CloudCore.Services.Interfaces
         /// <param name="newName">The new name to use as replacement</param>
         /// <returns>The new folder path with the replaced name</returns>
         string GetNewFolderPath(string path, string searchString, string newName);
+
+
+        /// <summary>
+        /// Asynchronously saves an uploaded file to the user's storage directory with proper folder structure
+        /// </summary>
+        /// <param name="userId">The unique identifier of the user who owns the file</param>
+        /// <param name="file">The uploaded file from the HTTP request to be saved to disk</param>
+        /// <param name="parentId">The optional parent folder ID where the file should be stored. If null, saves to user's root directory</param>
+        /// <returns>
+        Task<string> SaveFileAsync(int userId, IFormFile file, int? parentId);
+
+        /// <summary>
+        /// Determines the MIME type of a file based on its file extension
+        /// </summary>
+        /// <param name="fileName">The name of the file including its extension (e.g., "document.pdf", "image.jpg")</param>
+        /// <returns>
+        /// The corresponding MIME type string for the file extension. 
+        /// Returns "application/octet-stream" for unknown or unsupported file extensions
+        /// </returns>
+        string GetMimeType(string fileName);
 
     }
 }

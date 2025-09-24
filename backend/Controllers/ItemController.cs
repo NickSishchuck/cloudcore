@@ -1,14 +1,12 @@
-using CloudCore.Models;
 using CloudCore.Services.Interfaces;
-using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using System.IO.Compression;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
+using CloudCore.Domain.Entities;
+using CloudCore.Contracts.Responses;
+using CloudCore.Contracts.Requests;
+using CloudCore.Mappers;
 
 namespace CloudCore.Controllers
 {
@@ -17,21 +15,17 @@ namespace CloudCore.Controllers
     [Authorize] // Require authentication for all endpoints
     public class ItemController : ControllerBase
     {
-        private readonly IDbContextFactory<CloudCoreDbContext> _contextFactory;
-        private readonly IFileStorageService _fileStorageService;
-        private readonly IZipArchiveService _zipArchiveService;
-        private readonly IFileRenameService _fileRenameService;
         private readonly IValidationService _validationService;
         private readonly IItemRepository _itemRepository;
-        
-        public ItemController(IDbContextFactory<CloudCoreDbContext> contextFactory, IFileStorageService fileStorageService, IZipArchiveService zipArchiveService, IFileRenameService fileRenameService, IValidationService validationService, IItemRepository itemRepository)
+        private readonly IItemDataService _itemDataService;
+        private readonly ILogger<ItemController> _logger;
+
+        public ItemController(IValidationService validationService, IItemRepository itemRepository, IItemDataService itemDataService, ILogger<ItemController> logger)
         {
-            _contextFactory = contextFactory;
-            _fileStorageService = fileStorageService;
-            _zipArchiveService = zipArchiveService;
-            _fileRenameService = fileRenameService;
             _validationService = validationService;
             _itemRepository = itemRepository;
+            _itemDataService = itemDataService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -47,14 +41,14 @@ namespace CloudCore.Controllers
         {
             var currentUserId = GetCurrentUserId();
 
+            _logger.LogInformation($"Verifying user authorization. Target User ID: {userId}, Requester User ID: {currentUserId}.");
             var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
             if (!authValidation.IsValid)
-                return StatusCode(403, new
-                {
-                    message = authValidation.ErrorMessage,
-                    errorCode = authValidation.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
+            {
+                _logger.LogWarning($"User authorization failed. Error: {authValidation.ErrorMessage}, Code: {authValidation.ErrorCode}, Target User ID: {userId}, Requester User ID: {currentUserId}.");
+                return StatusCode(403, ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode));
+            }
+            _logger.LogInformation($"User authorization successful for Target User ID: {userId}.");
             return null;
         }
         /// <summary>
@@ -64,28 +58,25 @@ namespace CloudCore.Controllers
         /// <param name="parentId">Parent directory ID (null for root level)</param>
         /// <returns>List of user items or NotFound if no items exist</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required]int userId, int? parentId)
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required] int userId, int? parentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 30, [FromQuery] string? sortBy = "name", [FromQuery] string? sortDir = "asc")
         {
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
 
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-                var userFiles = await context.Items
-                    .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == parentId)
-                    .ToListAsync();
+            _logger.LogInformation("Fetching items for User ID: {UserId}, Parent ID: {ParentId}, Page: {Page}, PageSize: {PageSize}.", userId, parentId, page, pageSize);
 
-                if (userFiles == null || userFiles.Count == 0)
-                    return NotFound("No files found for this user.");
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
-                return Ok(userFiles);
-            }
-            catch (Exception ex)
+            var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir);
+
+            _logger.LogInformation("Successfully fetched {ItemCount} items for User ID: {UserId}.", result.Data.Count(), userId);
+            return Ok(new PaginatedResponse<ItemResponse>
             {
-                return NotFound(ex.Message);
-            }
+                Data = result.Data.Select(i => i.ToResponseDto()),
+                Pagination = result.Pagination
+            });
         }
 
         /// <summary>
@@ -108,33 +99,17 @@ namespace CloudCore.Controllers
         /// 
         /// Response: ZIP file download named "MyFolder.zip"
         [HttpGet("{folderId}/downloadfolder")]
-        public async Task<IActionResult> DownloadFolderAsync([Required]int userId,[Required]int folderId)
+        public async Task<IActionResult> DownloadFolderAsync([Required] int userId, [Required] int folderId)
         {
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-                var folder = await context.Items
-                    .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                    .FirstOrDefaultAsync();
 
-                if (folder == null)
-                    return NotFound("Folder not found");
+            _logger.LogInformation("User {UserId} initiated download for Folder ID: {FolderId}.", userId, folderId);
+            var (archiveStream, fileName) = await _itemRepository.DownloadFolderAsync(userId, folderId);
 
-                var archiveStream = await _zipArchiveService.CreateFolderArchiveAsync(userId, folderId, folder.Name);
-                var fileName = $"{folder.Name}.zip";
-                return File(archiveStream, "application/zip", fileName);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            _logger.LogInformation("Successfully created archive '{FileName}' for User ID: {UserId}.", fileName, userId);
+            return File(archiveStream, "application/zip", fileName);
         }
 
         /// <summary>
@@ -149,34 +124,14 @@ namespace CloudCore.Controllers
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-                var item = await context.Items
-                    .Where(i => i.Id == fileId && i.UserId == userId && i.IsDeleted == false && i.Type == "file")
-                    .FirstOrDefaultAsync();
 
-                if (item == null)
-                    return NotFound("File not found or is not a file.");
+            _logger.LogInformation("User {UserId} initiated download for File ID: {FileId}.", userId, fileId);
 
-                if (string.IsNullOrEmpty(item.FilePath))
-                    return NotFound("File path is empty.");
+            var fileResult = await _itemRepository.DownloadFileAsync(userId, fileId);
 
-                var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
+            _logger.LogInformation("Serving file '{FileName}' for User ID: {UserId}.", fileResult.FileName, userId);
 
-                if (!System.IO.File.Exists(fullPath))
-                    return NotFound("File not found on disk.");
-
-                return PhysicalFile(fullPath, item.MimeType ?? "application/octet-stream", item.Name, enableRangeProcessing: true);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return BadRequest("Invalid file path");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return File(fileResult.Stream, fileResult.MimeType, fileResult.FileName, enableRangeProcessing: true);
         }
 
         /// <summary>
@@ -201,54 +156,12 @@ namespace CloudCore.Controllers
             if (authResult != null)
                 return authResult;
 
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-
-                var itemsValidation = await _validationService.ValidateItemIdsAsync(context, itemsId, userId);
-                if (!itemsValidation.IsValid)
-                {
-                    return BadRequest(new
-                    {
-                        message = itemsValidation.ErrorMessage,
-                        errorCode = itemsValidation.ErrorCode,
-                        timestamp = DateTime.UtcNow
-                    });
-                }
+            _logger.LogInformation("User {UserId} initiated download for {ItemCount} items.", userId, itemsId.Count);
+            var (archiveStream, fileName) = await _itemRepository.DownloadMultipleItemsAsZipAsync(userId, itemsId);
+            _logger.LogInformation("Successfully created archive '{FileName}' with multiple items for User ID: {UserId}.", fileName, userId);
 
 
-                var items = await context.Items
-                     .Where(i => itemsId.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
-                     .ToListAsync();
-
-                if (items == null || items.Count == 0)
-                    return NotFound("File or files not found");
-
-                var totalSize = items.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
-                var sizeValidation = _validationService.ValidateArchiveSize(totalSize, items.Count);
-                if (!sizeValidation.IsValid)
-                {
-                    return BadRequest(new
-                    {
-                        message = sizeValidation.ErrorMessage,
-                        errorCode = sizeValidation.ErrorCode,
-                        timestamp = DateTime.UtcNow
-                    });
-                }
-
-                var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items);
-                var fileName = $"selected_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-
-                return File(archiveStream, "application/zip", fileName);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception)
-            {
-                return BadRequest();
-            }
+            return File(archiveStream, "application/zip", fileName);
         }
 
         /// <summary>
@@ -264,175 +177,59 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> RenameItemAsync([Required] int userId, [Required] int itemId,[StringLength(250)] [FromBody] string newName)
+        public async Task<IActionResult> RenameItemAsync([Required] int userId, [Required] int itemId, [StringLength(250)][FromBody] string newName)
         {
 
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
 
-            var itemName = _validationService.ValidateItemName(newName);
-            if (!itemName.IsValid)
-                return StatusCode(409, new
-                {
-                    message = itemName.ErrorMessage,
-                    errorCode = itemName.ErrorCode,
-                    timestamp = DateTime.UtcNow
-                });
-            try
+            _logger.LogInformation("User {UserId} attempting to rename Item ID: {ItemId} to '{NewName}'.", userId, itemId, newName);
+            var result = await _itemRepository.RenameItemAsync(userId, itemId, newName);
+
+            if (!result.IsSuccess)
             {
-                using var context = _contextFactory.CreateDbContext();
-
-                var itemValidation = await _validationService.ValidateItemExistsAsync(context, itemId, userId);
-                if (!itemValidation.IsValid)
+                _logger.LogWarning("Failed to rename Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
+                return result.ErrorCode switch
                 {
-                    return NotFound(new
-                    {
-                        message = itemValidation.ErrorMessage,
-                        errorCode = itemValidation.ErrorCode,
-                        timestamp = DateTime.UtcNow
-                    });
-                }
-
-                var item = await context.Items
-                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                    .FirstOrDefaultAsync();
-
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync( context, newName, userId, item.ParentId, itemId);
-                if (!uniquenessValidation.IsValid)
-                {
-                    return Conflict(new
-                    {
-                        message = uniquenessValidation.ErrorMessage,
-                        errorCode = uniquenessValidation.ErrorCode,
-                        timestamp = DateTime.UtcNow
-                    });
-                }
-
-                if (item.Type == "file")
-                {
-                    _fileRenameService.RenameFile(item, newName, out string newRelativePath);
-                    await context.SaveChangesAsync();
-
-                    return Ok(new
-                    {
-                        message = "File renamed successfully",
-                        itemId = item.Id,
-                        itemNewName = newName,
-                        timestamp = DateTime.UtcNow
-                    });
-                }
-
-                if (item.Type == "folder")
-                {
-                    await _fileRenameService.RenameFolder(context, item, newName);
-
-                    return Ok(new
-                    {
-                        message = "Folder renamed successfully",
-                        itemId = item.Id,
-                        itemNewName = newName,
-                        timestamp = DateTime.UtcNow
-                    });
-                }
-
-                return BadRequest(new
-                {
-                    message = "Unsupported item type",
-                    errorCode = "UNSUPPORTED_TYPE",
-                    timestamp = DateTime.UtcNow
-                });
+                    "ITEM_NOT_FOUND" => NotFound(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
+                };
             }
-            catch (InvalidOperationException ex)
+
+            _logger.LogInformation("Successfully renamed Item ID: {ItemId} to '{NewName}' for User ID: {UserId}.", itemId, newName, userId);
+
+            return Ok(new
             {
-                return BadRequest(new
-                {
-                    message = ex.Message,
-                    errorCode = "INVALID_OPERATION",
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return StatusCode(403, new
-                {
-                    message = "Access denied to file system",
-                    errorCode = "FILE_SYSTEM_ACCESS_DENIED",
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    message = "Directory not found",
-                    errorCode = "DIRECTORY_NOT_FOUND",
-                    detail = ex.Message,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (IOException ex)
-            {
-                return StatusCode(409, new
-                {
-                    message = "File system conflict occurred",
-                    errorCode = "FILE_SYSTEM_CONFLICT",
-                    detail = ex.Message,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new
-                {
-                    message = "An unexpected error occurred",
-                    errorCode = "INTERNAL_ERROR",
-                    timestamp = DateTime.UtcNow
-                });
-            }
+                message = result.Message,
+                code = result.ErrorCode,
+                itemId = result.ItemId,
+                itemNewName = result.NewName,
+                timestamp = result.Timestamp
+            });
+
         }
 
+
+        // WILL BE DELETED
         /// <summary>
         /// Gets the total size and file count for a directory
         /// </summary>
         /// <param name="userId">User identifier from route</param>
         /// <param name="folderId">Folder identifier to calculate size for</param>
         /// <returns>Object containing total size in bytes and file count</returns>
-        [HttpGet("{folderId}/size")]
-        public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
-        {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+        //[HttpGet("{folderId}/size")]
+        //public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
+        //{
+        //    var authResult = VerifyUser(userId);
+        //    if (authResult != null)
+        //        return authResult;
 
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-                
-                // Verify the folder exists and belongs to the user
-                var folder = await context.Items
-                    .Where(i => i.Id == folderId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                    .FirstOrDefaultAsync();
+        //    var result = await _itemRepository.GetFolderSizeAsync(userId, folderId);
+        //    return Ok(result);
 
-                if (folder == null)
-                    return NotFound("Folder not found");
-
-                // Calculate the total size recursively
-                var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folderId);
-
-                return Ok(new
-                {
-                    folderId = folderId,
-                    totalSize = totalSize,
-                    fileCount = fileCount,
-                    formattedSize = _validationService.FormatFileSize(totalSize)
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        //}
 
         /// <summary>
         /// Gets sizes for multiple folders in a single request
@@ -440,85 +237,157 @@ namespace CloudCore.Controllers
         /// <param name="userId">User identifier from route</param>
         /// <param name="folderIds">List of folder IDs to calculate sizes for</param>
         /// <returns>Dictionary of folder sizes</returns>
-        [HttpPost("sizes")]
-        public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
-        {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+        //[HttpPost("sizes")]
+        //public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
+        //{
+        //    var authResult = VerifyUser(userId);
+        //    if (authResult != null)
+        //        return authResult;
 
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-                
-                // Verify all folders exist and belong to the user
-                var folders = await context.Items
-                    .Where(i => folderIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                    .ToListAsync();
+        //    if (folderIds == null || folderIds.Count == 0)
+        //        return BadRequest(ApiResponse.Error("No folders specified", "NO_FOLDERS_SPECIFIED"));
 
-                var results = new Dictionary<int, object>();
+        //    var results = await _itemRepository.GetMultipleFolderSizesAsync(userId, folderIds);
+        //    return Ok(results);
 
-                foreach (var folder in folders)
-                {
-                    var (totalSize, fileCount) = await _zipArchiveService.CalculateArchiveSizeAsync(userId, folder.Id);
-                    
-                    results[folder.Id] = new
-                    {
-                        folderId = folder.Id,
-                        totalSize = totalSize,
-                        fileCount = fileCount,
-                        formattedSize = _validationService.FormatFileSize(totalSize)
-                    };
-                }
+        //}
 
-                return Ok(results);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpDelete ("{itemId}/delete")]
+        [HttpDelete("{itemId}/delete")]
         public async Task<IActionResult> DeleteItemAsync(int userId, int itemId)
         {
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
 
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
+            _logger.LogInformation("User {UserId} attempting to delete Item ID: {ItemId}.", userId, itemId);
 
-                // Get item 
-                var item = await context.Items 
-                    .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false)
-                    .FirstOrDefaultAsync();
+            var result = await _itemRepository.DeleteItemAsync(userId, itemId);
+            _logger.LogInformation("Item ID: {ItemId} successfully moved to trash for User ID: {UserId}.", itemId, userId);
 
-                if (item == null)
-                    return NotFound();
+            return Ok(result);
 
-                if(item.Type == "file")
-                    item.IsDeleted = true;
-
-                if (item.Type == "folder")
-                {
-                    item.IsDeleted = true;
-                    var childItems = await _itemRepository.GetAllChildItemsAsync(itemId, userId);
-                    foreach (var childItem in childItems)
-                        childItem.IsDeleted = true;
-                    context.UpdateRange(childItems);
-
-                }
-                await context.SaveChangesAsync();
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
         }
 
-        
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
+            _logger.LogInformation("User {UserId} attempting to upload file '{FileName}' to Parent ID: {ParentId}.", userId, file.FileName, parentId);
+
+            var result = await _itemRepository.UploadFileAsync(userId, file, parentId);
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Failed to upload file '{FileName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", file.FileName, userId, result.Message, result.ErrorCode);
+                return result.ErrorCode switch
+                {
+                    "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
+                };
+            }
+
+            _logger.LogInformation("User {UserId} successfully uploaded file '{FileName}' with new Item ID: {ItemId}.", userId, file.FileName, result.ItemId);
+
+            return Ok(new
+            {
+                message = result.Message,
+                itemId = result.ItemId,
+                fileName = result.FileName,
+                timestamp = DateTime.UtcNow
+            });
+
+        }
+
+
+        // <summary>
+        /// Creates a new folder for the specified user.
+        /// </summary>
+        /// <param name="userId">The ID of the user creating the folder.</param>
+        /// <param name="request">The folder creation request containing folder name and optional parent ID.</param>
+        /// <returns>
+        /// Returns:
+        /// - 200 OK if the folder is successfully created.
+        /// - 400 Bad Request if the folder name is invalid or the parent folder does not exist.
+        /// - 409 Conflict if a folder with the same name already exists under the same parent.
+        /// </returns>
+        [HttpPost("createfolder")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> CreateFolderAsync([Required] int userId, [FromBody] FolderCreateRequest request)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null) return authResult;
+
+
+            _logger.LogInformation("User {UserId} attempting to create folder '{FolderName}' in Parent ID: {ParentId}.", userId, request.Name, request.ParentId);
+
+            var result = await _itemRepository.CreateFolderAsync(userId, request);
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Failed to create folder '{FolderName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", request.Name, userId, result.Message, result.ErrorCode);
+                return result.ErrorCode switch
+                {
+                    "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
+                };
+            }
+
+            _logger.LogInformation("User {UserId} successfully created folder '{FolderName}' with new Folder ID: {FolderId}.", userId, request.Name, result.FolderId);
+
+            return Ok(new
+            {
+                message = result.Message,
+                code = result.ErrorCode,
+                folderId = result.FolderId,
+                folderName = result.FolderName,
+                timestamp = DateTime.UtcNow
+            });
+        }
+
+        [HttpGet("trash")]
+        public async Task<ActionResult<IEnumerable<Item>>> GetDeletedItemsAsync([Required] int userId, int? parentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 30, [FromQuery] string? sortBy = "name", [FromQuery] string? sortDir = "asc")
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null) 
+                return authResult;
+
+            _logger.LogInformation("Fetching trash items for User ID: {UserId}, Page: {Page}, PageSize: {PageSize}.", userId, page, pageSize);
+
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 30;
+
+            var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, true);
+
+            _logger.LogInformation("Successfully fetched {ItemCount} trash items for User ID: {UserId}.", result.Data.Count(), userId);
+
+            return Ok(new PaginatedResponse<ItemResponse>
+            {
+                Data = result.Data.Select(i => i.ToResponseDto()),
+                Pagination = result.Pagination
+            });
+        }
+
+        [HttpPut("{itemId}/restore")]
+        public async Task<IActionResult> RestoreItemAsync(int userId, int itemId)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
+            _logger.LogInformation("User {UserId} attempting to restore Item ID: {ItemId}.", userId, itemId);
+            var result = await _itemRepository.RestoreItemAsync(userId, itemId);
+
+            if (!result.IsSuccess)
+                _logger.LogWarning("Failed to restore Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
+            else
+                _logger.LogInformation("Item ID: {ItemId} successfully restored for User ID: {UserId}.", itemId, userId);
+
+            return Ok(result);
+        }
     }
 }

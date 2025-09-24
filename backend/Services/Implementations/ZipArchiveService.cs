@@ -1,27 +1,28 @@
 ﻿using System.IO;
 using System.IO.Compression;
-using CloudCore.Models;
+using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 
-namespace CloudCore.Services
+namespace CloudCore.Services.Implementations
 {
     public class ZipArchiveService : IZipArchiveService
     {
 
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        private readonly IFileStorageService _fileStorageService;
+        private readonly IItemStorageService _fileStorageService;
         private readonly IValidationService _validationService;
-        private readonly IItemRepository _itemRepository;
+        private readonly IItemDataService _itemDataService;
 
 
-        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IFileStorageService fileStorage, IValidationService validationService, IItemRepository itemRepository)
+        public ZipArchiveService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IItemStorageService fileStorage, IValidationService validationService, IItemDataService itemDataService)
         {
             _dbContextFactory = dbContextFactory;
             _fileStorageService = fileStorage;
             _validationService = validationService;
-            _itemRepository = itemRepository;
+            _itemDataService = itemDataService;
         }
 
         public async Task<FileStream> CreateFolderArchiveAsync(int userId, int folderId, string folderName)
@@ -99,6 +100,7 @@ namespace CloudCore.Services
 
             // Get all items in the folder
             var items = await _context.Items
+                .AsNoTracking()
                 .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
                 .ToListAsync();
 
@@ -141,29 +143,15 @@ namespace CloudCore.Services
             if (string.IsNullOrEmpty(item.FilePath))
                 return;
 
-            try
-            {
-                var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
 
-                if (File.Exists(fullPath))
-                {
-                    var entry = zipArchive.CreateEntry(itemPath, CompressionLevel.Optimal);
-                    using var entryStream = entry.Open();
-                    using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
-                    await fileStream.CopyToAsync(entryStream);
-                }
-            }
-            catch (UnauthorizedAccessException)
+            var fullPath = _fileStorageService.GetFileFullPath(userId, item.FilePath);
+
+            if (File.Exists(fullPath))
             {
-                throw;
-            }
-            catch (FileNotFoundException)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                throw;
+                var entry = zipArchive.CreateEntry(itemPath, CompressionLevel.Optimal);
+                using var entryStream = entry.Open();
+                using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+                await fileStream.CopyToAsync(entryStream);
             }
         }
 
@@ -174,7 +162,7 @@ namespace CloudCore.Services
 
             if (folderId.HasValue)
             {
-                var allChildItems = await _itemRepository.GetAllChildItemsAsync(folderId.Value, userId);
+                var allChildItems = await _itemDataService.GetAllChildItemsAsync(folderId.Value, userId);
 
                 var files = allChildItems.Where(item => item.Type == "file");
 
@@ -186,8 +174,9 @@ namespace CloudCore.Services
             else
             {
                 var items = await _context.Items
-                .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
-                .ToListAsync();
+                    .AsNoTracking()
+                    .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
+                    .ToListAsync();
 
                 long totalSize = 0;
                 int fileCount = 0;

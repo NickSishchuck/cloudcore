@@ -1,5 +1,8 @@
 using BCrypt.Net;
-using CloudCore.Models;
+using CloudCore.Contracts.Requests;
+using CloudCore.Contracts.Responses;
+using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -7,29 +10,28 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace CloudCore.Services;
+namespace CloudCore.Services.Implementations;
 
 public class AuthService : IAuthService
 {
     private readonly CloudCoreDbContext _context;
-    private readonly IConfiguration _configuration;
 
-    public AuthService(CloudCoreDbContext context, IConfiguration configuration)
+    public AuthService(CloudCoreDbContext context)
     {
         _context = context;
-        _configuration = configuration;
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
         var user = await _context.Users
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Username == request.Username);
 
         if (user == null || string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(request.Password, user.PasswordHash))
             return null;
 
         var token = GenerateJwtToken(user);
-        
+
         return new AuthResponse
         {
             Token = token,

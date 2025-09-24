@@ -1,4 +1,4 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CloudCore.Services.Interfaces
@@ -17,7 +17,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="folderId">ID of the folder to archive</param>
         /// <param name="folderName">Name of the folder to use as root in the archive</param>
         /// <returns>Memory stream containing the ZIP archive data</returns>
-        
+
         Task<FileStream> CreateFolderArchiveAsync(int userId, int folderId, string folderName);
 
         /// <summary>

@@ -1,8 +1,8 @@
-﻿namespace CloudCore.Models
+﻿namespace CloudCore.Common.Validation
 {
     public class ValidationResult
     {
-        public bool IsValid {  get; set; }
+        public bool IsValid { get; set; }
         public string ErrorMessage { get; set; }
 
         public string ErrorCode { get; set; }
@@ -13,7 +13,8 @@
 
         public static ValidationResult Failure(string message, string code = null, object data = null)
         {
-            return new ValidationResult () { 
+            return new ValidationResult()
+            {
                 IsValid = false,
                 ErrorMessage = message,
                 ErrorCode = code,

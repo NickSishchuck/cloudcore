@@ -9,6 +9,12 @@
 </head>
 <body>
 <div class="register-container">
+    <div class="language-switcher">
+        <button class="language-btn" id="languageBtn" onclick="switchLanguage()" title="Switch language">
+            <span class="language-flag" id="langFlag">🌐</span>
+            <span class="language-code" id="langCode">EN</span>
+        </button>
+    </div>
     <h1>☁️ CloudCore</h1>
 
     <div id="error-message" class="error" style="display: none;"></div>
@@ -16,7 +22,7 @@
 
     <form class="register-form" id="registerForm">
         <div class="form-group">
-            <label for="username">Username</label>
+            <label for="username" data-i18n="username">Username</label>
             <input type="text" id="username" name="username" required
                    minlength="3" maxlength="50"
                    pattern="[a-zA-Z0-9_]+"
@@ -24,34 +30,127 @@
         </div>
 
         <div class="form-group">
-            <label for="email">Email Address</label>
+            <label for="email" data-i18n="emailAddress">Email Address</label>
             <input type="email" id="email" name="email" required
                    maxlength="100">
         </div>
 
         <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password" data-i18n="password">Password</label>
             <input type="password" id="password" name="password" required
                    minlength="6"
                    title="Password must be at least 6 characters long">
         </div>
 
         <div class="form-group">
-            <label for="confirmPassword">Confirm Password</label>
+            <label for="confirmPassword" data-i18n="confirmPassword">Confirm Password</label>
             <input type="password" id="confirmPassword" name="confirmPassword" required>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="registerBtn">Create Account</button>
+        <button type="submit" class="btn btn-primary" id="registerBtn" data-i18n="createAccount">Create Account</button>
     </form>
 
-    <div class="login-link">
-        Already have an account? <a href="login.html">Sign in</a>
+    <div class="login-link"><span data-i18n="alreadyAccount">Already have an account?</span> <a href="login.html" data-i18n="signIn">Sign in</a>
     </div>
 </div>
 
 <script>
     const API_URL = 'http://localhost:5000';
+    let currentLanguage = localStorage.getItem('cloudcore-language') || 'en';
 
+    // Translation object - following the same structure as main CloudCore system
+    const translations = {
+        en: {
+            title: 'CloudCore - Create Account',
+            username: 'Username',
+            emailAddress: 'Email Address',
+            password: 'Password',
+            confirmPassword: 'Confirm Password',
+            createAccount: 'Create Account',
+            creatingAccount: 'Creating account...',
+            alreadyAccount: 'Already have an account?',
+            signIn: 'Sign in',
+            accountCreated: 'Account created successfully! Welcome, {username}!',
+            registrationFailed: 'Registration failed. Please try again.',
+            connectionError: 'Unable to connect to server. Please try again.',
+            registrationSuccessful: '🎉 Registration successful!',
+            passwordsNoMatch: 'Passwords do not match',
+            invalidCredentials: 'Invalid registration data',
+            usernameTooltip: 'Only letters, numbers, and underscores allowed',
+            emailTooltip: 'Please enter a valid email address', 
+            passwordTooltip: 'Password must be at least 6 characters long',
+            confirmPasswordTooltip: 'Please confirm your password'
+        },
+        uk: {
+            title: 'CloudCore - Створення облікового запису',
+            username: 'Ім\'я користувача',
+            emailAddress: 'Електронна адреса',
+            password: 'Пароль',
+            confirmPassword: 'Підтвердити пароль',
+            createAccount: 'Створити обліковий запис',
+            creatingAccount: 'Створюю обліковий запис...',
+            alreadyAccount: 'Вже маєте обліковий запис?',
+            signIn: 'Увійти',
+            accountCreated: 'Обліковий запис створено успішно! Вітаємо, {username}!',
+            registrationFailed: 'Помилка реєстрації. Спробуйте ще раз.',
+            connectionError: 'Неможливо підключитися до сервера. Спробуйте ще раз.',
+            registrationSuccessful: '🎉 Успішна реєстрація!',
+            passwordsNoMatch: 'Паролі не збігаються',
+            invalidCredentials: 'Невірні дані для реєстрації',
+            usernameTooltip: 'Дозволені лише літери, цифри та підкреслення',
+            emailTooltip: 'Будь ласка, введіть дійсну електронну адресу',
+            passwordTooltip: 'Пароль повинен містити не менше 6 символів', 
+            confirmPasswordTooltip: 'Будь ласка, підтвердіть свій пароль'
+        }
+    };
+
+    // Translation helper function - same as main system
+    function t(key) {
+        return translations[currentLanguage][key] || key;
+    }
+
+    // Language switching function - exactly like in main system
+    function switchLanguage() {
+        currentLanguage = currentLanguage === 'en' ? 'uk' : 'en';
+        localStorage.setItem('cloudcore-language', currentLanguage);
+        updateLanguageButton();
+        updateUILanguage();
+    }
+
+    // Update language button display - same as main system
+    function updateLanguageButton() {
+        const btn = document.getElementById('languageBtn');
+        const flag = btn.querySelector('.language-flag');
+        const code = btn.querySelector('.language-code');
+        
+        if (currentLanguage === 'uk') {
+            flag.textContent = '🇺🇦';
+            code.textContent = 'UA';
+            btn.title = 'Перемкнути мову';
+        } else {
+            flag.textContent = '🌐';
+            code.textContent = 'EN';
+            btn.title = 'Switch language';
+        }
+    }
+
+    // Update UI language - using data-i18n pattern like main system
+    function updateUILanguage() {
+        document.title = t('title');
+        
+        // Update all elements with data-i18n attributes
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            if (translations[currentLanguage][key]) {
+                element.textContent = translations[currentLanguage][key];
+            }
+        });
+
+        document.getElementById('username').title = t('usernameTooltip');
+        document.getElementById('email').title = t('emailTooltip'); 
+        document.getElementById('password').title = t('passwordTooltip');
+        document.getElementById('confirmPassword').title = t('confirmPasswordTooltip');
+    }
     // Show error message
     function showError(message) {
         const errorDiv = document.getElementById('error-message');
@@ -80,7 +179,7 @@
         const confirmPassword = document.getElementById('confirmPassword').value;
 
         if (password !== confirmPassword) {
-            showError('Passwords do not match');
+            showError(t('passwordsNoMatch'));
             return false;
         }
 
@@ -102,7 +201,7 @@
 
         // Disable button and show loading
         registerBtn.disabled = true;
-        registerBtn.textContent = 'Creating account...';
+        registerBtn.textContent = t('creatingAccount');
         hideMessages();
 
         try {
@@ -133,7 +232,7 @@
                 console.log('JWT Token:', data.token);
                 console.log('User Info:', data);
 
-                showSuccess(`Account created successfully! Welcome, ${data.username}!`);
+                showSuccess(t('accountCreated').replace('{username}', data.username));
 
                 // Redirect to main page after 2 seconds
                 setTimeout(() => {
@@ -142,16 +241,22 @@
 
             } else {
                 // Registration failed
-                showError(data.message || 'Registration failed. Please try again.');
+                let errorMessage = t('registrationFailed'); // default message
+                
+                if (data.message) {
+                    errorMessage = data.message; // Use server message if available
+                }
+                
+                showError(errorMessage);
             }
 
         } catch (error) {
             console.error('Registration error:', error);
-            showError('Unable to connect to server. Please try again.');
+            showError(t('connectionError'));
         } finally {
             // Re-enable button
             registerBtn.disabled = false;
-            registerBtn.textContent = 'Create Account';
+            registerBtn.textContent = t('createAccount');
         }
     });
 
@@ -174,6 +279,9 @@
             console.log('User already logged in, redirecting...');
             window.location.href = 'index.html';
         }
+
+        updateLanguageButton();
+        updateUILanguage();
     });
 </script>
 </body>

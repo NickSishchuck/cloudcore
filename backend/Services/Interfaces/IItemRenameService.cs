@@ -1,8 +1,9 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 
 namespace CloudCore.Services.Interfaces
 {
-    public interface IFileRenameService
+    public interface IItemRenameService
     {
         /// <summary>
         /// Renames a user file in the file system and returns the new relative path
@@ -15,7 +16,7 @@ namespace CloudCore.Services.Interfaces
         /// This method preserves the original file extension and only changes the filename.
         /// The operation is performed atomically using File.Move().
         /// </remarks>
-        void RenameFile(Item item, string newName, out string newRelativePath);
+        Task RenameFileAsync(Item item, string newName);
 
         /// <summary>
         /// Renames a folder and updates all file paths for child items recursively.
@@ -25,6 +26,6 @@ namespace CloudCore.Services.Interfaces
         /// <param name="parent">The folder item to rename</param>
         /// <param name="newName">The new name for the folder</param>
         /// <returns>A task representing the asynchronous operation</returns>
-        Task RenameFolder(CloudCoreDbContext context,Item parent, string newName);
+        Task RenameFolderAsync(CloudCoreDbContext context, Item parent, string newName);
     }
 }

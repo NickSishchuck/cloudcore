@@ -1,9 +1,13 @@
-﻿using CloudCore.Models;
+﻿using CloudCore.Common.Validation;
+using CloudCore.Data.Context;
 
 namespace CloudCore.Services.Interfaces
 {
     public interface IValidationService
     {
+
+        ValidationResult ValidateFile(IFormFile file);
+
         /// <summary>
         /// Validates the format and content of a file or folder name.
         /// </summary>

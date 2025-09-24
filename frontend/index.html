@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="data:,">
@@ -130,26 +131,6 @@
             overflow-y: auto;
         }
 
-        .new-button {
-            margin: 0 16px 16px;
-            padding: 12px 24px;
-            background: #fff;
-            border: 1px solid #dadce0;
-            border-radius: 24px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: box-shadow 0.2s, background-color 0.2s;
-        }
-
-        .new-button:hover {
-            background: #f8f9fa;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-        }
-
         .sidebar-item {
             padding: 8px 24px;
             cursor: pointer;
@@ -167,6 +148,95 @@
         .sidebar-item.active {
             background: #e8f0fe;
             color: #1a73e8;
+        }
+
+        .new-dropdown {
+            position: relative;
+            margin: 0 16px 16px;
+        }
+
+        .new-button {
+            padding: 12px 24px;
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: box-shadow 0.2s, background-color 0.2s;
+            min-height: 48px;
+            justify-content: space-between;
+        }
+
+        .new-button:hover {
+            background: #f8f9fa;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .new-button.active {
+            border-color: #4285f4;
+            box-shadow: 0 1px 6px rgba(66, 133, 244, 0.28);
+        }
+
+        .new-button-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dropdown-arrow {
+            font-size: 10px;
+            transition: transform 0.2s ease;
+            color: #5f6368;
+        }
+
+        .new-button.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-content {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-top: 4px;
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background-color 0.2s;
+            color: #202124;
+        }
+
+        .dropdown-item:not(:last-child) {
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+        }
+
+        .dropdown-item:active {
+            background: #f1f3f4;
         }
 
         /* Main Content */
@@ -231,9 +301,44 @@
 
         /* List View */
         .file-list {
+            table-layout: fixed;
+            width: 100%;
             width: 100%;
             border-collapse: collapse;
         }
+
+        .file-list th,
+        .file-list td {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .file-list th:nth-child(1),
+        .file-list td:nth-child(1) {
+            width: 50%;
+        }
+
+        /* Name */
+        .file-list th:nth-child(2),
+        .file-list td:nth-child(2) {
+            width: 15%;
+        }
+
+        /* Created */
+        .file-list th:nth-child(3),
+        .file-list td:nth-child(3) {
+            width: 15%;
+        }
+
+        /* Modified */
+        .file-list th:nth-child(4),
+        .file-list td:nth-child(4) {
+            width: 20%;
+        }
+
+        /* Size */
+
 
         .file-list-header {
             background: #f8f9fa;
@@ -247,6 +352,8 @@
             font-size: 14px;
             color: #5f6368;
         }
+
+
 
         .file-list-row {
             border-bottom: 1px solid #f1f3f4;
@@ -301,6 +408,23 @@
         .file-list-icon.html {
             background: #ff6d01;
             color: white;
+        }
+
+        .file-list thead.file-list-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dadce0;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .file-list-row.trash-mode {
+            cursor: default !important;
+        }
+
+        .file-list-row.trash-mode:hover {
+            background-color: transparent !important;
         }
 
         /* Loading and Empty States */
@@ -375,20 +499,6 @@
             text-align: center;
         }
 
-        /* Upload Area */
-        .upload-area {
-            border: 2px dashed #dadce0;
-            border-radius: 8px;
-            padding: 40px;
-            text-align: center;
-            margin: 20px;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-
-        .upload-area.dragover {
-            border-color: #4285f4;
-            background: #e8f0fe;
-        }
 
         /* Notification */
         .notification {
@@ -414,8 +524,15 @@
         }
 
         @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* Responsive */
@@ -428,851 +545,2420 @@
                 margin: 0 16px;
             }
         }
+
+        /* Drag and Drop Styles */
+        .file-container.dragover {
+            background: linear-gradient(135deg, #e8f0fe 0%, #f1f8ff 100%);
+            border: 2px dashed #4285f4;
+            border-radius: 8px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .file-container.dragover::before {
+            content: "Drop files or folders here to upload";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            font-weight: 500;
+            color: #4285f4;
+            background: white;
+            padding: 16px 32px;
+            border-radius: 24px;
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+            z-index: 100;
+            pointer-events: none;
+            animation: dragPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes dragPulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        .file-container.dragover .file-list {
+            opacity: 0.3;
+            filter: blur(2px);
+            transition: all 0.3s ease;
+        }
+
+        .file-container.dragover .empty-state {
+            opacity: 0.3;
+            filter: blur(2px);
+            transition: all 0.3s ease;
+        }
+
+        /* Enhanced upload area styles */
+        .upload-area {
+            border: 2px dashed #dadce0;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px;
+            transition: border-color 0.2s, background-color 0.2s;
+            position: relative;
+        }
+
+        .upload-area.dragover {
+            border-color: #4285f4;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f8f9fa 100%);
+            animation: dragGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes dragGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 rgba(66, 133, 244, 0);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(66, 133, 244, 0.3);
+            }
+        }
+
+        .upload-area::before {
+            content: "📁 Drop files or folders here";
+            display: block;
+            font-size: 16px;
+            font-weight: 500;
+            color: #5f6368;
+            margin-bottom: 8px;
+        }
+
+        .upload-area.dragover::before {
+            content: "🚀 Release to upload files and folders";
+            color: #4285f4;
+            animation: bounce 0.8s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        /* Visual feedback for different file types */
+        .file-container.dragover[data-drag-type="folder"]::before {
+            content: "📁 Drop folder here to upload";
+        }
+
+        .file-container.dragover[data-drag-type="files"]::before {
+            content: "📄 Drop files here to upload";
+        }
+
+        .file-container.dragover[data-drag-type="mixed"]::before {
+            content: "📁📄 Drop files and folders here";
+        }
+
+        /* Hover state for better UX */
+        .file-container:not(.dragover):hover {
+            background: #fafbfc;
+            transition: background 0.2s ease;
+        }
+
+        /* Loading overlay during upload */
+        .file-container.uploading {
+            position: relative;
+            pointer-events: none;
+        }
+
+        .file-container.uploading::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 999;
+        }
+
+        /* Success animation */
+        .file-container.upload-success {
+            animation: successFlash 0.6s ease-in-out;
+        }
+
+        @keyframes successFlash {
+            0% {
+                background: #e8f5e8;
+            }
+
+            100% {
+                background: transparent;
+            }
+        }
+
+        /* Error animation */
+        .file-container.upload-error {
+            animation: errorShake 0.5s ease-in-out;
+        }
+
+        @keyframes errorShake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
+        }
+
+        /* Language Switcher */
+        .language-switcher {
+            margin-right: 16px;
+        }
+
+        .language-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 20px;
+            background: white;
+            color: #5f6368;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .language-btn:hover {
+            background: #f8f9fa;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .language-btn:active {
+            background: #f1f3f4;
+        }
+
+        .language-flag {
+            font-size: 16px;
+        }
+
+        .language-code {
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .infinite-loader {
+            display: none;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            color: #5f6368;
+        }
+
+
+        .infinite-spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #e5e7eb;
+            /* light gray */
+            border-top: 3px solid #1a73e8;
+            /* brand blue */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .infinite-text {
+            font-size: 13px;
+            line-height: 1;
+            user-select: none;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body>
-<!-- Header -->
-<div class="header">
-    <div class="header-left">
-        <div class="logo">
-            CloudCore Drive
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">
+                CloudCore Drive
+            </div>
         </div>
-    </div>
-    <div class="search-container">
-        <input type="text" class="search-box" placeholder="Search in Drive" id="searchBox">
-        <div class="search-icon">🔍</div>
-    </div>
-    <div class="header-right">
-        <div class="user-info" id="userInfo">Loading...</div>
-        <button class="logout-btn" onclick="logout()">Sign Out</button>
-    </div>
-</div>
-
-<!-- Main Content -->
-<div class="main">
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <button class="new-button" id="newButton">
-            <span>➕</span>
-            New
-        </button>
-        <div class="sidebar-item active" data-section="mydrive">
-            <span>💾</span>
-            My Drive
+        <div class="search-container">
+            <input type="text" class="search-box" placeholder="Search in Drive" id="searchBox">
+            <div class="search-icon">🔍</div>
         </div>
-        <div class="sidebar-item" data-section="recent">
-            <span>🕒</span>
-            Recent
-        </div>
-        <div class="sidebar-item" data-section="shared">
-            <span>👥</span>
-            Shared with me
-        </div>
-        <div class="sidebar-item" data-section="trash">
-            <span>🗑️</span>
-            Trash
+        <div class="header-right">
+            <div class="language-switcher">
+                <button class="language-btn" id="languageBtn" title="Switch language">
+                    <span class="language-flag">🇺🇦</span>
+                    <span class="language-code">UA</span>
+                </button>
+            </div>
+            <div class="user-info" id="userInfo">Loading...</div>
+            <button class="logout-btn" onclick="logout()" data-i18n="signOut">Sign Out</button>
         </div>
     </div>
 
-    <!-- Content Area -->
-    <div class="content">
-        <!-- Breadcrumbs -->
-        <div class="breadcrumbs" id="breadcrumbs">
-            <a href="#" class="breadcrumb current" data-folder-id="null">My Drive</a>
+    <!-- Main Content -->
+    <div class="main">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="new-dropdown">
+                <button class="new-button" id="newButton">
+                    <span>➕</span> <span data-i18n="new">New</span><span class="dropdown-arrow">▼</span>
+                </button>
+                <div class="dropdown-content" id="newDropdown">
+                    <div class="dropdown-item" id="uploadFiles">
+                        <span>📄</span> <span data-i18n="uploadFiles">Upload Files</span>
+                    </div>
+                    <div class="dropdown-item" id="uploadFolder">
+                        <span>📁</span> <span data-i18n="uploadFolder">Upload Folder</span>
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar-item active" data-section="mydrive">
+                <span>💾</span> <span data-i18n="myDrive">My Drive</span>
+
+            </div>
+            <div class="sidebar-item" data-section="recent">
+                <span>🕒</span> <span data-i18n="recent">Recent</span>
+
+            </div>
+            <div class="sidebar-item" data-section="shared">
+                <span>👥</span> <span data-i18n="shared">Shared with me</span>
+
+            </div>
+            <div class="sidebar-item" data-section="trash">
+                <span>🗑️</span> <span data-i18n="trash">Trash</span>
+
+            </div>
         </div>
 
-        <!-- Toolbar -->
-        <div class="toolbar">
-            <div></div>
-            <div></div>
-        </div>
+        <!-- Content Area -->
+        <div class="content">
+            <!-- Breadcrumbs -->
+            <div class="breadcrumbs" id="breadcrumbs">
+                <a href="#" class="breadcrumb current" data-folder-id="null">My Drive</a>
+            </div>
 
-        <!-- File Container -->
-        <div class="file-container" id="fileContainer">
-            <div class="loading" id="loadingState">Loading...</div>
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div></div>
+                <div></div>
+            </div>
 
-            <!-- List View -->
-            <table class="file-list" id="fileList">
-                <thead class="file-list-header">
-                <tr>
-                    <th>Name</th>
-                    <th>Modified</th>
-                    <th>Size</th>
-                </tr>
-                </thead>
-                <tbody id="fileListBody"></tbody>
-            </table>
+            <!-- File Container -->
+            <div class="file-container" id="fileContainer">
+                <div class="loading" id="loadingState" data-i18n="loading">Loading...</div>
 
-            <!-- Empty State -->
-            <div class="empty-state" id="emptyState" style="display: none;">
-                <div class="empty-icon">📁</div>
-                <h3>This folder is empty</h3>
-                <p>Upload files or create folders to get started</p>
+                <!-- List View -->
+                <table class="file-list" id="fileList">
+                    <thead class="file-list-header">
+                        <tr>
+                            <th data-i18n="name" class="sortable">Name</th>
+                            <th data-i18n="created" class="sortable">Created</th>
+                            <th data-i18n="modified" class="sortable">Modified</th>
+                            <th data-i18n="size" class="sortable">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fileListBody"></tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <div class="empty-icon">📁</div>
+                    <h3 data-i18n="emptyFolder">This folder is empty</h3>
+                    <p data-i18n="uploadGetStarted">Upload files or create folders to get started</p>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Context Menu -->
-<div class="context-menu" id="contextMenu"></div>
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu"></div>
 
-<!-- Notification -->
-<div class="notification" id="notification"></div>
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
 
-<!-- Hidden file input -->
-<input type="file" id="fileInput" multiple style="display: none;">
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" multiple style="display: none;">
+    <input type="file" id="folderInput" webkitdirectory style="display: none">
 
-<script>
-    class CloudCoreDrive {
-        constructor() {
-            this.currentUserId = null;
-            this.currentFolderId = null;
-            this.selectedItems = new Set();
-            this.breadcrumbPath = [];
-            this.allItems = [];
-            this.authToken = null;
-            this.currentUser = null;
-            this.currentContextItem = null;
-            this.folderSizeCache = new Map();
-            
-            this.initializeAuth();
-        }
+    <script>
 
-        initializeAuth() {
-            const token = localStorage.getItem('cloudcore_token');
-            const userStr = localStorage.getItem('cloudcore_user');
+        const translations = {
+            en: {
+                // Header
+                signOut: 'Sign Out',
 
-            if (!token || !userStr) {
-                console.log('No authentication found, redirecting to login...');
-                window.location.href = 'login.html';
-                return;
+                // Sidebar
+                new: 'New',
+                uploadFiles: 'Upload Files',
+                uploadFolder: 'Upload Folder',
+                myDrive: 'My Drive',
+                recent: 'Recent',
+                shared: 'Shared with me',
+                trash: 'Trash',
+
+                // File operations
+                name: 'Name',
+                modified: 'Modified',
+                created: 'Created',
+                size: 'Size',
+                downloadFile: 'Download',
+                downloadFolder: 'Download folder',
+                rename: 'Rename',
+                delete: 'Delete',
+                deleteFile: 'Delete file',
+                deleteFolder: 'Delete folder',
+                restore: 'Restore',
+                deletePermanently: 'Delete permanently',
+
+                // Messages
+                loading: 'Loading...',
+                calculating: 'Calculating...',
+                emptyFolder: 'This folder is empty',
+                uploadGetStarted: 'Upload files or create folders to get started',
+                restoring: 'Restoring',
+                restored: 'restored',
+
+
+                // Notifications
+                downloading: 'Downloading',
+                downloaded: 'Downloaded',
+                renaming: 'Renaming',
+                renamed: 'Successfully renamed to',
+                successfullyUploaded: 'Successfully uploaded',
+                deleting: 'Deleting',
+                deleted: 'deleted successfully',
+                uploading: 'Uploading',
+                uploaded: 'uploaded successfully',
+
+                // Confirmations
+                confirmDelete: 'Are you sure you want to delete',
+                confirmDeleteFolder: 'and all its contents?',
+
+                // Drag and drop
+                dropFiles: 'Drop files or folders here to upload',
+                releaseFiles: 'Release to upload files and folders',
+                dropFolder: 'Drop folder here to upload',
+                dropFilesOnly: 'Drop files here to upload',
+                dropMixed: 'Drop files and folders here',
+
+                // Errors
+                invalidName: 'Invalid name',
+                accessDenied: 'Access denied',
+                notFound: 'Item not found',
+                nameConflict: 'Name conflict',
+                unknownError: 'Unknown error',
+                networkError: 'Network error',
+                failedDownload: 'Failed to download',
+                failedRename: 'Failed to rename',
+                failedDelete: 'Failed to delete',
+                failedUpload: 'Failed to upload',
+                failedUploadFolder: 'Folder upload not supported in this browser',
+                noFilesSelected: 'No files selected',
+                errorUploadingFolder: 'Error uploading folder',
+                failedUploadAllFiles: 'Failed to upload all files',
+                alreadyExists: 'already exists',
+                networkErrorUploading: 'Network error uploading',
+                noItemsDropped: 'No items dropped',
+                failedToLoadFiles: 'Failed to load files',
+                restoringError: 'Restoring error',
+
+                // Other
+                creatingArchive: 'Creating archive for',
+                uploadingFolder: 'Uploading folder with',
+                uploadingFolderWithFiles: 'files...',
+                files: 'files',
+                fileUploaded: 'File uploaded:',
+                uploadFailed: 'Upload failed',
+                failed: 'failed',
+            },
+            uk: {
+                // Header
+                signOut: 'Вийти',
+
+                // Sidebar
+                new: 'Створити',
+                uploadFiles: 'Завантажити файли',
+                uploadFolder: 'Завантажити папку',
+                myDrive: 'Мій диск',
+                recent: 'Останні',
+                shared: 'Надані мені',
+                trash: 'Кошик',
+
+                // File operations
+                name: 'Назва',
+                modified: 'Змінено',
+                created: 'Створено',
+                size: 'Розмір',
+                downloadFile: 'Завантажити',
+                downloadFolder: 'Завантажити папку',
+                rename: 'Перейменувати',
+                delete: 'Видалити',
+                deleteFile: 'Видалити файл',
+                deleteFolder: 'Видалити папку',
+                restore: 'Відновити',
+                deletePermanently: 'Видалити назавжди',
+                restoring: 'Відновлення',
+
+                // Messages
+                loading: 'Завантаження...',
+                calculating: 'Обчислення...',
+                emptyFolder: 'Ця папка порожня',
+                uploadGetStarted: 'Завантажте файли або створіть папки для початку роботи',
+                restored: 'відновлено',
+
+                // Notifications
+                downloading: 'Завантажується',
+                downloaded: 'Завантажено',
+                renaming: 'Перейменовується',
+                renamed: 'Успішно перейменовано на',
+                successfullyUploaded: 'Успішно завантажено',
+                deleting: 'Видаляється',
+                deleted: 'успішно видалено',
+                uploading: 'Завантажується',
+                uploaded: 'успішно завантажено',
+
+                // Confirmations
+                confirmDelete: 'Ви впевнені, що хочете видалити',
+                confirmDeleteFolder: 'та весь його вміст?',
+
+                // Drag and drop
+                dropFiles: 'Перетягніть файли або папки сюди для завантаження',
+                releaseFiles: 'Відпустіть, щоб завантажити файли та папки',
+                dropFolder: 'Перетягніть папку сюди для завантаження',
+                dropFilesOnly: 'Перетягніть файли сюди для завантаження',
+                dropMixed: 'Перетягніть файли та папки сюди',
+
+                // Errors
+                invalidName: 'Недійсна назва',
+                accessDenied: 'Доступ заборонено',
+                notFound: 'Елемент не знайдено',
+                nameConflict: 'Конфлікт імен',
+                unknownError: 'Невідома помилка',
+                networkError: 'Помилка мережі',
+                failedDownload: 'Не вдалося завантажити',
+                failedRename: 'Не вдалося перейменувати',
+                failedDelete: 'Не вдалося видалити',
+                failedUpload: 'Не вдалося завантажити',
+                failedUploadFolder: 'Завантаження папок не підтримується в цьому браузері',
+                noFilesSelected: 'Файли не обрано',
+                errorUploadingFolder: 'Помилка завантаження папки',
+                failedUploadAllFiles: 'Не вдалося завантажити всі файли',
+                alreadyExists: 'вже існує',
+                networkErrorUploading: 'Помилка мережі при завантаженні',
+                noItemsDropped: 'Елементи не перетягнуто',
+                failedToLoadFiles: 'Помилка завантаження файлів',
+                restoringError: 'Помилка відновлення',
+
+                // Other
+                creatingArchive: 'Створення архіву для',
+                uploadingFolder: 'Завантаження папки з',
+                uploadingFolderWithFiles: 'файлами...',
+                files: 'файлів',
+                fileUploaded: 'Файл завантажено:',
+                uploadFailed: 'Помилка завантаження',
+                failed: 'не вдалося',
             }
+        };
 
-            this.authToken = token;
-            this.currentUser = JSON.parse(userStr);
-            this.currentUserId = this.currentUser.id;
+        let currentLanguage = localStorage.getItem('cloudcore-language') || 'en';
 
-            console.log('🔐 Auth token loaded:', this.authToken);
-            console.log('👤 Current user:', this.currentUser);
 
-            // Update user info in header
-            document.getElementById('userInfo').textContent = this.currentUser.username;
-
-            // Now initialize the drive
-            this.initializeEventListeners();
-            this.loadFiles();
+        function t(key) {
+            return translations[currentLanguage][key] || key;
         }
 
-        initializeEventListeners() {
-            document.getElementById('newButton').addEventListener('click', () => this.triggerFileUpload());
-            document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
-
-            document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
-
-            // Close context menu on click anywhere
-            document.addEventListener('click', () => this.hideContextMenu());
-
-            // Close context menu on right click elsewhere
-            document.addEventListener('contextmenu', (e) => {
-                if (!e.target.closest('.file-list-row')) {
-                    this.hideContextMenu();
-                }
-            });
-
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.addEventListener('click', (e) => this.handleSidebarClick(e));
-            });
-
-            this.setupDragAndDrop();
+        function switchLanguage() {
+            currentLanguage = currentLanguage === 'en' ? 'uk' : 'en';
+            localStorage.setItem('cloudcore-language', currentLanguage);
+            updateLanguageButton();
+            updateUILanguage();
         }
 
-        async loadFiles(folderId = null) {
-            this.showLoading();
+        function updateLanguageButton() {
+            const btn = document.getElementById('languageBtn');
+            const flag = btn.querySelector('.language-flag');
+            const code = btn.querySelector('.language-code');
 
-            try {
-                const url = folderId
-                    ? `http://localhost:5000/user/${this.currentUserId}/mydrive?parentId=${folderId}`
-                    : `http://localhost:5000/user/${this.currentUserId}/mydrive`;
-
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (response.status === 401) {
-                    // Token expired or invalid
-                    console.log('🔒 Token expired, redirecting to login...');
-                    this.logout();
-                    return;
-                }
-
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        this.allItems = [];
-                    } else {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                } else {
-                    this.allItems = await response.json();
-                }
-
-                this.currentFolderId = folderId;
-                this.renderFiles();
-                this.updateBreadcrumbs();
-
-            } catch (error) {
-                console.error('Error loading files:', error);
-                this.showError('Failed to load files');
-            }
-        }
-
-        renderFiles(items = this.allItems) {
-            this.hideLoading();
-
-            if (!items || items.length === 0) {
-                this.showEmptyState();
-                return;
-            }
-
-            this.hideEmptyState();
-            this.renderListView(items);
-        }
-
-        async fetchFolderSize(folderId) {
-            if (this.folderSizeCache.has(folderId)) {
-                const cachedSize = this.folderSizeCache.get(folderId);
-                this.updateFolderSizeDisplay(folderId, cachedSize);
-                return;
-            }
-
-            try {
-                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${folderId}/size`;
-
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (response.ok) {
-                    const sizeData = await response.json();
-                    this.folderSizeCache.set(folderId, sizeData);
-                    this.updateFolderSizeDisplay(folderId, sizeData);
-                } else {
-                    this.updateFolderSizeDisplay(folderId, null);
-                }
-            } catch (error) {
-                console.error(`Error fetching size for folder ${folderId}:`, error);
-                this.updateFolderSizeDisplay(folderId, null);
-            }
-        }
-
-        updateFolderSizeDisplay(folderId, sizeData) {
-            const sizeElement = document.getElementById(`size-${folderId}`);
-            if (!sizeElement) return;
-
-            if (sizeData) {
-                const displayText = sizeData.fileCount > 0
-                    ? `${sizeData.formattedSize} (${sizeData.fileCount} files)`
-                    : 'Empty folder';
-                sizeElement.innerHTML = `<span class="folder-size">${displayText}</span>`;
+            if (currentLanguage === 'uk') {
+                flag.textContent = '🇺🇦';
+                code.textContent = 'UA';
+                btn.title = 'Перемкнути мову';
             } else {
-                sizeElement.innerHTML = '<span class="folder-size-error">-</span>';
+                flag.textContent = '🌐';
+                code.textContent = 'EN';
+                btn.title = 'Switch language';
             }
         }
-        renderListView(items) {
-            const listBody = document.getElementById('fileListBody');
-            listBody.innerHTML = '';
 
-            items.forEach(item => {
-                const row = document.createElement('tr');
-                row.className = 'file-list-row';
-                row.dataset.itemId = item.id;
-                row.dataset.itemType = item.type;
-
-                const icon = this.getFileIcon(item);
-
-                let sizeDisplay = '';
-                if (item.type === 'file') {
-                    sizeDisplay = item.fileSize ? this.formatFileSize(item.fileSize) : '';
-                } else {
-                    sizeDisplay = '<span class="folder-size-loading">Calculating...</span>';
-                }
-
-                row.innerHTML = `
-            <td>
-                <span class="file-list-icon ${icon.class}">
-                    ${icon.emoji}
-                </span>
-                ${item.name}
-            </td>
-            <td>-</td>
-            <td id="size-${item.id}">${sizeDisplay}</td>
-        `;
-
-                row.addEventListener('click', (e) => this.handleFileClick(e, item));
-                row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
-                row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
-
-                listBody.appendChild(row);
-
-                if (item.type === 'folder') {
-                    this.fetchFolderSize(item.id);
+        function updateUILanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[currentLanguage][key]) {
+                    element.textContent = translations[currentLanguage][key];
                 }
             });
+
+            let translationStyle = document.getElementById('translation-styles');
+            if (!translationStyle) {
+                translationStyle = document.createElement('style');
+                translationStyle.id = 'translation-styles';
+                document.head.appendChild(translationStyle);
+            }
+
+            translationStyle.textContent = `
+                .file-container.dragover::before {
+                    content: "${t('dropFiles')}";
+                }
+                .file-container.dragover[data-drag-type="folder"]::before {
+                    content: "${t('dropFolder')}";
+                }
+                .file-container.dragover[data-drag-type="files"]::before {
+                    content: "${t('dropFilesOnly')}";
+                }
+                .file-container.dragover[data-drag-type="mixed"]::before {
+                    content: "${t('dropMixed')}";
+                } 
+            `;
+
+            const searchBox = document.getElementById('searchBox');
+            if (searchBox) {
+                searchBox.placeholder = currentLanguage === 'uk' ? 'Пошук на диску' : 'Search in Drive';
+            }
+
+            const homeBreadcrumb = document.querySelector('.breadcrumb[data-folder-id="null"]');
+            if (homeBreadcrumb) {
+                homeBreadcrumb.textContent = t('myDrive');
+            }
+
+            // Re-render current view to update dynamic content
+            if (this.allItems) {
+                this.renderFiles();
+            }
         }
+        class CloudCoreDrive {
+            constructor() {
+                this.currentUserId = null;
+                this.currentFolderId = null;
+                this.selectedItems = new Set();
+                this.breadcrumbPath = [];
+                this.allItems = [];
+                this.authToken = null;
+                this.currentUser = null;
+                this.currentContextItem = null;
+                this.folderSizeCache = new Map();
+                this.isTrashView = false;
 
-        async fetchBatchFolderSizes(folderIds) {
-            try {
-                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/sizes`;
+                this.currentPage = 1;
+                this.pageSize = 30;
+                this.totalPages = 0;
+                this.hasNextPage = false;
+                this.isLoadingMore = false;
+                this.allLoadedItems = [];
+                this.scrollThreshold = 300;
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(folderIds)
-                });
+                this.sortBy = 'name'; // name | modified | size
+                this.sortDir = 'asc'; // asc | desc
 
-                if (response.ok) {
-                    const sizesData = await response.json();
+                this.initializeAuth();
+                this.initializeLanguage();
+            }
 
-                    // Update all folder size displays
-                    Object.values(sizesData).forEach(sizeData => {
-                        this.folderSizeCache.set(sizeData.folderId, sizeData);
-                        this.updateFolderSizeDisplay(sizeData.folderId, sizeData);
+            showInfiniteLoader() {
+                let loader = document.getElementById('infiniteLoader');
+                const container = document.getElementById('fileContainer');
+                if (!container) return;
+
+                if (!loader) {
+                    loader = document.createElement('div');
+                    loader.id = 'infiniteLoader';
+                    loader.className = 'infinite-loader';
+                    loader.innerHTML = `
+      <div class="infinite-spinner"></div>
+      <div class="infinite-text">${t('loading') || 'Loading...'}</div>
+    `;
+                    container.appendChild(loader);
+                }
+                loader.style.display = 'flex';
+            }
+
+            hideInfiniteLoader() {
+                const loader = document.getElementById('infiniteLoader');
+                if (loader) loader.style.display = 'none';
+            }
+
+            async loadFiles(folderId = null, resetPagination = true, isTrashView = false) {
+                console.log('loadFiles:', { folderId, resetPagination, currentPage: this.currentPage });
+                if (resetPagination) {
+                    this.currentPage = 1;
+                    this.allLoadedItems = [];
+                    this.totalPages = 0;
+                    this.hasNextPage = false;
+                }
+
+                if (resetPagination) this.showLoading();
+                else this.showInfiniteLoader();
+
+                try {
+
+                    this.isTrashView = isTrashView;
+                    let url;
+                    const params = new URLSearchParams({
+                        page: String(this.currentPage),
+                        pageSize: String(this.pageSize),
+                        sortBy: this.sortBy, // name, modified, size
+                        sortDir: this.sortDir // asc, desc
                     });
 
-                    // Handle folders that weren't in the response (likely empty or error)
-                    folderIds.forEach(folderId => {
-                        if (!sizesData[folderId]) {
-                            this.updateFolderSizeDisplay(folderId, null);
+                    if (isTrashView) {
+                        // Загрузка удаленных файлов
+                        url = `http://localhost:5000/user/${this.currentUserId}/mydrive/trash?${params.toString()}`;
+                    } else {
+                        // Обычная загрузка файлов
+                        const base = `http://localhost:5000/user/${this.currentUserId}/mydrive`;
+                        if (folderId !== null) {
+                            params.set('parentId', String(folderId));
+                        }
+                        url = `${base}?${params.toString()}`;
+                    }
+
+
+
+                    console.log('GET:', url);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
                         }
                     });
+
+                    if (response.status === 401) {
+                        this.logout();
+                        return;
+                    }
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const result = await response.json();
+                    const newItems = Array.isArray(result?.data) ? result.data : [];
+                    const pagination = result?.pagination;
+
+                    if (pagination) {
+                        this.totalPages = pagination.totalPages ?? 0;
+                        this.hasNextPage = Boolean(pagination.hasNext);
+                    } else {
+                        this.totalPages = this.currentPage;
+                        this.hasNextPage = false;
+                    }
+
+                    if (resetPagination) {
+                        this.allLoadedItems = newItems;
+                    } else {
+                        this.allLoadedItems.push(...newItems);
+                    }
+
+                    this.renderListView(resetPagination ? this.allLoadedItems : newItems);
+                    this.updateSortIndicators();
+
+                    this.currentFolderId = folderId;
+
+                    setTimeout(() => {
+                        const container = document.getElementById('fileContainer');
+                        if (!container) return;
+                        const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
+                        if (distanceFromBottom <= 200 && this.hasNextPage && !this.isLoadingMore) {
+                            this.loadMoreFiles();
+                        }
+                    }, 80);
+
+                    this.updateBreadcrumbs();
+                } catch (e) {
+                    console.error('loadFiles error:', e);
+                    this.showError('Failed to load files');
+                    throw e;
+                } finally {
+                    this.hideInfiniteLoader();
+                    if (resetPagination) this.hideLoading();
                 }
-            } catch (error) {
-                console.error('Error fetching batch folder sizes:', error);
-                // Fall back to individual requests or show error
-                folderIds.forEach(folderId => {
-                    this.updateFolderSizeDisplay(folderId, null);
-                });
-            }
-        }
-
-        getFileIcon(item) {
-            if (item.type === 'folder') {
-                return { emoji: '📁', class: 'folder' };
             }
 
-            const ext = item.name.split('.').pop().toLowerCase();
-            const mimeType = item.mimeType || '';
+            async loadMoreFiles() {
+                if (!this.hasNextPage) return;
+                if (this.isLoadingMore) return;
 
-            if (mimeType.startsWith('image/')) {
-                return { emoji: '🖼️', class: 'image' };
-            } else if (ext === 'pdf' || mimeType === 'application/pdf') {
-                return { emoji: '📄', class: 'pdf' };
-            } else if (ext === 'html' || mimeType === 'text/html') {
-                return { emoji: '🌐', class: 'html' };
-            } else if (mimeType.startsWith('text/')) {
-                return { emoji: '📝', class: 'file' };
-            } else {
-                return { emoji: '📄', class: 'file' };
-            }
-        }
+                this.isLoadingMore = true;
+                this.currentPage += 1;
 
-        handleFileClick(e, item) {
-            e.stopPropagation();
-
-            document.querySelectorAll('.file-list-row.selected').forEach(el => {
-                el.classList.remove('selected');
-            });
-
-            e.currentTarget.classList.add('selected');
-            this.selectedItems.clear();
-            this.selectedItems.add(item);
-        }
-
-        handleFileDoubleClick(e, item) {
-            if (item.type === 'folder') {
-                this.navigateToFolder(item);
-            } else {
-                this.downloadFile(item);
-            }
-        }
-
-        navigateToFolder(folder) {
-            this.breadcrumbPath.push({
-                id: folder.id,
-                name: folder.name
-            });
-            this.loadFiles(folder.id);
-        }
-
-        showContextMenu(e, item) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            this.currentContextItem = item;
-            this.selectedItems.clear();
-            this.selectedItems.add(item);
-
-            const menu = document.getElementById('contextMenu');
-
-            // Create context menu content based on item type
-            if (item.type === 'folder') {
-                menu.innerHTML = `
-            <div class="context-menu-item" data-action="download-folder">
-                <span class="context-menu-icon">📦</span>
-                Download folder
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item" data-action="rename-folder">
-                <span class="context-menu-icon">✏️</span>
-                Rename
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item danger" data-action="delete-folder">
-                <span class="context-menu-icon">🗑️</span>
-                Delete folder
-            </div>
-        `;
-            } else {
-                menu.innerHTML = `
-            <div class="context-menu-item" data-action="download-file">
-                <span class="context-menu-icon">⬇️</span>
-                Download
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item" data-action="rename-file">
-                <span class="context-menu-icon">✏️</span>
-                Rename
-            </div>
-            <div class="context-menu-separator"></div>
-            <div class="context-menu-item danger" data-action="delete-file">
-                <span class="context-menu-icon">🗑️</span>
-                Delete
-            </div>
-        `;
+                try {
+                    this.showInfiniteLoader();
+                    await this.loadFiles(this.currentFolderId, false);
+                } catch (e) {
+                    this.currentPage -= 1;
+                } finally {
+                    this.isLoadingMore = false;
+                }
             }
 
-            // Add event listeners to context menu items
-            menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
-                menuItem.addEventListener('click', (e) => this.handleContextMenuClick(e, item));
-            });
 
-            // Position and show menu
-            menu.style.display = 'block';
-            menu.style.left = e.pageX + 'px';
-            menu.style.top = e.pageY + 'px';
 
-            // Ensure menu stays within viewport
-            const rect = menu.getBoundingClientRect();
-            if (rect.right > window.innerWidth) {
-                menu.style.left = (e.pageX - rect.width) + 'px';
-            }
-            if (rect.bottom > window.innerHeight) {
-                menu.style.top = (e.pageY - rect.height) + 'px';
-            }
-        }
+            initializeAuth() {
+                const token = localStorage.getItem('cloudcore_token');
+                const userStr = localStorage.getItem('cloudcore_user');
 
-        handleContextMenuClick(e, item) {
-            e.stopPropagation();
-            const action = e.currentTarget.dataset.action;
-
-            switch (action) {
-                case 'download-file':
-                    this.downloadFile(item);
-                    break;
-                case 'download-folder':
-                    this.downloadFolder(item);
-                    break;
-                case 'rename-file':
-                case 'rename-folder':
-                    this.renameItem(item);
-                    break;
-                case 'delete-file':
-                    this.deleteFile(item);
-                    break;
-                case 'delete-folder':
-                    this.deleteFolder(item);
-                    break;
-            }
-
-            this.hideContextMenu();
-        }
-
-        async renameItem(item) {
-            const currentName = item.name;
-            const newName = prompt(`Rename "${currentName}" to:`, currentName);
-
-            if (!newName || newName.trim() === '' || newName === currentName) {
-                return; // User cancelled or no change
-            }
-
-            const trimmedName = newName.trim();
-
-            try {
-                this.showNotification(`Renaming ${currentName}...`, 'info');
-
-                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${item.id}/rename`;
-
-                const response = await fetch(url, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(trimmedName)
-                });
-
-                if (response.status === 401) {
-                    console.log('🔒 Token expired, redirecting to login...');
-                    this.logout();
+                if (!token || !userStr) {
+                    console.log('No authentication found, redirecting to login...');
+                    window.location.href = 'login.html';
                     return;
                 }
 
-                const result = await response.json();
+                this.authToken = token;
+                this.currentUser = JSON.parse(userStr);
+                this.currentUserId = this.currentUser.id;
 
-                if (response.ok) {
-                    this.showNotification(`✅ Successfully renamed to "${trimmedName}"`, 'success');
-                    console.log(`✅ Renamed: ${currentName} → ${trimmedName}`);
+                console.log('🔐 Auth token loaded:', this.authToken);
+                console.log('👤 Current user:', this.currentUser);
 
-                    // Refresh the current folder to show the updated name
-                    this.loadFiles(this.currentFolderId);
+                // Update user info in header
+                document.getElementById('userInfo').textContent = this.currentUser.username;
 
-                    // Clear the folder size cache for this item if it's a folder
-                    if (item.type === 'folder') {
-                        this.folderSizeCache.delete(item.id);
+                // Now initialize the drive
+                this.initializeEventListeners();
+                this.loadFiles();
+            }
+            initializeLanguage() {
+                updateLanguageButton();
+                updateUILanguage();
+            }
+
+            initializeEventListeners() {
+
+                const thName = document.querySelector('th[data-i18n="name"]');
+                const thModified = document.querySelector('th[data-i18n="modified"]');
+                const thSize = document.querySelector('th[data-i18n="size"]');
+
+                thName?.addEventListener('click', () => this.applySort('name'));
+                thModified?.addEventListener('click', () => this.applySort('modified'));
+                thSize?.addEventListener('click', () => this.applySort('size'));
+
+                document.getElementById('newButton').addEventListener('click', (e) => this.toggleNewDropdown(e));
+                document.getElementById('uploadFiles').addEventListener('click', () => this.triggerFileUpload());
+                document.getElementById('uploadFolder').addEventListener('click', () => this.triggerFolderUpload());
+
+                document.getElementById('languageBtn').addEventListener('click', function () {
+                    switchLanguage();
+                    location.reload();
+                });
+
+                document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
+
+                document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
+
+
+                document.addEventListener('click', (e) => this.handleDocumentClick(e));
+                // Close context menu on click anywhere
+                document.addEventListener('click', () => this.hideContextMenu());
+
+                // Close context menu on right click elsewhere
+                document.addEventListener('contextmenu', (e) => {
+                    if (!e.target.closest('.file-list-row')) {
+                        this.hideContextMenu();
                     }
+                });
+
+                document.querySelectorAll('.sidebar-item').forEach(item => {
+                    item.addEventListener('click', (e) => this.handleSidebarClick(e));
+                });
+
+                const fileContainer = document.getElementById('fileContainer');
+                if (!fileContainer) {
+                    console.error('fileContainer not found');
+                    return;
+                }
+                fileContainer.style.overflowY = 'auto';
+                if (!fileContainer.style.height) {
+                    fileContainer.style.height = 'calc(100vh - 200px)';
+                }
+
+                let scrollLock = false;
+                fileContainer.addEventListener('scroll', (e) => {
+                    if (scrollLock) return;
+                    scrollLock = true;
+                    setTimeout(() => { this.handleScroll(e); scrollLock = false; }, 120);
+                });
+
+                this.setupDragAndDrop();
+            }
+            applySort(column) {
+                if (this.sortBy === column) {
+                    this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
                 } else {
-                    // Handle specific error cases
-                    if (response.status === 400) {
-                        this.showNotification(`❌ ${result.message || 'Invalid name'}`, 'error');
-                    } else if (response.status === 403) {
-                        this.showNotification(`❌ ${result.message || 'Access denied'}`, 'error');
-                    } else if (response.status === 404) {
-                        this.showNotification(`❌ ${result.message || 'Item not found'}`, 'error');
-                    } else if (response.status === 409) {
-                        this.showNotification(`❌ ${result.message || 'Name conflict'}`, 'error');
-                    } else {
-                        this.showNotification(`❌ Failed to rename: ${result.message || 'Unknown error'}`, 'error');
-                    }
+                    this.sortBy = column;
+                    this.sortDir = 'asc';
+                }
+                this.currentPage = 1;
+                this.loadFiles(this.currentFolderId, true);
+            }
+
+            handleScroll(e) {
+                const container = e.target;
+                const scrollTop = container.scrollTop;
+                const clientHeight = container.clientHeight;
+                const scrollHeight = container.scrollHeight;
+                const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+                const scrollPercentage = ((scrollTop + clientHeight) / scrollHeight) * 100;
+
+                if (this.isLoadingMore || !this.hasNextPage) return;
+
+                if (distanceFromBottom <= 200 || scrollPercentage >= 70) {
+                    this.loadMoreFiles();
+                }
+            }
+
+            showInfiniteLoader() {
+                let loader = document.getElementById('infiniteLoader');
+
+                if (!loader) {
+                    const fileContainer = document.getElementById('fileContainer');
+                    loader = document.createElement('div');
+                    loader.id = 'infiniteLoader';
+                    loader.className = 'infinite-loader';
+                    loader.innerHTML = `
+                <div class="infinite-spinner"></div>
+                <div class="infinite-text">${t('loading')}</div>
+            `;
+                    fileContainer.appendChild(loader);
                 }
 
-            } catch (error) {
-                console.error('Error renaming item:', error);
-                this.showNotification(`❌ Failed to rename ${currentName}: Network error`, 'error');
+                loader.style.display = 'flex';
             }
-        }
 
-        hideContextMenu() {
-            const menu = document.getElementById('contextMenu');
-            menu.style.display = 'none';
-            this.currentContextItem = null;
-        }
+            hideInfiniteLoader() {
+                const loader = document.getElementById('infiniteLoader');
+                if (loader) {
+                    loader.style.display = 'none';
+                }
+            }
 
-        async downloadFile(file) {
-            try {
-                this.showNotification(`Downloading ${file.name}...`, 'info');
+            renderFiles(items = this.allLoadedItems) {
+                if (this.currentPage === 1) {
+                    this.hideLoading();
+                }
 
-                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${file.id}/download`;
+                if (!items || items.length === 0) {
+                    this.showEmptyState();
+                    return;
+                }
 
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`
-                    }
+                this.hideEmptyState();
+                this.renderListView(items);
+
+                if (!this.hasNextPage) {
+                    this.hideInfiniteLoader();
+                }
+            }
+
+
+
+
+            updateSortIndicators() {
+                const headers = {
+                    name: document.querySelector('th[data-i18n="name"]'),
+                    modified: document.querySelector('th[data-i18n="modified"]'),
+                    size: document.querySelector('th[data-i18n="size"]')
+                };
+
+                Object.values(headers).forEach(h => {
+                    if (!h) return;
+                    h.classList.remove('active');
+                    if (!h.dataset.label) h.dataset.label = h.textContent.trim();
+                    h.textContent = h.dataset.label;
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Download failed: ${response.statusText}`);
+
+                const active = headers[this.sortBy];
+                if (active) {
+                    active.classList.add('active');
+                    const arrow = this.sortDir === 'asc' ? '🔼' : '🔽';
+                    active.textContent = `${active.dataset.label} ${arrow}`;
+                }
+            }
+
+            updateFolderSizeDisplay(folderId, sizeData) {
+                const sizeElement = document.getElementById(`size-${folderId}`);
+                if (!sizeElement) return;
+
+                if (sizeData) {
+                    const displayText = sizeData.fileCount > 0
+                        ? `${sizeData.formattedSize} (${sizeData.fileCount} ${t('files')})`
+                        : `${t('emptyFolder')}`;
+                    sizeElement.innerHTML = `<span class="folder-size">${displayText}</span>`;
+                } else {
+                    sizeElement.innerHTML = '<span class="folder-size-error">-</span>';
+                }
+            }
+            renderListView(items) {
+                const listBody = document.getElementById('fileListBody');
+                const fileList = document.getElementById('fileList');
+                if (!listBody || !fileList) return;
+
+                if (this.currentPage === 1) {
+                    listBody.innerHTML = '';
                 }
 
-                // Create download link
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = file.name;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(downloadUrl);
+                const itemsToRender = Array.isArray(items) ? items : [];
+                fileList.style.display = 'table';
+                fileList.style.width = '100%';
 
-                this.showNotification(`✅ Downloaded: ${file.name}`, 'success');
-                console.log(`✅ Downloaded: ${file.name}`);
+                itemsToRender.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = `file-list-row ${this.isTrashView ? 'trash-mode' : ''}`;
+                    row.dataset.itemId = item.id;
+                    row.dataset.itemType = item.type;
 
-            } catch (error) {
-                console.error('Error downloading file:', error);
-                this.showNotification(`❌ Failed to download ${file.name}`, 'error');
-            }
-        }
+                    const icon = this.getFileIcon(item);
+                    const sizeDisplay = item.type === 'file'
+                        ? (item.fileSize ? this.formatFileSize(item.fileSize) : '-')
+                        : `<span class="folder-size-loading">${'-'}</span>`;
 
-        async downloadFolder(folder) {
-            try {
-                this.showNotification(`Creating archive for ${folder.name}...`, 'info');
+                    row.innerHTML = `
+      <td><span class="file-list-icon ${icon.class}">${icon.emoji}</span> ${item.name}</td>
+      <td>${this.formatDateTime(item.createdAt)}</td>
+    <td>${this.formatDateTime(item.updatedAt)}</td>
+      <td id="size-${item.id}">${sizeDisplay}</td>
+    `;
 
-                const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${folder.id}/downloadfolder`;
+                    row.addEventListener('click', (e) => this.handleFileClick(e, item));
+                    row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
+                    row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
 
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`
-                    }
+                    listBody.appendChild(row);
+
+                    //if (item.type === 'folder') this.fetchFolderSize(item.id);
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || `Download failed: ${response.statusText}`);
-                }
-
-                // Create download link for ZIP file
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = `${folder.name}.zip`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(downloadUrl);
-
-                this.showNotification(`✅ Downloaded: ${folder.name}.zip`, 'success');
-                console.log(`✅ Downloaded folder: ${folder.name}.zip`);
-
-            } catch (error) {
-                console.error('Error downloading folder:', error);
-                this.showNotification(`❌ Failed to download ${folder.name}: ${error.message}`, 'error');
-            }
-        }
-
-        async deleteFile(file) {
-            if (!confirm(`Are you sure you want to delete "${file.name}"?`)) {
-                return;
+                setTimeout(() => {
+                    const container = document.getElementById('fileContainer');
+                    if (!container) return;
+                    const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
+                    if (distanceFromBottom <= 200 && this.hasNextPage && !this.isLoadingMore) {
+                        this.loadMoreFiles();
+                    }
+                }, 60);
+                this.updateSortIndicators();
             }
 
-            try {
-                this.showNotification(`Deleting ${file.name}...`, 'info');
+            formatDateTime(dateString) {
+                if (!dateString) return '-';
 
-                // TODO: Implement DELETE endpoint on backend
-                // For now, show a placeholder message
-                console.log(`Delete file requested: ${file.name} (ID: ${file.id})`);
+                const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const userLocale = navigator.language || 'en-US';
 
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                const utcString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
 
-                this.showNotification(`❌ Delete functionality not yet implemented on backend`, 'error');
+                const localDate = new Date(utcString);
+                const now = new Date();
 
-            } catch (error) {
-                console.error('Error deleting file:', error);
-                this.showNotification(`❌ Failed to delete ${file.name}`, 'error');
-            }
-        }
 
-        async deleteFolder(folder) {
-            if (!confirm(`Are you sure you want to delete "${folder.name}" and all its contents?`)) {
-                return;
-            }
+                if (localDate.toDateString() === now.toDateString()) {
+                    return localDate.toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else {
 
-            try {
-                this.showNotification(`Deleting ${folder.name}...`, 'info');
-
-                // TODO: Implement DELETE endpoint on backend
-                console.log(`Delete folder requested: ${folder.name} (ID: ${folder.id})`);
-
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                this.showNotification(`❌ Delete functionality not yet implemented on backend`, 'error');
-
-            } catch (error) {
-                console.error('Error deleting folder:', error);
-                this.showNotification(`❌ Failed to delete ${folder.name}`, 'error');
-            }
-        }
-
-        showNotification(message, type = 'info') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type}`;
-            notification.style.display = 'block';
-
-            // Auto-hide after 3 seconds
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
-        }
-
-        updateBreadcrumbs() {
-            const breadcrumbs = document.getElementById('breadcrumbs');
-            breadcrumbs.innerHTML = '';
-
-            const homeBreadcrumb = document.createElement('a');
-            homeBreadcrumb.className = 'breadcrumb';
-            homeBreadcrumb.href = '#';
-            homeBreadcrumb.textContent = 'My Drive';
-            homeBreadcrumb.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.navigateToRoot();
-            });
-            breadcrumbs.appendChild(homeBreadcrumb);
-
-            this.breadcrumbPath.forEach((folder, index) => {
-                const separator = document.createElement('span');
-                separator.className = 'breadcrumb-separator';
-                separator.textContent = ' > ';
-                breadcrumbs.appendChild(separator);
-
-                const breadcrumb = document.createElement('a');
-                breadcrumb.className = index === this.breadcrumbPath.length - 1 ? 'breadcrumb current' : 'breadcrumb';
-                breadcrumb.href = '#';
-                breadcrumb.textContent = folder.name;
-
-                if (index < this.breadcrumbPath.length - 1) {
-                    breadcrumb.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.navigateToFolderInPath(index);
+                    return localDate.toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
                     });
                 }
-
-                breadcrumbs.appendChild(breadcrumb);
-            });
-        }
-
-        navigateToRoot() {
-            this.breadcrumbPath = [];
-            this.loadFiles(null);
-        }
-
-        navigateToFolderInPath(index) {
-            const targetFolder = this.breadcrumbPath[index];
-            this.breadcrumbPath = this.breadcrumbPath.slice(0, index + 1);
-            this.loadFiles(targetFolder.id);
-        }
-
-        handleSearch(query) {
-            if (!query.trim()) {
-                this.renderFiles();
-                return;
             }
 
-            const filteredItems = this.allItems.filter(item =>
-                item.name.toLowerCase().includes(query.toLowerCase())
-            );
-            this.renderFiles(filteredItems);
-        }
+            async fetchBatchFolderSizes(folderIds) {
+                try {
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/sizes`;
 
-        triggerFileUpload() {
-            document.getElementById('fileInput').click();
-        }
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(folderIds)
+                    });
 
-        handleFileUpload(e) { //TODO
-            const files = Array.from(e.target.files);
-            console.log('Files selected for upload:', files);
-            this.showNotification('Upload functionality requires backend implementation', 'error');
-        }
+                    if (response.ok) {
+                        const sizesData = await response.json();
 
-        setupDragAndDrop() {
-            const container = document.getElementById('fileContainer');
+                        // Update all folder size displays
+                        Object.values(sizesData).forEach(sizeData => {
+                            this.folderSizeCache.set(sizeData.folderId, sizeData);
+                            this.updateFolderSizeDisplay(sizeData.folderId, sizeData);
+                        });
 
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                container.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                        // Handle folders that weren't in the response (likely empty or error)
+                        folderIds.forEach(folderId => {
+                            if (!sizesData[folderId]) {
+                                this.updateFolderSizeDisplay(folderId, null);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error fetching batch folder sizes:', error);
+                    // Fall back to individual requests or show error
+                    folderIds.forEach(folderId => {
+                        this.updateFolderSizeDisplay(folderId, null);
+                    });
+                }
+            }
+
+            getFileIcon(item) {
+                if (item.type === 'folder') {
+                    return { emoji: '📁', class: 'folder' };
+                }
+
+                const ext = item.name.split('.').pop().toLowerCase();
+                const mimeType = item.mimeType || '';
+
+                if (mimeType.startsWith('image/')) {
+                    return { emoji: '🖼️', class: 'image' };
+                } else if (ext === 'pdf' || mimeType === 'application/pdf') {
+                    return { emoji: '📄', class: 'pdf' };
+                } else if (ext === 'html' || mimeType === 'text/html') {
+                    return { emoji: '🌐', class: 'html' };
+                } else if (mimeType.startsWith('text/')) {
+                    return { emoji: '📝', class: 'file' };
+                } else {
+                    return { emoji: '📄', class: 'file' };
+                }
+            }
+
+            handleDocumentClick(e) {
+                this.hideContextMenu();
+                this.handleOutsideDropdownClick(e);
+            }
+
+            handleOutsideDropdownClick(e) {
+                const dropdown = document.querySelector('.new-dropdown');
+
+                if (dropdown && !dropdown.contains(e.target)) {
+                    this.hideNewDropdown();
+                }
+            }
+
+            toggleNewDropdown(e) {
+                e.stopPropagation();
+                const button = document.getElementById('newButton');
+                const dropdown = document.getElementById('newDropdown');
+
+                const isActive = button.classList.contains('active');
+
+                if (isActive) {
+                    this.hideNewDropdown();
+                } else {
+                    this.showNewDropdown();
+                }
+            }
+
+            // Show dropdown menu
+            showNewDropdown() {
+                const button = document.getElementById('newButton');
+                const dropdown = document.getElementById('newDropdown');
+
+                button.classList.add('active');
+                dropdown.classList.add('show');
+            }
+
+            // Hide dropdown menu
+            hideNewDropdown() {
+                const button = document.getElementById('newButton');
+                const dropdown = document.getElementById('newDropdown');
+
+                button.classList.remove('active');
+                dropdown.classList.remove('show');
+            }
+
+            // Handle clicks outside dropdown
+            handleOutsideClick(e) {
+                const dropdown = document.querySelector('.new-dropdown');
+                if (dropdown && !dropdown.contains(e.target)) {
+                    this.hideNewDropdown();
+                }
+            }
+
+
+            handleFileClick(e, item) {
+                e.stopPropagation();
+
+                document.querySelectorAll('.file-list-row.selected').forEach(el => {
+                    el.classList.remove('selected');
                 });
-            });
 
-            ['dragenter', 'dragover'].forEach(eventName => {
-                container.addEventListener(eventName, () => {
+                e.currentTarget.classList.add('selected');
+                this.selectedItems.clear();
+                this.selectedItems.add(item);
+            }
+
+            handleFileDoubleClick(e, item) {
+                if (this.isTrashView) {
+                    return;
+                }
+                if (item.type === 'folder') {
+                    this.navigateToFolder(item);
+                } else {
+                    this.downloadFile(item);
+                }
+            }
+
+            navigateToFolder(folder) {
+                this.currentFolderId = folder.id;
+
+                this.breadcrumbPath.push({
+                    id: folder.id,
+                    name: folder.name
+                });
+                this.loadFiles(folder.id);
+            }
+
+            showContextMenu(e, item) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                this.currentContextItem = item;
+                this.selectedItems.clear();
+                this.selectedItems.add(item);
+
+                const menu = document.getElementById('contextMenu');
+
+                if (this.isTrashView) {
+                    menu.innerHTML = `
+            <div class="context-menu-item" data-action="restore">
+                <span class="context-menu-icon">🔄</span>
+                <span>${t('restore')}</span>
+            </div>
+            <div class="context-menu-separator"></div>
+            <div class="context-menu-item danger" data-action="delete-permanently">
+                <span class="context-menu-icon">❌</span>
+                <span>${t('deletePermanently')}</span>
+            </div>
+        `;
+                } else {
+                    if (item.type === 'folder') {
+                        menu.innerHTML = `
+                <div class="context-menu-item" data-action="download-folder">
+                    <span class="context-menu-icon">⬇️</span>
+                    <span>${t('downloadFolder')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="rename-folder">
+                    <span class="context-menu-icon">✏️</span>
+                    <span>${t('rename')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item danger" data-action="delete-folder">
+                    <span class="context-menu-icon">🗑️</span>
+                    <span>${t('deleteFolder')}</span>
+                </div>
+            `;
+                    } else {
+                        menu.innerHTML = `
+                <div class="context-menu-item" data-action="download-file">
+                    <span class="context-menu-icon">⬇️</span>
+                    <span>${t('downloadFile')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="rename-file">
+                    <span class="context-menu-icon">✏️</span>
+                    <span>${t('rename')}</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item danger" data-action="delete-file">
+                    <span class="context-menu-icon">🗑️</span>
+                    <span>${t('delete')}</span>
+                </div>
+            `;
+                    }
+                }
+
+                updateUILanguage();
+
+                menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
+                    menuItem.addEventListener('click', (e) => this.handleContextMenuClick(e, item));
+                });
+
+                menu.style.display = 'block';
+                menu.style.left = `${e.pageX}px`;
+                menu.style.top = `${e.pageY}px`;
+
+                const rect = menu.getBoundingClientRect();
+                if (rect.right > window.innerWidth) {
+                    menu.style.left = `${e.pageX - rect.width}px`;
+                }
+                if (rect.bottom > window.innerHeight) {
+                    menu.style.top = `${e.pageY - rect.height}px`;
+                }
+            }
+
+            handleContextMenuClick(e, item) {
+                e.stopPropagation();
+                const action = e.currentTarget.dataset.action;
+
+                switch (action) {
+                    case 'download-file':
+                        this.downloadFile(item);
+                        break;
+                    case 'download-folder':
+                        this.downloadFolder(item);
+                        break;
+                    case 'rename-file':
+                    case 'rename-folder':
+                        this.renameItem(item);
+                        break;
+                    case 'delete-file':
+                        this.deleteFile(item);
+                        break;
+                    case 'delete-folder':
+                        this.deleteFolder(item);
+                        break;
+                    case 'restore':
+                        this.restoreItem(item);
+                        break;
+                }
+
+                this.hideContextMenu();
+            }
+            async restoreItem(item) {
+                try {
+                    this.showNotification(`${t('restoring')} ${item.name}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${item.id}/restore`;
+
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        this.logout();
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.showNotification(`✅ ${item.name} ${t('restored')}`, 'success');
+                        this.removeItemFromCurrentView(item.id);
+                    } else {
+                        this.showNotification(`❌ ${t('restoringError')}: ${result.message}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error restoring item:', error);
+                    this.showNotification(`❌ ${t('restoringError')}: ${item.name}`, 'error');
+                }
+            }
+            removeItemFromCurrentView(itemId) {
+                this.allLoadedItems = this.allLoadedItems.filter(item => item.id !== itemId);
+
+                const row = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (row) {
+                    row.remove();
+                }
+
+                if (this.allLoadedItems.length === 0) {
+                    this.showEmptyState();
+                }
+            }
+
+            async renameItem(item) {
+                const currentName = item.name;
+                const newName = prompt(`Rename "${currentName}" to:`, currentName);
+
+                if (!newName || newName.trim() === '' || newName === currentName) {
+                    return; // User cancelled or no change
+                }
+
+                const trimmedName = newName.trim();
+
+                try {
+                    this.showNotification(`${t('renaming')} ${currentName}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${item.id}/rename`;
+
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(trimmedName)
+                    });
+
+                    if (response.status === 401) {
+                        console.log('🔒 Token expired, redirecting to login...');
+                        this.logout();
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.showNotification(`✅ ${t('renamed')} "${trimmedName}"`, 'success');
+                        console.log(`✅ Renamed: ${currentName} → ${trimmedName}`);
+
+                        // Refresh the current folder to show the updated name
+                        this.loadFiles(this.currentFolderId);
+
+                        // Clear the folder size cache for this item if it's a folder
+                        if (item.type === 'folder') {
+                            this.folderSizeCache.delete(item.id);
+                        }
+                    } else {
+                        // Handle specific error cases
+                        if (response.status === 400) {
+                            this.showNotification(`❌ ${result.message || 'Invalid name'}`, 'error');
+                        } else if (response.status === 403) {
+                            this.showNotification(`❌ ${result.message || 'Access denied'}`, 'error');
+                        } else if (response.status === 404) {
+                            this.showNotification(`❌ ${result.message || 'Item not found'}`, 'error');
+                        } else if (response.status === 409) {
+                            this.showNotification(`❌ ${result.message || 'Name conflict'}`, 'error');
+                        } else {
+                            this.showNotification(`❌ ${t('failedRename')} ${result.message || 'Unknown error'}`, 'error');
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Error renaming item:', error);
+                    this.showNotification(`❌ ${t('failedRename')} ${currentName}: ${t('networkError')}`, 'error');
+                }
+            }
+
+            hideContextMenu() {
+                const menu = document.getElementById('contextMenu');
+                menu.style.display = 'none';
+                this.currentContextItem = null;
+            }
+
+            async downloadFile(file) {
+                try {
+                    this.showNotification(`${t('downloading')} ${file.name}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${file.id}/download`;
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Download failed: ${response.statusText}`);
+                    }
+
+                    // Create download link
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = file.name;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(downloadUrl);
+
+                    this.showNotification(`✅ ${t('downloaded')}: ${file.name}`, 'success');
+                    console.log(`✅ Downloaded: ${file.name}`);
+
+                } catch (error) {
+                    console.error('Error downloading file:', error);
+                    this.showNotification(`❌ ${t('failedDownload')} ${file.name}`, 'error');
+                }
+            }
+
+            async downloadFolder(folder) {
+                try {
+                    this.showNotification(`${t('creatingArchive')} ${folder.name}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${folder.id}/downloadfolder`;
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || `Download failed: ${response.statusText}`);
+                    }
+
+                    // Create download link for ZIP file
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = `${folder.name}.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(downloadUrl);
+
+                    this.showNotification(`✅ ${t('downloaded')}: ${folder.name}.zip`, 'success');
+                    console.log(`✅ Downloaded folder: ${folder.name}.zip`);
+
+                } catch (error) {
+                    console.error('Error downloading folder:', error);
+                    this.showNotification(`❌ ${t('failedDownload')} ${folder.name}: ${error.message}`, 'error');
+                }
+            }
+
+            async deleteFile(file) {
+                if (!confirm(`${t('confirmDelete')} "${file.name}"?`)) {
+                    return;
+                }
+
+                try {
+                    this.showNotification(`${t('deleting')} ${file.name}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${file.id}/delete`;
+                    const response = await fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+
+                    const result = await response.json();
+
+                    if (result.isSuccess) {
+                        this.showNotification(`✅ ${file.name} ${t('deleted')}`, 'success');
+                        console.log('Deleted file:', file.name);
+
+                        await this.loadFiles(this.currentFolderId);
+                    } else {
+                        this.showNotification(`❌ ${result.message || t('failedDelete')}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Error deleting file:', error);
+                    his.showNotification(`❌ ${t('failedDelete')} ${file.name}`, 'error');
+                }
+            }
+
+            async deleteFolder(folder) {
+                if (!confirm(`${t('confirmDelete')} "${folder.name}" ${t('confirmDeleteFolder')}`)) {
+                    return;
+                }
+
+                try {
+                    this.showNotification(`${t('deleting')} ${folder.name}...`, 'info');
+
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/${folder.id}/delete`;
+                    const response = await fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.isSuccess) {
+                        this.showNotification(`✅ ${folder.name} ${t('deleted')}`, 'success');
+                        console.log('Deleted folder:', folder.name);
+
+                        this.folderSizeCache.delete(folder.id);
+
+                        await this.loadFiles(this.currentFolderId);
+                    } else {
+                        this.showNotification(`❌ ${result.message || t('failedDelete')}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Error deleting folder:', error);
+                    this.showNotification(`❌ ${t('failedDelete')} ${folder.name}`, 'error');
+                }
+            }
+
+            showNotification(message, type = 'info') {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.style.display = 'block';
+
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 3000);
+            }
+
+            updateBreadcrumbs() {
+                const breadcrumbs = document.getElementById('breadcrumbs');
+                breadcrumbs.innerHTML = '';
+
+                const homeBreadcrumb = document.createElement('a');
+                homeBreadcrumb.className = 'breadcrumb';
+                homeBreadcrumb.href = '#';
+
+                if (this.isTrashView) {
+                    homeBreadcrumb.textContent = t('trash');
+                    homeBreadcrumb.style.cursor = 'default';
+                    homeBreadcrumb.style.pointerEvents = 'none';
+                    breadcrumbs.appendChild(homeBreadcrumb);
+                }
+                else {
+                    homeBreadcrumb.textContent = t('myDrive');;
+                    homeBreadcrumb.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.navigateToRoot();
+                    });
+                    breadcrumbs.appendChild(homeBreadcrumb);
+
+                    this.breadcrumbPath.forEach((folder, index) => {
+                        const separator = document.createElement('span');
+                        separator.className = 'breadcrumb-separator';
+                        separator.textContent = ' > ';
+                        breadcrumbs.appendChild(separator);
+
+                        const breadcrumb = document.createElement('a');
+                        breadcrumb.className = index === this.breadcrumbPath.length - 1 ? 'breadcrumb current' : 'breadcrumb';
+                        breadcrumb.href = '#';
+                        breadcrumb.textContent = folder.name;
+
+                        if (index < this.breadcrumbPath.length - 1) {
+                            breadcrumb.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                this.navigateToFolderInPath(index);
+                            });
+                        }
+
+                        breadcrumbs.appendChild(breadcrumb);
+                    });
+                }
+            }
+
+            navigateToRoot() {
+                this.currentFolderId = null;
+                this.breadcrumbPath = [];
+                this.loadFiles(null);
+            }
+
+            navigateToFolderInPath(index) {
+                const targetFolder = this.breadcrumbPath[index];
+                this.currentFolderId = targetFolder.id;
+                this.breadcrumbPath = this.breadcrumbPath.slice(0, index + 1);
+                this.loadFiles(targetFolder.id);
+            }
+
+            handleSearch(query) {
+                if (!query.trim()) {
+                    this.renderFiles();
+                    return;
+                }
+
+                const filteredItems = this.allItems.filter(item =>
+                    item.name.toLowerCase().includes(query.toLowerCase())
+                );
+                this.renderFiles(filteredItems);
+            }
+
+            triggerFileUpload() {
+                this.hideNewDropdown();
+                document.getElementById('fileInput').click();
+            }
+
+            triggerFolderUpload() {
+                console.log('triggerFolderUpload called');
+                this.hideNewDropdown();
+
+                if (!this.isWebkitDirectorySupported()) {
+                    console.log('webkitdirectory not supported');
+                    this.showNotification(`${t('failedUploadFolder')}`, 'error');
+                    return;
+                }
+
+                console.log('Opening folder input...');
+                const folderInput = document.getElementById('folderInput');
+                console.log('Folder input element:', folderInput);
+
+                if (folderInput) {
+                    folderInput.onchange = (e) => {
+                        console.log('Folder selected via onchange');
+                        this.handleFolderUpload(e);
+                    };
+
+                    folderInput.click();
+                } else {
+                    console.error('Folder input not found');
+                }
+            }
+
+            isWebkitDirectorySupported() {
+                return 'webkitdirectory' in document.createElement('input');
+            }
+
+            async handleFolderUpload(e) {
+                const files = Array.from(e.target.files);
+                if (!files || files.length === 0) {
+                    this.showNotification(`${t('noFilesSelected')}`, 'error');
+                    return;
+                }
+
+                console.log('Folder selected for upload:', files);
+
+                const folderStructure = this.buildFolderStructure(files);
+
+                this.showNotification(`${t('uploadingFolder')} ${files.length} ${t('uploadingFolderWithFiles')}`, 'info');
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                try {
+
+                    for (const [folderPath, folderFiles] of folderStructure) {
+                        try {
+                            const folderId = await this.createFolderPath(folderPath);
+
+                            for (let i = 0; i < folderFiles.length; i++) {
+                                const file = folderFiles[i];
+                                const success = await this.uploadSingleFileToFolder(file, folderId, successCount + 1, files.length);
+                                if (success) successCount++;
+                                else errorCount++;
+                            }
+                        } catch (error) {
+                            console.error('Error creating folder path:', folderPath, error);
+                            errorCount += folderFiles.length;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error uploading folder:', error);
+                    this.showNotification(`${t('errorUploadingFolder')}`, 'error');
+                    return;
+                }
+
+
+                if (errorCount === 0) {
+                    this.showNotification(`${t('successfullyUploaded')} ${successCount} ${t('files')}`, 'success');
+                } else if (successCount === 0) {
+                    this.showNotification(`${t('failedUploadAllFiles')}`, 'error');
+                } else {
+                    this.showNotification(`${t('Uploaded')} ${successCount}, ${t('failed')} ${errorCount} ${t('files')}`, 'warning');
+                }
+
+                await this.loadFiles(this.currentFolderId);
+                e.target.value = '';
+            }
+
+            buildFolderStructure(files) {
+                const structure = new Map();
+
+                for (const file of files) {
+                    const relativePath = file.webkitRelativePath;
+                    const pathParts = relativePath.split('/');
+
+                    const folderPath = pathParts.slice(0, -1).join('/');
+
+                    if (!structure.has(folderPath)) {
+                        structure.set(folderPath, []);
+                    }
+                    const fileName = pathParts[pathParts.length - 1];
+                    const correctedFile = new File([file], fileName, {
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                    structure.get(folderPath).push(correctedFile);
+                }
+
+                return structure;
+            }
+
+            async createFolderPath(folderPath) {
+                if (!folderPath) return this.currentFolderId;
+
+                const pathParts = folderPath.split('/');
+                let currentParentId = this.currentFolderId;
+
+                for (const folderName of pathParts) {
+                    if (folderName) {
+                        currentParentId = await this.createSingleFolder(folderName, currentParentId);
+                    }
+                }
+
+                return currentParentId;
+            }
+
+            async createSingleFolder(folderName, parentId) {
+                try {
+                    const response = await fetch(`http://localhost:5000/user/${this.currentUserId}/mydrive/createfolder`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: folderName,
+                            parentId: parentId
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        return result.folderId || result.id;
+                    } else {
+                        if (response.status === 409) {
+                            return await this.findExistingFolderId(folderName, parentId);
+                        }
+                        throw new Error(`Failed to create folder: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    console.error('Error creating folder:', folderName, error);
+                    throw error;
+                }
+            }
+
+            async findExistingFolderId(folderName, parentId) {
+                try {
+                    const url = parentId
+                        ? `http://localhost:5000/user/${this.currentUserId}/mydrive?parentId=${parentId}`
+                        : `http://localhost:5000/user/${this.currentUserId}/mydrive`;
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const items = await response.json();
+                        const existingFolder = items.find(item =>
+                            item.type === 'folder' && item.name === folderName
+                        );
+
+                        if (existingFolder) {
+                            return existingFolder.id;
+                        }
+                    }
+
+                    throw new Error(`Folder ${folderName} not found`);
+                } catch (error) {
+                    console.error('Error finding existing folder:', folderName, error);
+                    throw error;
+                }
+            }
+
+            async uploadSingleFileToFolder(file, folderId, index, total) {
+                try {
+                    console.log(`Uploading file ${index}/${total}: ${file.name} to folder ${folderId}`);
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    if (folderId) {
+                        formData.append('parentId', folderId);
+                    }
+
+                    const response = await fetch(`http://localhost:5000/user/${this.currentUserId}/mydrive/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        console.log(`File ${file.name} uploaded successfully`);
+                        return true;
+                    } else {
+                        const error = await response.json().catch(() => ({ message: t('uploadFailed') }));
+                        console.error(`Failed to upload ${file.name}:`, error.message);
+                        return false;
+                    }
+                } catch (error) {
+                    console.error(`Error uploading ${file.name}:`, error);
+                    return false;
+                }
+            }
+
+
+
+
+            async handleFileUpload(e) {
+                const files = Array.from(e.target.files);
+
+                if (!files || files.length === 0) {
+                    this.showNotification(`${t('noFilesSelected')}`, 'error');
+                    return;
+                }
+
+                console.log('Files selected for upload:', files);
+
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    await this.uploadSingleFile(file, i + 1, files.length);
+                }
+
+
+                await this.loadFiles(this.currentFolderId);
+
+                e.target.value = '';
+            }
+
+            async uploadSingleFile(file, index, total) {
+                try {
+                    this.showNotification(`${t('Uploading')} ${file.name} (${index}/${total})...`, 'info');
+
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    if (this.currentFolderId) {
+                        formData.append('parentId', this.currentFolderId);
+                    }
+
+                    const response = await fetch(`http://localhost:5000/user/${this.currentUserId}/mydrive/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+
+                        },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.showNotification(`✅ ${file.name} ${t('uploaded')}`, 'success');
+                        console.log(`${t('fileUploaded')}`, result);
+                    } else {
+
+                        const error = await response.json().catch(() => ({ message: `${t('uploadFailed')}` }));
+
+                        if (response.status === 409) {
+                            this.showNotification(`❌ ${file.name} ${t('alreadyExists')}`, 'error');
+                        } else if (response.status === 400) {
+                            this.showNotification(`❌ ${file.name}: ${error.message}`, 'error');
+                        } else {
+                            this.showNotification(`❌ ${t('failedUpload')} ${file.name}`, 'error');
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Upload error:', error);
+
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        this.showNotification(`❌ ${t('networkErrorUploading')} ${file.name}`, 'error');
+                    } else {
+                        this.showNotification(`❌ ${t('failedUpload')} ${file.name}`, 'error');
+                    }
+                }
+            }
+
+
+            setupDragAndDrop() {
+                const container = document.getElementById('fileContainer');
+
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    container.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                });
+
+                container.addEventListener('dragenter', (e) => {
+                    container.classList.add('dragover');
+                    this.analyzeDraggedItems(e.dataTransfer);
+                });
+
+                container.addEventListener('dragover', (e) => {
                     container.classList.add('dragover');
                 });
-            });
 
-            ['dragleave', 'drop'].forEach(eventName => {
-                container.addEventListener(eventName, () => {
-                    container.classList.remove('dragover');
+                container.addEventListener('dragleave', (e) => {
+                    // Only remove dragover if leaving the container completely
+                    if (!container.contains(e.relatedTarget)) {
+                        container.classList.remove('dragover');
+                        container.removeAttribute('data-drag-type');
+                    }
                 });
-            });
 
-            container.addEventListener('drop', (e) => {
-                const files = Array.from(e.dataTransfer.files);
-                console.log('Files dropped:', files);
-                this.showNotification('Drag & drop upload requires backend implementation', 'error');
-            });
-        }
+                container.addEventListener('drop', async (e) => {
+                    container.classList.remove('dragover');
+                    container.removeAttribute('data-drag-type');
+                    container.classList.add('uploading');
 
-        handleSidebarClick(e) {
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            e.currentTarget.classList.add('active');
+                    console.log('Files/folders dropped');
 
-            const section = e.currentTarget.dataset.section;
-            if (section === 'mydrive') {
-                this.navigateToRoot();
-            } else {
-                console.log('Section not implemented:', section);
+                    const items = Array.from(e.dataTransfer.items);
+                    console.log('Total items dropped:', items.length);
+
+                    if (items.length === 0) {
+                        this.showNotification(`${t('noItemsDropped')}`, 'error');
+                        container.classList.remove('uploading');
+                        container.classList.add('upload-error');
+                        setTimeout(() => container.classList.remove('upload-error'), 600);
+                        return;
+                    }
+
+                    try {
+                        if (items[0] && 'webkitGetAsEntry' in items[0]) {
+                            console.log('Using modern DataTransfer API');
+                            await this.handleDroppedItemsWithWebkit(items);
+                        } else {
+                            console.log('Using fallback method');
+                            const files = Array.from(e.dataTransfer.files);
+                            await this.handleDroppedFilesLegacy(files);
+                        }
+
+                        container.classList.add('upload-success');
+                        setTimeout(() => container.classList.remove('upload-success'), 600);
+                    } catch (error) {
+                        container.classList.add('upload-error');
+                        setTimeout(() => container.classList.remove('upload-error'), 600);
+                    } finally {
+                        container.classList.remove('uploading');
+                    }
+
+                    await this.loadFiles(this.currentFolderId);
+                });
+            }
+
+            analyzeDraggedItems(dataTransfer) {
+                const container = document.getElementById('fileContainer');
+
+                if (dataTransfer.items && dataTransfer.items.length > 0) {
+                    let hasFiles = false;
+                    let hasFolders = false;
+
+                    for (const item of dataTransfer.items) {
+                        if (item.kind === 'file') {
+                            if ('webkitGetAsEntry' in item) {
+                                const entry = item.webkitGetAsEntry();
+                                if (entry) {
+                                    if (entry.isFile) hasFiles = true;
+                                    if (entry.isDirectory) hasFolders = true;
+                                }
+                            } else {
+                                hasFiles = true;
+                            }
+                        }
+                    }
+
+                    if (hasFiles && hasFolders) {
+                        container.setAttribute('data-drag-type', 'mixed');
+                    } else if (hasFolders) {
+                        container.setAttribute('data-drag-type', 'folder');
+                    } else if (hasFiles) {
+                        container.setAttribute('data-drag-type', 'files');
+                    }
+                }
+            }
+
+
+            async handleDroppedItemsWithWebkit(items) {
+                const entries = [];
+
+                for (const item of items) {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        entries.push(entry);
+                    }
+                }
+
+                console.log('📁 Processing', entries.length, 'entries');
+
+                let totalFiles = 0;
+                let processedFiles = 0;
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const entry of entries) {
+                    totalFiles += await this.countFilesInEntry(entry);
+                }
+
+                this.showNotification(`${t('uploading')} ${totalFiles} ${t('uploadingFolderWithFiles')}`, 'info');
+
+                for (const entry of entries) {
+                    const result = await this.processEntry(entry, this.currentFolderId, '');
+                    processedFiles += result.processed;
+                    successCount += result.success;
+                    errorCount += result.errors;
+                }
+
+                if (errorCount === 0) {
+                    this.showNotification(`✅ ${t('successfullyUploaded')} ${successCount} ${t('files')}`, 'success');
+                } else if (successCount === 0) {
+                    this.showNotification(`❌ ${t('failedUploadAllFiles')}`, 'error');
+                } else {
+                    this.showNotification(`⚠️ ${t('uploaded')} ${successCount}, ${t('failed')} ${errorCount} ${t('files')}`, 'warning');
+                }
+            }
+
+            async countFilesInEntry(entry) {
+                return new Promise((resolve) => {
+                    let count = 0;
+
+                    if (entry.isFile) {
+                        resolve(1);
+                    } else if (entry.isDirectory) {
+                        const dirReader = entry.createReader();
+
+                        const readEntries = () => {
+                            dirReader.readEntries(async (entries) => {
+                                if (entries.length === 0) {
+                                    resolve(count);
+                                    return;
+                                }
+
+                                for (const childEntry of entries) {
+                                    count += await this.countFilesInEntry(childEntry);
+                                }
+
+                                readEntries();
+                            });
+                        };
+
+                        readEntries();
+                    } else {
+                        resolve(0);
+                    }
+                });
+            }
+
+            async processEntry(entry, parentFolderId, relativePath) {
+                let processed = 0;
+                let success = 0;
+                let errors = 0;
+
+                if (entry.isFile) {
+                    try {
+                        const file = await this.getFileFromEntry(entry);
+                        const uploadSuccess = await this.uploadSingleFileToFolder(file, parentFolderId, 0, 0);
+
+                        processed++;
+                        if (uploadSuccess) {
+                            success++;
+                            console.log(`✅ Uploaded: ${relativePath}${entry.name}`);
+                        } else {
+                            errors++;
+                            console.log(`❌ Failed: ${relativePath}${entry.name}`);
+                        }
+                    } catch (error) {
+                        processed++;
+                        errors++;
+                        console.error(`❌ Error processing file ${entry.name}:`, error);
+                    }
+
+                } else if (entry.isDirectory) {
+                    try {
+                        console.log(`📁 Creating folder: ${entry.name} in parent: ${parentFolderId}`);
+
+                        const folderId = await this.createSingleFolder(entry.name, parentFolderId);
+                        console.log(`✅ Created folder with ID: ${folderId}`);
+
+                        const childEntries = await this.readDirectoryEntries(entry);
+                        console.log(`📂 Found ${childEntries.length} items in ${entry.name}`);
+
+                        for (const childEntry of childEntries) {
+                            const childResult = await this.processEntry(
+                                childEntry,
+                                folderId,
+                                `${relativePath}${entry.name}/`
+                            );
+
+                            processed += childResult.processed;
+                            success += childResult.success;
+                            errors += childResult.errors;
+                        }
+
+                    } catch (error) {
+                        console.error(`❌ Error creating folder ${entry.name}:`, error);
+                        errors++;
+                    }
+                }
+
+                return { processed, success, errors };
+            }
+
+            getFileFromEntry(fileEntry) {
+                return new Promise((resolve, reject) => {
+                    fileEntry.file((file) => {
+                        const fileName = fileEntry.fullPath.split('/').pop();
+
+                        const correctedFile = new File([file], fileName, {
+                            type: file.type,
+                            lastModified: file.lastModified
+                        });
+
+                        resolve(correctedFile);
+                    }, reject);
+                });
+            }
+
+
+            readDirectoryEntries(directoryEntry) {
+                return new Promise((resolve) => {
+                    const dirReader = directoryEntry.createReader();
+                    const entries = [];
+
+                    const readEntries = () => {
+                        dirReader.readEntries((results) => {
+                            if (results.length === 0) {
+                                resolve(entries);
+                            } else {
+                                entries.push(...results);
+                                readEntries();
+                            }
+                        });
+                    };
+
+                    readEntries();
+                });
+            }
+
+            async handleDroppedFilesLegacy(files) {
+                console.log('📄 Processing', files.length, 'files (legacy mode)');
+
+
+                const folderFiles = files.filter(file => file.webkitRelativePath && file.webkitRelativePath !== "");
+                let regularFiles = files.filter(file => !file.webkitRelativePath || file.webkitRelativePath === "");
+
+                regularFiles = regularFiles.map(file => {
+                    let fileName = file.name;
+
+                    if (fileName.includes('/') || fileName.includes('\\')) {
+                        fileName = fileName.split(/[/\\]/).pop();
+                    }
+
+                    return new File([file], fileName, {
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                });
+
+                let totalSuccess = 0;
+                let totalErrors = 0;
+
+                if (folderFiles.length > 0) {
+                    console.log('📁 Processing folder structure with', folderFiles.length, 'files');
+                    const folderResult = await this.handleDroppedFoldersStructure(folderFiles);
+                    totalSuccess += folderResult.success;
+                    totalErrors += folderResult.errors;
+                }
+
+                if (regularFiles.length > 0) {
+                    console.log('📄 Processing', regularFiles.length, 'regular files');
+                    const fileResult = await this.handleDroppedRegularFiles(regularFiles);
+                    totalSuccess += fileResult.success;
+                    totalErrors += fileResult.errors;
+                }
+
+                if (totalErrors === 0) {
+                    this.showNotification(`✅ ${t('successfullyUploaded')} ${totalSuccess} ${t('files')}`, 'success');
+                } else if (totalSuccess === 0) {
+                    this.showNotification(`❌ ${t('failedUploadAllFiles')}`, 'error');
+                } else {
+                    this.showNotification(`⚠️ ${t('uploaded')} ${totalSuccess}, ${t('failed')} ${totalErrors} ${t('files')}`, 'warning');
+                }
+            }
+
+            async handleDroppedFoldersStructure(folderFiles) {
+                const folderStructure = this.buildFolderStructure(folderFiles);
+
+                let success = 0;
+                let errors = 0;
+
+                for (const [folderPath, folderFiles] of folderStructure) {
+                    try {
+                        const folderId = await this.createFolderPath(folderPath);
+
+                        for (const file of folderFiles) {
+                            const uploadSuccess = await this.uploadSingleFileToFolder(file, folderId, 0, 0);
+                            if (uploadSuccess) success++;
+                            else errors++;
+                        }
+                    } catch (error) {
+                        console.error('Error processing folder path:', folderPath, error);
+                        errors += folderFiles.length;
+                    }
+                }
+
+                return { success, errors };
+            }
+
+            async handleDroppedRegularFiles(files) {
+                let success = 0;
+                let errors = 0;
+
+                for (const file of files) {
+                    const uploadSuccess = await this.uploadSingleFileToFolder(
+                        file,
+                        this.currentFolderId,
+                        success + errors + 1,
+                        files.length
+                    );
+
+                    if (uploadSuccess) success++;
+                    else errors++;
+                }
+
+                return { success, errors };
+            }
+
+            async uploadSingleFileToFolder(file, folderId, index, total) {
+                try {
+                    if (index > 0) {
+                        console.log(`Uploading file ${index}/${total}: ${file.name} to folder ${folderId || 'root'}`);
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    if (folderId) {
+                        formData.append('parentId', folderId);
+                    }
+
+                    const response = await fetch(`http://localhost:5000/user/${this.currentUserId}/mydrive/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        return true;
+                    } else {
+                        const error = await response.json().catch(() => ({ message: 'Upload failed' }));
+                        console.error(`Failed to upload ${file.name}:`, error.message);
+                        return false;
+                    }
+
+                } catch (error) {
+                    console.error(`Error uploading ${file.name}:`, error);
+                    return false;
+                }
+            }
+
+
+
+            handleSidebarClick(e) {
+                document.querySelectorAll('.sidebar-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                e.currentTarget.classList.add('active');
+
+                const section = e.currentTarget.dataset.section;
+                if (section === 'mydrive') {
+                    this.navigateToRoot();
+                }
+                else if (section === 'sharedwithme') {
+                    this.showNotification(`${t('notImplemented')} Shared with Me`, 'info');
+                }
+                else if (section === 'recent') {
+                    this.showNotification(`${t('notImplemented')} Recent`, 'info');
+                }
+                else if (section === 'trash') {
+                    this.loadFiles(null, true, true);
+                }
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            showLoading() {
+                document.getElementById('loadingState').style.display = 'flex';
+                document.getElementById('fileList').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+            }
+
+            hideLoading() {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('fileList').style.display = 'table';
+            }
+
+            showEmptyState() {
+                document.getElementById('emptyState').style.display = 'flex';
+                document.getElementById('fileList').style.display = 'none';
+            }
+
+            hideEmptyState() {
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('fileList').style.display = 'table';
+            }
+
+            showError(message) {
+                this.hideLoading();
+                console.error(message);
+                this.showNotification(message, 'error');
+            }
+
+            logout() {
+                console.log('👋 Signing out...');
+                localStorage.removeItem('cloudcore_token');
+                localStorage.removeItem('cloudcore_user');
+                window.location.href = 'login.html';
             }
         }
 
-        formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        showLoading() {
-            document.getElementById('loadingState').style.display = 'flex';
-            document.getElementById('fileList').style.display = 'none';
-            document.getElementById('emptyState').style.display = 'none';
-        }
-
-        hideLoading() {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('fileList').style.display = 'table';
-        }
-
-        showEmptyState() {
-            document.getElementById('emptyState').style.display = 'flex';
-            document.getElementById('fileList').style.display = 'none';
-        }
-
-        hideEmptyState() {
-            document.getElementById('emptyState').style.display = 'none';
-            document.getElementById('fileList').style.display = 'table';
-        }
-
-        showError(message) {
-            this.hideLoading();
-            console.error(message);
-            this.showNotification(message, 'error');
-        }
-
-        logout() {
-            console.log('👋 Signing out...');
+        // Global logout function for the header button
+        function logout() {
             localStorage.removeItem('cloudcore_token');
             localStorage.removeItem('cloudcore_user');
             window.location.href = 'login.html';
         }
-    }
 
-    // Global logout function for the header button
-    function logout() {
-        localStorage.removeItem('cloudcore_token');
-        localStorage.removeItem('cloudcore_user');
-        window.location.href = 'login.html';
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        new CloudCoreDrive();
-    });
-</script>
+        document.addEventListener('DOMContentLoaded', () => {
+            new CloudCoreDrive();
+        });
+    </script>
 </body>
+
 </html>
