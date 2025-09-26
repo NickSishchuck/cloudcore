@@ -65,67 +65,105 @@ namespace CloudCore.Services.Implementations
         };
 
 
+        private readonly ILogger<ValidationService> _logger;
+        private readonly IItemRepository _itemRepository;
+
+        public ValidationService(ILogger<ValidationService> logger, IItemRepository itemDataService)
+        {
+            _logger = logger;
+            _itemRepository = itemDataService;
+        }
+
         public ValidationResult ValidateFile(IFormFile file)
         {
             if (file == null)
-                return ValidationResult.Failure("File is required", "FILE_REQUIRED");
+            {
+                _logger.LogWarning("File validation failed: no file provided");
+                return ValidationResult.Failure("File is required", ErrorCodes.FILE_REQUIRED);
+            }
             if (file.Length > MAX_SIZE)
+            {
+                _logger.LogWarning("File validation failed: file {FileName} too large ({FileSize} bytes)", file.FileName, file.Length);
                 return ValidationResult.Failure($"File size exceeds maximum allowed size ({FormatFileSize(MAX_SIZE)})", ErrorCodes.FILE_TOO_LARGE);
+            }
 
             var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
             if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
+            {
+                _logger.LogWarning("File validation failed: unsupported extension {Extension}", extension);
                 return ValidationResult.Failure($"File type not supported. Allowed types: {string.Join(", ", AllowedExtensions)}", ErrorCodes.INVALID_FILE_TYPE);
+            }
 
             var nameValidation = ValidateItemName(file.FileName);
             if (!nameValidation.IsValid)
+            {
+                _logger.LogWarning("File validation failed: invalid file name {FileName}", file.FileName);
                 return nameValidation;
+            }
 
+            _logger.LogInformation("File {FileName} passed validation", file.FileName);
             return ValidationResult.Success();
+
         }
         public ValidationResult ValidateItemName(string name)
         {
             if (string.IsNullOrEmpty(name))
+            {
+                _logger.LogWarning("Item name validation failed: empty name");
                 return ValidationResult.Failure("Item name cannot be empty", ErrorCodes.INVALID_NAME);
+            }
 
             if (name.Length > MAX_NAME_LENGTH)
+            {
+                _logger.LogWarning("Item name validation failed: name too long ({Length} chars)", name.Length);
                 return ValidationResult.Failure($"Item name cannot exceed {MAX_NAME_LENGTH} characters", ErrorCodes.NAME_TOO_LONG);
+            }
 
             foreach (var invalidChar in InvalidFileNameChars)
             {
                 if (name.Contains(invalidChar))
+                {
+                    _logger.LogWarning("Item name validation failed: invalid char '{Char}' in {Name}", invalidChar, name);
                     return ValidationResult.Failure($"Item name contains invalid character: {invalidChar}", ErrorCodes.INVALID_CHARECTER);
+                }
             }
 
             var nameWithoutExtension = Path.GetFileNameWithoutExtension(name).ToUpper();
             if (ReservedNames.Contains(nameWithoutExtension))
+            {
+                _logger.LogWarning("Item name validation failed: reserved name {Name}", nameWithoutExtension);
                 return ValidationResult.Failure($"'{name}' is a reserved name", ErrorCodes.RESERVED_NAME);
+            }
 
             if (name.StartsWith('.') || name.StartsWith(' ') || name.EndsWith('.') || name.EndsWith(' '))
+            {
+                _logger.LogWarning("Item name validation failed: starts/ends with invalid character");
                 return ValidationResult.Failure("Item name cannot start or end with a dot or space", ErrorCodes.INVALID_NAME_FORMAT);
+            }
 
+            _logger.LogInformation("Item name {Name} passed validation", name);
             return ValidationResult.Success();
         }
 
         public ValidationResult ValidateUserAuthorization(int currentUserId, int requestedUserId)
         {
             if (currentUserId != requestedUserId)
+            {
+                _logger.LogWarning("Authorization failed: currentUserId {Current}, requestedUserId {Requested}", currentUserId, requestedUserId);
                 return ValidationResult.Failure("You can only access your own files", ErrorCodes.ACCESS_DENIED);
+            }
 
+            _logger.LogInformation("Authorization succeeded for user {UserId}", currentUserId);
             return ValidationResult.Success();
         }
 
-        public async Task<ValidationResult> ValidateItemExistsAsync(CloudCoreDbContext context, int itemId, int userId, string itemType = null)
+        public async Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string itemType = null)
         {
-            var query = context.Items
-                .AsNoTracking()
-                .Where(i => i.Id == itemId && i.UserId == userId && i.IsDeleted == false);
+            _logger.LogInformation("Validating existence of item {ItemId} of type {ItemType} for user {UserId}", itemId, itemType ?? "any", userId);
 
-            if (!string.IsNullOrEmpty(itemType))
-                query = query.Where(i => i.Type == itemType);
+            var exists = await _itemRepository.ItemExistsAsync(itemId, userId, itemType);
 
-            var item = await query.FirstOrDefaultAsync();
-
-            if (item == null)
+            if (!exists)
             {
                 var errorMessage = itemType switch
                 {
@@ -133,55 +171,71 @@ namespace CloudCore.Services.Implementations
                     "folder" => "Folder not found",
                     _ => "Item not found"
                 };
+                _logger.LogWarning("Validation failed: Item {ItemId} not found for user {UserId}", itemId, userId);
                 return ValidationResult.Failure(errorMessage, ErrorCodes.ITEM_NOT_FOUND);
             }
 
+            _logger.LogInformation("Validation successful: Item {ItemId} exists.", itemId);
             return ValidationResult.Success();
         }
 
-        public async Task<ValidationResult> ValidateItemIdsAsync(CloudCoreDbContext context, List<int> itemIds, int userId)
+        public async Task<ValidationResult> ValidateItemIdsAsync(List<int> itemIds, int userId)
         {
-            if (itemIds == null || !itemIds.Any())
+            if (itemIds == null || itemIds.Count == 0)
+            {
                 return ValidationResult.Failure("No items specified", ErrorCodes.NO_ITEMS);
-
+            }
             if (itemIds.Count > 100)
+            {
                 return ValidationResult.Failure("Too many items selected (max 100)", ErrorCodes.TOO_MANY_FILES);
+            }
 
-            var existingItems = await context.Items
-                .AsNoTracking()
-                .Where(i => itemIds.Contains(i.Id) && i.UserId == userId && i.IsDeleted == false)
-                .CountAsync();
+            var existingItemsCount = await _itemRepository.CountExistingItemsAsync(itemIds, userId);
 
-            if (existingItems != itemIds.Count)
-                return ValidationResult.Failure("Some items not found or don't belong to you", ErrorCodes.ITEM_NOT_FOUND);
+            if (existingItemsCount != itemIds.Count)
+            {
+                _logger.LogWarning("ItemIds validation failed: mismatch count ({Found}/{Expected}) for user {UserId}", existingItemsCount, itemIds.Count, userId);
+                return ValidationResult.Failure("Some items not found or do not belong to you", ErrorCodes.ITEM_NOT_FOUND);
+            }
 
+            _logger.LogInformation("ItemIds validation succeeded for {Count} items for user {UserId}", itemIds.Count, userId);
             return ValidationResult.Success();
         }
 
-        public async Task<ValidationResult> ValidateNameUniquenessAsync(CloudCoreDbContext context, string name, int userId, int? parentId, int? excludeItemId = null)
+        public async Task<ValidationResult> ValidateNameUniquenessAsync(string name, string itemType, int userId, int? parentId, int? excludeItemId = null, bool includeDeleted = false)
         {
-            var query = context.Items
-                .Where(i => i.Name == name && i.UserId == userId && i.ParentId == parentId && i.IsDeleted == false);
+            _logger.LogInformation("Validating name uniqueness for '{Name}' of type '{ItemType}' for user {UserId}", name, itemType, userId);
 
-            if (excludeItemId.HasValue)
-                query = query.Where(i => i.Id != excludeItemId.Value);
+            var isDuplicate = await _itemRepository.DoesItemExistByNameAsync(name, itemType, userId, parentId, excludeItemId, includeDeleted);
 
-            var existingItem = await query.FirstOrDefaultAsync();
+            if (isDuplicate)
+            {
+                _logger.LogWarning("Validation failed: An item of type '{ItemType}' with name '{Name}' already exists.", itemType, name);
+                return ValidationResult.Failure(
+                    $"A {itemType} with this name already exists in this location",
+                    ErrorCodes.NAME_ALREADY_EXISTS
+                );
+            }
 
-            if (existingItem != null)
-                return ValidationResult.Failure("An item with this name already exists in this location", ErrorCodes.NAME_ALREADY_EXISTS);
-
+            _logger.LogInformation("Validation successful: Name '{Name}' is unique.", name);
             return ValidationResult.Success();
         }
 
         public ValidationResult ValidateArchiveSize(long totalSize, int fileCount)
         {
             if (totalSize > MAX_SIZE)
+            {
+                _logger.LogWarning("Archive validation failed: size {Size} exceeds max {Max}", totalSize, MAX_SIZE);
                 return ValidationResult.Failure($"Archive size exceeds maximum allowed size of {FormatFileSize(MAX_SIZE)}", ErrorCodes.ARCHIVE_TOO_LARGE);
+            }
 
             if (fileCount > MAX_FILES_IN_ARCHIVE)
+            {
+                _logger.LogWarning("Archive validation failed: too many files ({Count})", fileCount);
                 return ValidationResult.Failure($"Too many files in archive (max {MAX_FILES_IN_ARCHIVE})", ErrorCodes.TOO_MANY_FILES);
+            }
 
+            _logger.LogInformation("Archive validation succeeded: size {Size}, files {Count}", totalSize, fileCount);
             return ValidationResult.Success();
         }
 

@@ -28,19 +28,6 @@ namespace CloudCore.Services.Interfaces
         /// <returns>Memory stream containing the ZIP archive data</returns>
         Task<FileStream> CreateMultipleItemArchiveAsync(int userId, List<Item> itemsIds);
 
-        /// <summary>
-        /// Recursively calculates the total size and file count of a folder and all its subfolders
-        /// </summary>
-        /// <param name="userId">User ID to filter items by ownership</param>
-        /// <param name="folderId">Folder ID to calculate size for (null for root level)</param>
-        /// <returns>Tuple containing total size in bytes and total file count</returns>
-        /// <remarks>
-        /// Creates a new database context for each call to ensure thread safety
-        /// Recursively processes all subfolders to calculate complete hierarchy size
-        /// Only counts files marked as "file" type and not soft-deleted
-        /// Returns zero values if no items found in the specified folder
-        /// </remarks>
-        Task<(long totalSize, int fileCount)> CalculateArchiveSizeAsync(int userId, int? folderId);
 
         /// <summary>
         /// Calculates the total size and file count for a collection of mixed items (files and folders)

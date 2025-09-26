@@ -1,18 +1,24 @@
 ﻿using CloudCore.Data.Context;
+using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CloudCore.Services.Implementations
 {
     public class TrashCleanupService : ITrashCleanupService
     {
-        private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
+
+        private const int BATCH_SIZE = 500; 
+        private const int RETENTION_DAYS = -30; 
+
+        private readonly IItemRepository _itemDataService;
         private readonly IItemStorageService _itemStorageService;
         private readonly ILogger<TrashCleanupService> _logger;
 
-        public TrashCleanupService(IDbContextFactory<CloudCoreDbContext> dbContextFactory, IItemStorageService itemStorageService, ILogger<TrashCleanupService> logger)
+        public TrashCleanupService(IItemStorageService itemStorageService, ILogger<TrashCleanupService> logger, IItemRepository itemDataService)
         {
-            _dbContextFactory = dbContextFactory;
+            _itemDataService = itemDataService;
             _itemStorageService = itemStorageService;
             _logger = logger;
         }
@@ -21,62 +27,72 @@ namespace CloudCore.Services.Implementations
 
         public async Task<int> CleanupExpiredItemsAsync()
         {
-            using var context = _dbContextFactory.CreateDbContext();
+            _logger.LogInformation("Starting trash cleanup job for items older than {RetentionDays} days.", -RETENTION_DAYS);
+            var totalDeletedCount = 0;
+            var thresholdDate = DateTime.UtcNow.AddDays(RETENTION_DAYS);
 
-            var thresholdDate = DateTime.UtcNow.AddDays(-30);
+            var expiredItemIds = await _itemDataService.GetExpiredItemIdsAsync(thresholdDate);
 
-            var itemsToDelete = await context.Items
-                .Where(i => i.IsDeleted == true && i.DeletedAt <= thresholdDate)
-                .OrderBy(i => i.Type == "folder") 
-                .ToListAsync();
-
-            if (itemsToDelete.Count == 0)
+            if (expiredItemIds.Count == 0)
             {
-                _logger.LogInformation("No expired items to clean up.");
+                _logger.LogInformation("No expired items found to clean up.");
                 return 0;
             }
-            _logger.LogInformation($"Found {itemsToDelete.Count} items to permanently delete.");
 
-            int deletedCount = 0;
-            foreach (var item in itemsToDelete)
+            _logger.LogInformation("Found {TotalCount} expired items to process.", expiredItemIds.Count);
+
+            foreach (var batchOfIds in expiredItemIds.Chunk(BATCH_SIZE))
+            {
+                totalDeletedCount += await ProcessBatchAsync(batchOfIds.ToList());
+            }
+
+            _logger.LogInformation("Trash cleanup job finished. Permanently deleted {TotalCount} items.", totalDeletedCount);
+            return totalDeletedCount;
+        }
+
+        private async Task<int> ProcessBatchAsync(List<int> batchIds)
+        {
+            _logger.LogInformation("Processing a batch of {BatchSize} items.", batchIds.Count);
+
+            var itemsToDelete = await _itemDataService.GetDeletedItemsByIdsAsync(batchIds);
+
+            var orderedItemsToDelete = itemsToDelete
+                .OrderBy(i => i.Type == "folder") 
+                .ToList();
+
+            await DeletePhysicalItemsAsync(orderedItemsToDelete);
+
+            try
+            {
+                var deletedDbCount = await _itemDataService.DeleteItemsByIdsAsync(batchIds);
+                _logger.LogInformation("Successfully deleted {DbCount} records from DB for this batch.", deletedDbCount);
+                return deletedDbCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex, "CRITICAL: Failed to delete records from DB for batch of IDs {BatchIDs} after physical items were deleted. Manual cleanup may be required.", string.Join(", ", batchIds));
+                return 0;
+            }
+        }
+        private async Task DeletePhysicalItemsAsync(List<Item> items)
+        {
+            foreach (var item in items)
             {
                 try
                 {
-                    if (item.Type == "file")
+                    string? itemPath = null;
+                    if (item.Type == "folder")
                     {
-                        var filePath = _itemStorageService.GetFileFullPath(item.UserId, item.FilePath);
-                        if (File.Exists(filePath))
-                        {
-                            File.Delete(filePath);
-                            _logger.LogInformation($"Deleted file: {filePath}");
-                        }
-                    }
-                    else if (item.Type == "folder")
-                    {
-                        var folderPath = await _itemStorageService.GetFolderPathAsync(item);
-                        if (Directory.Exists(folderPath))
-                        {
-                            Directory.Delete(folderPath, recursive: true);
-                            _logger.LogInformation($"Deleted folder: {folderPath}");
-                        }
+                        itemPath = await _itemDataService.GetFolderPathAsync(item);
                     }
 
-                    context.Items.Remove(item);
-                    deletedCount++;
+                    _itemStorageService.DeleteItemPhysicaly(item, itemPath);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to delete item ID {item.Id}. Skipping.");
+                    _logger.LogError(ex, "Failed to delete physical item ID {ItemId} ({ItemType}). This DB record will still be targeted for deletion.", item.Id, item.Type);
                 }
             }
-
-            if (deletedCount > 0)
-            {
-                await context.SaveChangesAsync();
-                _logger.LogInformation("Permanently deleted {deletedCount} items from the database.", deletedCount);
-            }
-            return deletedCount;
-
         }
     }
 }

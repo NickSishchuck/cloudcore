@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.IO;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
 using CloudCore.Data.Context;
 using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
@@ -9,11 +11,11 @@ namespace CloudCore.Services.Implementations
     public class ItemStorageService : IItemStorageService
     {
         private readonly string _basePath;
-        private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        public ItemStorageService(IConfiguration configuration, IDbContextFactory<CloudCoreDbContext> dbContextFactory)
+        private readonly ILogger<ItemStorageService> _logger;
+        public ItemStorageService(IConfiguration configuration, ILogger<ItemStorageService> logger)
         {
             _basePath = configuration["FileStorage:BasePath"];
-            _dbContextFactory = dbContextFactory;
+            _logger = logger;
         }
 
 
@@ -35,30 +37,6 @@ namespace CloudCore.Services.Implementations
             // Get user`s root path "/app/storage/users/user/1"
             return Path.Combine(_basePath, "users", $"user{userId}");
         }
-
-        public async Task<string> GetFolderPathAsync(Item folder)
-        {
-
-            var pathParts = new List<string>();
-            var current = folder;
-
-            using var context = _dbContextFactory.CreateDbContext();
-            while (current != null)
-            {
-                pathParts.Add(current.Name);
-
-                if (current.ParentId == null)
-                    break;
-
-                current = await context.Items
-                    .AsNoTracking()
-                    .Where(i => i.Id == current.ParentId)
-                    .FirstOrDefaultAsync();
-            }
-            pathParts.Reverse();
-            return Path.Combine(GetUserStoragePath(folder.UserId), Path.Combine(pathParts.ToArray()));
-        }
-
 
         public string RemoveFromFolderPath(string path, string searchString)
         {
@@ -94,50 +72,41 @@ namespace CloudCore.Services.Implementations
             return Path.Combine(RemoveFromFolderPath(path, searchString), newName);
         }
 
-        public async Task<string> SaveFileAsync(int userId, IFormFile file, int? parentId)
+        public async Task<string> SaveFileAsync(int userId, string targetDirectory, IFormFile file)
         {
-            var userDirectory = GetUserStoragePath(userId);
-
-            string targetDirectory = userDirectory;
-
-            if (parentId.HasValue)
-            {
-                using var context = _dbContextFactory.CreateDbContext();
-                var parentFolder = await context.Items
-                    .AsNoTracking()
-                    .Where(i => i.Id == parentId && i.UserId == userId && i.IsDeleted == false && i.Type == "folder")
-                    .FirstOrDefaultAsync();
-
-                if (parentFolder != null)
-                    targetDirectory = await GetFolderPathAsync(parentFolder);
-                else
-                    throw new DirectoryNotFoundException();
-            }
+            var userStorageRoot = GetUserStoragePath(userId);
 
             var fileName = Path.GetFileName(file.FileName);
-            var filePath = Path.Combine(targetDirectory, fileName);
-
-            if (File.Exists(filePath))
-            {
-                var nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
-                var extension = Path.GetExtension(fileName);
-                var counter = 1;
-
-                do
-                {
-                    fileName = $"{nameWithoutExtension}({counter}){extension}";
-                    filePath = Path.Combine(targetDirectory, fileName);
-                    counter++;
-                }
-                while (File.Exists(filePath));
-            }
+            var filePath = Path.Combine(userStorageRoot, targetDirectory, fileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
+            var relativePath = Path.GetRelativePath(userStorageRoot, filePath);
 
-            return Path.GetRelativePath(userDirectory, filePath);
+            return relativePath;
+        }
+
+        public bool TryCreateFolder(int userId, string relativePath)
+        {
+            try
+            {
+                string userStoragePath = GetUserStoragePath(userId);
+                string folderFullPath = Path.Combine(userStoragePath, relativePath);
+
+                if (Directory.Exists(folderFullPath))
+                {
+                    return false;
+                }
+
+                Directory.CreateDirectory(folderFullPath);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public string GetMimeType(string fileName)
@@ -145,6 +114,103 @@ namespace CloudCore.Services.Implementations
             var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
 
             return MimeTypeMappings.TryGetValue(extension ?? "", out var mimeType) ? mimeType : "application/octet-stream";
+        }
+
+        //public async Task DeleteItemPhysicalyAsync(Item item)
+        //{
+        //    if(item.Type == "file")
+        //    {
+        //        var filePath = GetFileFullPath(item.UserId, item.FilePath);
+        //        if (File.Exists(filePath))
+        //        {
+        //            File.Delete(filePath);
+        //            // logging
+        //        }
+        //    }
+        //    else if (item.Type == "folder")
+        //    {
+        //        var folderPath = await GetFolderPathAsync(item);
+        //        if (Directory.Exists(folderPath))
+        //        {
+        //            Directory.Delete(folderPath, recursive: true);
+        //            // logging
+        //        }
+        //    }
+        //}
+
+
+        public string? RenameItemPhysicaly(Item item, string newName, IEnumerable<Item> childItems = null, string folderPath = null)
+        {
+            if (item.Type == "file")
+            {
+                // Get old file path "/app/storage/users/user/1/documents/test.pdf"
+                var oldFilePath = GetFileFullPath(item.UserId, item.FilePath);
+
+                // Get directory "/documents"
+                var directory = Path.GetDirectoryName(oldFilePath);
+
+
+                //var extension = Path.GetExtension(oldFilePath);
+
+
+                // Make new file path "/app/storage/users/user/1/documents/newFileName" 
+                var newFilePath = Path.Combine(directory, newName);
+
+                if (File.Exists(newFilePath))
+                    throw new IOException("File with this name already exists");
+
+                File.Move(oldFilePath, newFilePath);
+
+                var newRelativePath = Path.Combine(Path.GetDirectoryName(item.FilePath), newName);
+                return newRelativePath;
+            }
+            else if (item.Type == "folder")
+            {
+                var oldFolderPath = Path.Combine(GetUserStoragePath(item.UserId), folderPath);
+                var newFolderPath = Path.Combine(Path.GetDirectoryName(oldFolderPath), newName);
+
+                if (Directory.Exists(newFolderPath))
+                    throw new IOException($"Folder with name '{newName}' already exists in this directory.");
+
+                Directory.Move(oldFolderPath, newFolderPath);
+
+                return null;
+            }
+
+            throw new NotSupportedException($"Item type '{item.Type}' is not supported for physical renaming.");
+        }
+
+
+        public void DeleteItemPhysicaly(Item item, string folderPath)
+        {
+            var basePath = GetUserStoragePath(item.UserId);
+
+            if (item.Type == "file")
+            {
+                var fullPath = Path.Combine(basePath, item.FilePath);
+
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                    _logger.LogInformation("File deleted: {Path}", fullPath);
+                }
+                else
+                    _logger.LogWarning("File not found for deletion: {Path}", fullPath);
+            }
+            else if (item.Type == "folder")
+            {
+                var fullPath = Path.Combine(basePath, folderPath);
+
+                if (Directory.Exists(fullPath))
+                {
+                    Directory.Delete(fullPath, true);
+                    _logger.LogInformation("Folder deleted: {Path}", fullPath);
+                }
+                else
+                    _logger.LogWarning("Folder not found for deletion: {Path}", fullPath);
+            }
+            else
+                _logger.LogWarning("Unknown item type: {Type}", item.Type);
         }
 
         private static readonly Dictionary<string, string> MimeTypeMappings = new Dictionary<string, string>

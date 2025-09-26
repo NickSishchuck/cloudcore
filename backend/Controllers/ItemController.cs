@@ -16,15 +16,13 @@ namespace CloudCore.Controllers
     public class ItemController : ControllerBase
     {
         private readonly IValidationService _validationService;
-        private readonly IItemRepository _itemRepository;
-        private readonly IItemDataService _itemDataService;
+        private readonly IItemApplication _itemApplication;
         private readonly ILogger<ItemController> _logger;
 
-        public ItemController(IValidationService validationService, IItemRepository itemRepository, IItemDataService itemDataService, ILogger<ItemController> logger)
+        public ItemController(IValidationService validationService, IItemApplication itemApplication, ILogger<ItemController> logger)
         {
             _validationService = validationService;
-            _itemRepository = itemRepository;
-            _itemDataService = itemDataService;
+            _itemApplication = itemApplication;
             _logger = logger;
         }
 
@@ -69,7 +67,7 @@ namespace CloudCore.Controllers
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
-            var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir);
+            var result = await _itemApplication.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir);
 
             _logger.LogInformation("Successfully fetched {ItemCount} items for User ID: {UserId}.", result.Data.Count(), userId);
             return Ok(new PaginatedResponse<ItemResponse>
@@ -106,7 +104,7 @@ namespace CloudCore.Controllers
                 return authResult;
 
             _logger.LogInformation("User {UserId} initiated download for Folder ID: {FolderId}.", userId, folderId);
-            var (archiveStream, fileName) = await _itemRepository.DownloadFolderAsync(userId, folderId);
+            var (archiveStream, fileName) = await _itemApplication.DownloadFolderAsync(userId, folderId);
 
             _logger.LogInformation("Successfully created archive '{FileName}' for User ID: {UserId}.", fileName, userId);
             return File(archiveStream, "application/zip", fileName);
@@ -127,7 +125,7 @@ namespace CloudCore.Controllers
 
             _logger.LogInformation("User {UserId} initiated download for File ID: {FileId}.", userId, fileId);
 
-            var fileResult = await _itemRepository.DownloadFileAsync(userId, fileId);
+            var fileResult = await _itemApplication.DownloadFileAsync(userId, fileId);
 
             _logger.LogInformation("Serving file '{FileName}' for User ID: {UserId}.", fileResult.FileName, userId);
 
@@ -157,7 +155,7 @@ namespace CloudCore.Controllers
                 return authResult;
 
             _logger.LogInformation("User {UserId} initiated download for {ItemCount} items.", userId, itemsId.Count);
-            var (archiveStream, fileName) = await _itemRepository.DownloadMultipleItemsAsZipAsync(userId, itemsId);
+            var (archiveStream, fileName) = await _itemApplication.DownloadMultipleItemsAsZipAsync(userId, itemsId);
             _logger.LogInformation("Successfully created archive '{FileName}' with multiple items for User ID: {UserId}.", fileName, userId);
 
 
@@ -185,7 +183,7 @@ namespace CloudCore.Controllers
                 return authResult;
 
             _logger.LogInformation("User {UserId} attempting to rename Item ID: {ItemId} to '{NewName}'.", userId, itemId, newName);
-            var result = await _itemRepository.RenameItemAsync(userId, itemId, newName);
+            var result = await _itemApplication.RenameItemAsync(userId, itemId, newName);
 
             if (!result.IsSuccess)
             {
@@ -261,7 +259,7 @@ namespace CloudCore.Controllers
 
             _logger.LogInformation("User {UserId} attempting to delete Item ID: {ItemId}.", userId, itemId);
 
-            var result = await _itemRepository.DeleteItemAsync(userId, itemId);
+            var result = await _itemApplication.SoftDeleteItemAsync(userId, itemId);
             _logger.LogInformation("Item ID: {ItemId} successfully moved to trash for User ID: {UserId}.", itemId, userId);
 
             return Ok(result);
@@ -277,7 +275,7 @@ namespace CloudCore.Controllers
 
             _logger.LogInformation("User {UserId} attempting to upload file '{FileName}' to Parent ID: {ParentId}.", userId, file.FileName, parentId);
 
-            var result = await _itemRepository.UploadFileAsync(userId, file, parentId);
+            var result = await _itemApplication.UploadFileAsync(userId, file, parentId);
             if (!result.IsSuccess)
             {
                 _logger.LogWarning("Failed to upload file '{FileName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", file.FileName, userId, result.Message, result.ErrorCode);
@@ -325,7 +323,7 @@ namespace CloudCore.Controllers
 
             _logger.LogInformation("User {UserId} attempting to create folder '{FolderName}' in Parent ID: {ParentId}.", userId, request.Name, request.ParentId);
 
-            var result = await _itemRepository.CreateFolderAsync(userId, request);
+            var result = await _itemApplication.CreateFolderAsync(userId, request);
             if (!result.IsSuccess)
             {
                 _logger.LogWarning("Failed to create folder '{FolderName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", request.Name, userId, result.Message, result.ErrorCode);
@@ -361,7 +359,7 @@ namespace CloudCore.Controllers
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
-            var result = await _itemDataService.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, true);
+            var result = await _itemApplication.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, true);
 
             _logger.LogInformation("Successfully fetched {ItemCount} trash items for User ID: {UserId}.", result.Data.Count(), userId);
 
@@ -380,7 +378,7 @@ namespace CloudCore.Controllers
                 return authResult;
 
             _logger.LogInformation("User {UserId} attempting to restore Item ID: {ItemId}.", userId, itemId);
-            var result = await _itemRepository.RestoreItemAsync(userId, itemId);
+            var result = await _itemApplication.RestoreItemAsync(userId, itemId);
 
             if (!result.IsSuccess)
                 _logger.LogWarning("Failed to restore Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
