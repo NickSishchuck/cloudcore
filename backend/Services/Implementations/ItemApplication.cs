@@ -5,6 +5,7 @@ using CloudCore.Data.Context;
 using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using static CloudCore.Contracts.Responses.ItemResultResponses;
 
@@ -28,9 +29,9 @@ namespace CloudCore.Services.Implementations
             _itemManagerService = itemManagerService;
         }
 
-        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false)
+        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null)
         {
-            var (items, totalCount) = await _itemRepository.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder);
+            var (items, totalCount) = await _itemRepository.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder, searchQuery);
             int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
             return new PaginatedResponse<Item>
             {
@@ -148,7 +149,7 @@ namespace CloudCore.Services.Implementations
                     };
             }
 
-            var descendants = (itemToRestore.Type == "folder") ? await _itemRepository.GetAllChildItemsAsync(itemId, userId) : new List<Item>();
+            var descendants = (itemToRestore.Type == "folder") ? await _itemRepository.GetAllChildItemsAsync(userId, itemId) : new List<Item>();
 
             var allItems = new List<Item>(descendants) { itemToRestore };
 
@@ -286,7 +287,7 @@ namespace CloudCore.Services.Implementations
                 if (item.Type == "folder")
                 {
                     _logger.LogInformation("Fetching child items for ItemId={ItemId}", item.Id);
-                    childItems = await _itemRepository.GetAllChildItemsAsync(item.Id, item.UserId);
+                    childItems = await _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id);
                     folderPath = await _itemRepository.GetFolderPathAsync(item);
                     folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
                     _logger.LogInformation("Folder Path is {FolderPath}", folderPath);

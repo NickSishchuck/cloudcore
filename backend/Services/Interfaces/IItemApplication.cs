@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using CloudCore.Common.QueryParameters;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
@@ -30,7 +31,7 @@ namespace CloudCore.Services.Interfaces
         /// <returns>
         /// A paginated response containing the list of items and pagination metadata.
         /// </returns>
-        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false);
+        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null);
 
         #endregion
 

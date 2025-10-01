@@ -92,6 +92,6 @@ namespace CloudCore.Services.Interfaces
         Task<ValidationResult> ValidateNameUniquenessAsync(string name, string itemType, int userId, int? parentId, int? excludeItemId = null, bool includeDeleted = false);
 
 
-
+        ValidationResult ValidateQuery(string query);
     }
 }

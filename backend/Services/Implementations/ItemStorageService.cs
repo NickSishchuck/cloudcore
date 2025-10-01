@@ -116,29 +116,6 @@ namespace CloudCore.Services.Implementations
             return MimeTypeMappings.TryGetValue(extension ?? "", out var mimeType) ? mimeType : "application/octet-stream";
         }
 
-        //public async Task DeleteItemPhysicalyAsync(Item item)
-        //{
-        //    if(item.Type == "file")
-        //    {
-        //        var filePath = GetFileFullPath(item.UserId, item.FilePath);
-        //        if (File.Exists(filePath))
-        //        {
-        //            File.Delete(filePath);
-        //            // logging
-        //        }
-        //    }
-        //    else if (item.Type == "folder")
-        //    {
-        //        var folderPath = await GetFolderPathAsync(item);
-        //        if (Directory.Exists(folderPath))
-        //        {
-        //            Directory.Delete(folderPath, recursive: true);
-        //            // logging
-        //        }
-        //    }
-        //}
-
-
         public string? RenameItemPhysicaly(Item item, string newName, IEnumerable<Item> childItems = null, string folderPath = null)
         {
             if (item.Type == "file")

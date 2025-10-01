@@ -13,7 +13,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user ID to filter items by</param>
         /// <param name="maxDepth">The maximal depth to search by</param>
         /// <returns>A list of all child items found recursively under the parent folder</returns>
-        Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000);
+        Task<List<Item>> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
 
         /// <summary>
         /// Asynchronously retrieves a paginated IEnumerable of items for a specific user, with options for filtering and sorting.
@@ -26,7 +26,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="sortDir">The sort direction ("asc" for ascending, "desc" for descending). Defaults to "asc".</param>
         /// <param name="IsTrashFolder">A flag indicating whether to fetch items from the trash (where IsDeleted is true).</param>
         /// <returns>A Task that resolves to a PaginatedResponse containing the list of items and pagination metadata.</returns>
-        Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false);
+        Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false, string? searchQuery = null);
 
         /// <summary>
         /// Asynchronously retrieves a single item by its ID, ensuring it belongs to the specified user.
@@ -36,6 +36,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="itemtType">The Type of the item to retrieve.</param>
         /// <returns>A Task that resolves to the Item object if found; otherwise, null.</returns>
         Task<Item?> GetItemAsync(int userId, int itemtId, string? itemType);
+
 
         /// <summary>
         /// Retrieves a deleted item by its ID for the specified user.
