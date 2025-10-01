@@ -21,7 +21,7 @@ namespace CloudCore
         /// <returns></returns>
         public static async Task Main(string[] args)
         {
-           
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
@@ -31,7 +31,7 @@ namespace CloudCore
                     //formatter: new CompactJsonFormatter(),
                     "logs/cloudCore.txt",
                     rollingInterval: RollingInterval.Day,
-                    fileSizeLimitBytes: 10 * 1024 * 1024, 
+                    fileSizeLimitBytes: 10 * 1024 * 1024,
                     rollOnFileSizeLimit: true,
                     retainedFileCountLimit: 31
                     )
@@ -82,6 +82,8 @@ namespace CloudCore
                 builder.Services.AddScoped<IItemRepository, ItemRepository>();
                 builder.Services.AddScoped<ITrashCleanupService, TrashCleanupService>();
                 builder.Services.AddScoped<IItemManagerService, ItemManagerService>();
+                builder.Services.AddScoped<IStorageCalculationService, StorageCalculationService>();
+
 
                 // Add JWT Authentication
                 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";

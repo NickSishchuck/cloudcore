@@ -9,8 +9,8 @@ namespace CloudCore.Services.Implementations
     public class TrashCleanupService : ITrashCleanupService
     {
 
-        private const int BATCH_SIZE = 500; 
-        private const int RETENTION_DAYS = -30; 
+        private const int BATCH_SIZE = 500;
+        private const int RETENTION_DAYS = -30;
 
         private readonly IItemRepository _itemDataService;
         private readonly IItemStorageService _itemStorageService;
@@ -57,7 +57,7 @@ namespace CloudCore.Services.Implementations
             var itemsToDelete = await _itemDataService.GetDeletedItemsByIdsAsync(batchIds);
 
             var orderedItemsToDelete = itemsToDelete
-                .OrderBy(i => i.Type == "folder") 
+                .OrderBy(i => i.Type == "folder")
                 .ToList();
 
             await DeletePhysicalItemsAsync(orderedItemsToDelete);

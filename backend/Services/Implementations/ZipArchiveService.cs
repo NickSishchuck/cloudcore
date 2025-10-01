@@ -15,14 +15,16 @@ namespace CloudCore.Services.Implementations
         private readonly IValidationService _validationService;
         private readonly IItemRepository _itemDataService;
         private readonly ILogger<ZipArchiveService> _logger;
+        private readonly IStorageCalculationService _storageCalculationService;
 
 
-        public ZipArchiveService(IItemStorageService fileStorage, IValidationService validationService, IItemRepository itemDataService, ILogger<ZipArchiveService> logger)
+        public ZipArchiveService(IItemStorageService fileStorage, IValidationService validationService, IItemRepository itemDataService, ILogger<ZipArchiveService> logger, IStorageCalculationService storageCalculationService)
         {
             _fileStorageService = fileStorage;
             _validationService = validationService;
             _itemDataService = itemDataService;
             _logger = logger;
+            _storageCalculationService = storageCalculationService;
         }
 
         public async Task<FileStream> CreateFolderArchiveAsync(int userId, int folderId, string folderName)
@@ -73,7 +75,7 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        
+
 
         private async Task AddFileToZipAsync(ZipArchive zipArchive, Item item, string entryPath)
         {
@@ -138,26 +140,9 @@ namespace CloudCore.Services.Implementations
 
         public async Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, List<Item> items)
         {
-            long totalSize = 0;
-            int fileCount = 0;
-
-            foreach (var item in items)
-            {
-                if (item.Type == "file")
-                {
-                    totalSize += item.FileSize ?? 0;
-                    fileCount++;
-                }
-                else if (item.Type == "folder")
-                {
-                    var (folderSize, folderFileCount) = await _itemDataService.CalculateArchiveSizeAsync(userId, item.Id);
-                    totalSize += folderSize;
-                    fileCount += folderFileCount;
-                }
-            }
-
-            return (totalSize, fileCount);
+            return await _storageCalculationService.CalculateMultipleItemsSizeAsync(userId, items);
         }
+
         /// <summary>
         /// Validates that multiple items meet archive size and file count constraints
         /// </summary>
@@ -167,11 +152,13 @@ namespace CloudCore.Services.Implementations
         /// <exception cref="InvalidOperationException">Thrown when size exceeds 2000MB or file count exceeds 10000</exception>
         private async Task ValidateMultipleItemsArchive(int userId, List<Item> items)
         {
-            var (totalSize, fileCount) = await CalculateMultipleItemsSizeAsync(userId, items);
+            var (totalSize, fileCount) = await _storageCalculationService.CalculateMultipleItemsSizeAsync(userId, items);
             var validationResult = _validationService.ValidateArchiveSize(totalSize, fileCount);
             if (!validationResult.IsValid)
                 throw new InvalidOperationException(validationResult.ErrorMessage);
         }
+
+
         /// <summary>
         /// Validates that a single folder meets archive size and file count constraints
         /// </summary>
@@ -181,7 +168,7 @@ namespace CloudCore.Services.Implementations
         /// <exception cref="InvalidOperationException">Thrown when size exceeds 2000MB or file count exceeds 10000</exception>
         private async Task ValidateArchive(int userId, int? folderId)
         {
-            var (totalSize, fileCount) = await _itemDataService.CalculateArchiveSizeAsync(userId, folderId);
+            var (totalSize, fileCount) = await _storageCalculationService.CalculateFolderSizeAsync(userId, folderId);
             var validationResult = _validationService.ValidateArchiveSize(totalSize, fileCount);
             if (!validationResult.IsValid)
                 throw new InvalidOperationException(validationResult.ErrorMessage);
