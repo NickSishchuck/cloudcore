@@ -159,13 +159,13 @@ namespace CloudCore.Services.Implementations
                 return Enumerable.Empty<Item>();
             }
 
-            _logger.LogInformation( "Fetching {ItemCount} items by IDs for UserId: {UserId}", itemsIds.Count, userId);
+            _logger.LogInformation("Fetching {ItemCount} items by IDs for UserId: {UserId}", itemsIds.Count, userId);
 
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
             var items = await context.Items
                 .AsNoTracking()
-                .Where(i => i.UserId == userId && i.IsDeleted == false && itemsIds.Contains(i.Id))       
+                .Where(i => i.UserId == userId && i.IsDeleted == false && itemsIds.Contains(i.Id))
                 .ToListAsync();
 
             _logger.LogInformation("Found {FoundCount} out of {RequestedCount} items for UserId: {UserId}", items.Count, itemsIds.Count, userId);
@@ -287,7 +287,7 @@ namespace CloudCore.Services.Implementations
         public async Task<int> CountExistingItemsAsync(List<int> itemIds, int userId)
         {
             int providedCount = itemIds?.Count ?? 0;
-            _logger.LogInformation( "Counting existing items for UserId: {UserId}. Provided IDs count: {ProvidedCount}", userId, providedCount);
+            _logger.LogInformation("Counting existing items for UserId: {UserId}. Provided IDs count: {ProvidedCount}", userId, providedCount);
 
             if (providedCount == 0)
             {
@@ -342,12 +342,9 @@ namespace CloudCore.Services.Implementations
             if (folderId.HasValue)
             {
                 var allChildItems = await GetAllChildItemsAsync(folderId.Value, userId);
-
-                var files = allChildItems.Where(item => item.Type == "file");
-
+                var files = allChildItems.Where(item => item.Type == "file" && item.IsDeleted == false); //FIX: Filter deleted items
                 long totalSize = files.Sum(f => f.FileSize ?? 0);
                 int fileCount = files.Count();
-
                 return (totalSize, fileCount);
             }
             else
@@ -363,7 +360,8 @@ namespace CloudCore.Services.Implementations
                 {
                     if (item.Type == "file")
                     {
-                        totalSize += (long)item.FileSize;
+                        // FIX: Use null-coalescing instead of cast
+                        totalSize += item.FileSize ?? 0;
                         fileCount++;
                     }
                 }
@@ -380,7 +378,6 @@ namespace CloudCore.Services.Implementations
                 return (totalSize, fileCount);
             }
         }
-
         public async Task AddItemInTranscationAsync(Item item)
         {
             using var context = _dbContextFactory.CreateDbContext();
