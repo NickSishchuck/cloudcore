@@ -88,7 +88,6 @@
             top: 50%;
             transform: translateY(-50%);
             color: #5f6368;
-            cursor: pointer;
         }
 
         /* User Info in Header */
@@ -1191,6 +1190,7 @@
 
                 this.sortBy = 'name'; // name | modified | size
                 this.sortDir = 'asc'; // asc | desc
+                this.currentSearchQuery = null;
 
                 this.initializeAuth();
                 this.initializeLanguage();
@@ -1242,11 +1242,12 @@
                         sortDir: this.sortDir // asc, desc
                     });
 
+                    if (this.currentSearchQuery) {
+                        params.set('searchQuery', this.currentSearchQuery);
+                    }
                     if (isTrashView) {
-                        // Загрузка удаленных файлов
                         url = `http://localhost:5000/user/${this.currentUserId}/mydrive/trash?${params.toString()}`;
                     } else {
-                        // Обычная загрузка файлов
                         const base = `http://localhost:5000/user/${this.currentUserId}/mydrive`;
                         if (folderId !== null) {
                             params.set('parentId', String(folderId));
@@ -1368,10 +1369,12 @@
 
                 const thName = document.querySelector('th[data-i18n="name"]');
                 const thModified = document.querySelector('th[data-i18n="modified"]');
+                const thCreated = document.querySelector('th[data-i18n="created"]');
                 const thSize = document.querySelector('th[data-i18n="size"]');
 
                 thName?.addEventListener('click', () => this.applySort('name'));
                 thModified?.addEventListener('click', () => this.applySort('modified'));
+                thCreated?.addEventListener('click', () => this.applySort('created'));
                 thSize?.addEventListener('click', () => this.applySort('size'));
 
                 document.getElementById('newButton').addEventListener('click', (e) => this.toggleNewDropdown(e));
@@ -1385,7 +1388,14 @@
 
                 document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
 
-                document.getElementById('searchBox').addEventListener('input', (e) => this.handleSearch(e.target.value));
+                document.getElementById('searchBox').addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.performSearch(e.target.value);
+                    }
+                });
+
+                
 
 
                 document.addEventListener('click', (e) => this.handleDocumentClick(e));
@@ -1498,7 +1508,8 @@
                 const headers = {
                     name: document.querySelector('th[data-i18n="name"]'),
                     modified: document.querySelector('th[data-i18n="modified"]'),
-                    size: document.querySelector('th[data-i18n="size"]')
+                    size: document.querySelector('th[data-i18n="size"]'),
+                    created: document.querySelector('th[data-i18n="created"]')
                 };
 
                 Object.values(headers).forEach(h => {
@@ -1745,14 +1756,55 @@
                 }
             }
 
-            navigateToFolder(folder) {
+            async navigateToFolder(folder) {
+                if (this.currentSearchQuery) {
+                    this.currentSearchQuery = null;
+                    document.getElementById('searchBox').value = '';
+                    
+                    await this.buildSimpleBreadcrumb(folder);
+                } else {
+                    this.breadcrumbPath.push({
+                        id: folder.id,
+                        name: folder.name
+                    });
+                }
+                
                 this.currentFolderId = folder.id;
-
-                this.breadcrumbPath.push({
-                    id: folder.id,
-                    name: folder.name
-                });
                 this.loadFiles(folder.id);
+            }
+
+            async buildSimpleBreadcrumb(folder) {
+                try {
+                    const url = `http://localhost:5000/user/${this.currentUserId}/mydrive/folder/path/${folder.id}`;
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const folderPath = await response.text();
+                        const pathParts = folderPath.split(/[/\\]/).filter(part => part.trim() !== '');
+                        
+                        this.breadcrumbPath = pathParts.map((name, index) => ({
+                            id: index === pathParts.length - 1 ? folder.id : null,
+                            name: name
+                        }));
+                    } else {
+                        this.breadcrumbPath = [{
+                            id: folder.id,
+                            name: folder.name
+                        }];
+                    }
+                } catch (error) {
+                    console.error('Error building breadcrumb:', error);
+                    this.breadcrumbPath = [{
+                        id: folder.id,
+                        name: folder.name
+                    }];
+                }
             }
 
             showContextMenu(e, item) {
@@ -2181,6 +2233,10 @@
             }
 
             navigateToRoot() {
+                if (this.currentSearchQuery) {
+                    this.currentSearchQuery = null;
+                    document.getElementById('searchBox').value = '';
+                }
                 this.currentFolderId = null;
                 this.breadcrumbPath = [];
                 this.loadFiles(null);
@@ -2193,16 +2249,20 @@
                 this.loadFiles(targetFolder.id);
             }
 
-            handleSearch(query) {
-                if (!query.trim()) {
-                    this.renderFiles();
+            async performSearch(query) {
+                this.currentSearchQuery = query.trim();
+
+                if (!this.currentSearchQuery) {
+                    this.loadFiles(null, true); 
                     return;
                 }
 
-                const filteredItems = this.allItems.filter(item =>
-                    item.name.toLowerCase().includes(query.toLowerCase())
-                );
-                this.renderFiles(filteredItems);
+                this.currentFolderId = null;
+                this.breadcrumbPath = [];
+                this.updateBreadcrumbs(); 
+                this.showLoading();
+
+                 await this.loadFiles(null, true); 
             }
 
             triggerFileUpload() {

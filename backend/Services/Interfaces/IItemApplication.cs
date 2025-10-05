@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using CloudCore.Common.QueryParameters;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
@@ -30,7 +31,29 @@ namespace CloudCore.Services.Interfaces
         /// <returns>
         /// A paginated response containing the list of items and pagination metadata.
         /// </returns>
-        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false);
+        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null);
+
+        /// <summary>
+        /// Asynchronously retrieves an item by its ID, user ID, and optional type.
+        /// </summary>
+        /// <param name="userId">The ID of the user who owns the item.</param>
+        /// <param name="itemId">The ID of the item to retrieve.</param>
+        /// <param name="type">The type of the item.</param>
+        /// <returns>
+        /// The task result contains the item if found; otherwise, null.
+        /// </returns>
+        Task<Item?> GetItemAsync(int userId, int itemId, string type);
+
+        /// <summary>
+        /// Asynchronously builds and retrieves the breadcrumb path string for a given item specified by user ID, item ID, and type.
+        /// </summary>
+        /// <param name="userId">The ID of the user who owns the item.</param>
+        /// <param name="itemId">The ID of the item for which the breadcrumb path is requested.</param>
+        /// <param name="type">The type of the item.</param>
+        /// <returns>
+        /// The task result contains the breadcrumb path as a string.
+        /// </returns>
+        Task<string> GetBreadcrumbPathAsync(int userId, int itemId, string type);
 
         #endregion
 

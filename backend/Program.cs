@@ -8,7 +8,6 @@ using CloudCore.Services.Implementations;
 using CloudCore.Data.Context;
 using Serilog;
 using Serilog.Events;
-using Serilog.Formatting.Compact;
 
 namespace CloudCore
 {
@@ -26,16 +25,14 @@ namespace CloudCore
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
                 .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-                .WriteTo.Console()//new CompactJsonFormatter())
+                .WriteTo.Console()
                 .WriteTo.File(
-                    //formatter: new CompactJsonFormatter(),
                     "logs/cloudCore.txt",
                     rollingInterval: RollingInterval.Day,
                     fileSizeLimitBytes: 10 * 1024 * 1024,
                     rollOnFileSizeLimit: true,
                     retainedFileCountLimit: 31
                     )
-                //.Enrich.FromLogContext()
                 .CreateLogger();
 
             try
@@ -124,19 +121,7 @@ namespace CloudCore
                 });
 
                 var app = builder.Build();
-                //app.UseSerilogRequestLogging(options =>
-                //{
-                //    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
-                //    {
-                //        diagnosticContext.Set("agent", httpContext.Request.Headers["User-Agent"].FirstOrDefault());
-                //        diagnosticContext.Set("client", httpContext.Connection.RemoteIpAddress?.ToString());
-                //        diagnosticContext.Set("user", httpContext.User?.Identity?.Name);
-                //        diagnosticContext.Set("request", $"{httpContext.Request.Method} {httpContext.Request.Path}");
-                //        diagnosticContext.Set("referer", httpContext.Request.Headers["Referer"].FirstOrDefault());
-                //        diagnosticContext.Set("size", httpContext.Response.ContentLength);
-                //        diagnosticContext.Set("status", httpContext.Response.StatusCode);
-                //    };
-                //});
+
                 app.UseMiddleware<GlobalErrorHandler>();
 
                 // Configure the HTTP request pipeline.

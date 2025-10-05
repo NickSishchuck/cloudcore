@@ -5,6 +5,7 @@ using CloudCore.Data.Context;
 using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using static CloudCore.Contracts.Responses.ItemResultResponses;
 
@@ -28,9 +29,9 @@ namespace CloudCore.Services.Implementations
             _itemManagerService = itemManagerService;
         }
 
-        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false)
+        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null)
         {
-            var (items, totalCount) = await _itemRepository.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder);
+            var (items, totalCount) = await _itemRepository.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder, searchQuery);
             int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
             return new PaginatedResponse<Item>
             {
@@ -47,13 +48,35 @@ namespace CloudCore.Services.Implementations
             };
         }
 
+        
+        public async Task<Item?> GetItemAsync(int userId, int itemId, string type)
+        {
+            return await _itemRepository.GetItemAsync(userId, itemId, type);
+        }
+
+        public async Task<string> GetBreadcrumbPathAsync(int userId, int folderId, string type)
+        {
+            var folder = await GetItemAsync(userId, folderId, type);
+            if(folder == null)
+            {
+                _logger.LogWarning("Folder not found for User Id: {UserId}, Folder Id: {FolderId}", userId, folderId);
+                throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND);
+            }
+
+            string folderPath = await _itemRepository.GetBreadcrumbPathAsync(folder);
+            if (string.IsNullOrEmpty(folderPath))
+                return folder.Name;
+
+            return folderPath;
+        }
+
         public async Task<(Stream archiveStream, string fileName)> DownloadFolderAsync(int userId, int folderId)
         {
             var folder = await _itemRepository.GetItemAsync(userId, folderId, "folder");
             if (folder == null || folder.IsDeleted == true)
             {
                 _logger.LogWarning("DownloadFolder failed: Folder with ID {FolderId} not found for user {UserId}", folderId, userId);
-                throw new FileNotFoundException("Folder not found");
+                throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND);
             }
 
             var archiveStream = await _zipArchiveService.CreateFolderArchiveAsync(userId, folderId, folder.Name);
@@ -68,7 +91,7 @@ namespace CloudCore.Services.Implementations
             if (file == null || file.IsDeleted == true)
             {
                 _logger.LogWarning("DownloadFile failed: File with ID {FilerId} not found for user {UserId}", fileId, userId);
-                throw new FileNotFoundException("Folder not found");
+                throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND );
             }
 
             var fullPath = _itemStorageService.GetFileFullPath(userId, file.FilePath);
@@ -76,7 +99,7 @@ namespace CloudCore.Services.Implementations
             if (!File.Exists(fullPath))
             {
                 _logger.LogError("Physical file is missing on disk for Item ID {ItemId}. Path: {Path}", file.Id, fullPath);
-                throw new FileNotFoundException("File not found on the server.");
+                throw new FileNotFoundException(ErrorCodes.FILE_NOT_FOUND);
             }
 
             var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
@@ -99,7 +122,7 @@ namespace CloudCore.Services.Implementations
             var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemsId);
             int itemCount = items.Count();
             if (itemCount == 0)
-                throw new FileNotFoundException("No items found for the provided IDs.");
+                throw new FileNotFoundException(ErrorCodes.FILE_NOT_FOUND);
 
 
             var totalSize = items.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
@@ -148,7 +171,7 @@ namespace CloudCore.Services.Implementations
                     };
             }
 
-            var descendants = (itemToRestore.Type == "folder") ? await _itemRepository.GetAllChildItemsAsync(itemId, userId) : new List<Item>();
+            var descendants = (itemToRestore.Type == "folder") ? await _itemRepository.GetAllChildItemsAsync(userId, itemId) : new List<Item>();
 
             var allItems = new List<Item>(descendants) { itemToRestore };
 
@@ -286,7 +309,7 @@ namespace CloudCore.Services.Implementations
                 if (item.Type == "folder")
                 {
                     _logger.LogInformation("Fetching child items for ItemId={ItemId}", item.Id);
-                    childItems = await _itemRepository.GetAllChildItemsAsync(item.Id, item.UserId);
+                    childItems = await _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id);
                     folderPath = await _itemRepository.GetFolderPathAsync(item);
                     folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
                     _logger.LogInformation("Folder Path is {FolderPath}", folderPath);

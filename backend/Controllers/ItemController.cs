@@ -7,6 +7,7 @@ using CloudCore.Domain.Entities;
 using CloudCore.Contracts.Responses;
 using CloudCore.Contracts.Requests;
 using CloudCore.Mappers;
+using CloudCore.Common.QueryParameters;
 
 namespace CloudCore.Controllers
 {
@@ -56,18 +57,15 @@ namespace CloudCore.Controllers
         /// <param name="parentId">Parent directory ID (null for root level)</param>
         /// <returns>List of user items or NotFound if no items exist</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required] int userId, int? parentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 30, [FromQuery] string? sortBy = "name", [FromQuery] string? sortDir = "asc")
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required] int userId, int? parentId, [FromQuery] QueryParameters queryParams)
         {
             var authResult = VerifyUser(userId);
             if (authResult != null)
                 return authResult;
 
-            _logger.LogInformation("Fetching items for User ID: {UserId}, Parent ID: {ParentId}, Page: {Page}, PageSize: {PageSize}.", userId, parentId, page, pageSize);
+            _logger.LogInformation("Fetching items for User ID: {UserId}, Parent ID: {ParentId}, Page: {Page}, Page Size: {PageSize}, Search Query: {SearchQuery}.", userId, parentId, queryParams.Page, queryParams.PageSize, queryParams.SearchQuery);
 
-            if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 30;
-
-            var result = await _itemApplication.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir);
+            var result = await _itemApplication.GetItemsAsync(userId, parentId, queryParams.Page, queryParams.PageSize, queryParams.SortBy, queryParams.SortDir, searchQuery: queryParams.SearchQuery);
 
             _logger.LogInformation("Successfully fetched {ItemCount} items for User ID: {UserId}.", result.Data.Count(), userId);
             return Ok(new PaginatedResponse<ItemResponse>
@@ -75,6 +73,20 @@ namespace CloudCore.Controllers
                 Data = result.Data.Select(i => i.ToResponseDto()),
                 Pagination = result.Pagination
             });
+        }
+
+        [HttpGet("folder/path/{folderId}")]
+        public async Task<IActionResult> GetFolderPath([Required] int userId, int folderId)
+        {
+            var authResult = VerifyUser(userId);
+            if (authResult != null)
+                return authResult;
+
+            _logger.LogInformation("Fetching folder path for User ID: {UserId}, Folder ID: {FolderId}", userId, folderId);
+            string folderPath = await _itemApplication.GetBreadcrumbPathAsync(userId, folderId, "folder");
+
+
+            return Ok(folderPath);
         }
 
         /// <summary>

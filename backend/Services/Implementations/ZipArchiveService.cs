@@ -36,7 +36,7 @@ namespace CloudCore.Services.Implementations
             var tempFilePath = Path.GetTempFileName() + ".zip";
             _logger.LogInformation("Creating temporary archive at: {TempPath}", tempFilePath);
 
-            var allDescendants = await _itemDataService.GetAllChildItemsAsync(folderId, userId);
+            var allDescendants = await _itemDataService.GetAllChildItemsAsync(userId, folderId);
             var allNotDeletedDescendants = allDescendants.Where(i => i.IsDeleted == false);
             var itemsByParent = allNotDeletedDescendants.ToLookup(item => item.ParentId);
 
@@ -123,7 +123,7 @@ namespace CloudCore.Services.Implementations
                     if (item.Type == "folder") // If item is folder
                     {
                         _logger.LogInformation("Processing folder '{ItemName}' (ID: {ItemId}) for multi-item archive.", item.Name, item.Id);
-                        var descendants = await _itemDataService.GetAllChildItemsAsync(item.Id, userId);
+                        var descendants = await _itemDataService.GetAllChildItemsAsync(userId, item.Id);
                         var itemsByParent = descendants.ToLookup(i => i.ParentId);
                         AddChildrenToZip(zipArchive, itemsByParent, item.Id, item.Name);
                     }
