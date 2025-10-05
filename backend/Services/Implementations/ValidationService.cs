@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using CloudCore.Common.Errors;
 using CloudCore.Common.Validation;
 using CloudCore.Data.Context;
@@ -253,5 +254,23 @@ namespace CloudCore.Services.Implementations
             return $"{len.ToString(format)} {sizes[order]}";
         }
 
+        public ValidationResult ValidateQuery(string query)
+        {
+            if(string.IsNullOrEmpty(query))
+            {
+                _logger.LogWarning("Validation failed: query is null or empty.");
+                return ValidationResult.Failure("Querry cannot be null or empty", ErrorCodes.NULL_OR_EMPTY);
+            }
+
+            var regex = new Regex("^[a-zA-Z0-9 ]+$");
+            if (!regex.IsMatch(query))
+            {
+                _logger.LogWarning("Validation failed: not allowed symbol.");
+                return ValidationResult.Failure("Not allowed symbol", ErrorCodes.NOT_ALLOWED_SYMBOL);
+            }
+
+            return ValidationResult.Success();
+
+        }
     }
 }

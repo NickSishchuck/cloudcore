@@ -1,26 +1,29 @@
 ﻿using System.IO;
+using CloudCore.Common.Models;
 using CloudCore.Contracts.Responses;
 using CloudCore.Data.Context;
 using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
+using System.Linq;
 using Sprache;
+using NaturalSort.Extension;
 
 namespace CloudCore.Services.Implementations
 {
-    public class ItemRepository : IItemRepository
+    public class DbRepository : IItemRepository, ISubscriptionService
     {
         private readonly IDbContextFactory<CloudCoreDbContext> _dbContextFactory;
-        private readonly ILogger<ItemRepository> _logger;
+        private readonly ILogger<DbRepository> _logger;
 
-        public ItemRepository(IDbContextFactory<CloudCoreDbContext> dbContextFactory, ILogger<ItemRepository> logger)
+        public DbRepository(IDbContextFactory<CloudCoreDbContext> dbContextFactory, ILogger<DbRepository> logger)
         {
             _dbContextFactory = dbContextFactory;
             _logger = logger;
         }
 
-        public async Task<List<Item>> GetAllChildItemsAsync(int parentId, int userId, int maxDepth = 10000)
+        public async Task<List<Item>> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000)
         {
             _logger.LogInformation("Fetching all child items. UserId={UserId}, ParentId={ParentId}, MaxDepth={MaxDepth}", userId, parentId, maxDepth);
             using var context = _dbContextFactory.CreateDbContext();
@@ -52,14 +55,22 @@ namespace CloudCore.Services.Implementations
             return result;
         }
 
-        public async Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false)
+        public async Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null)
         {
             _logger.LogInformation("Fetching items. UserId={UserId}, ParentId={ParentId}, Page={Page}, PageSize={PageSize}, SortBy={SortBy}, SortDir={SortDir}, IsTrashFolder={IsTrashFolder}", userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder);
 
             using var context = _dbContextFactory.CreateDbContext();
+
             var query = context.Items
                 .AsNoTracking()
                 .Where(i => i.UserId == userId);
+
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                _logger.LogInformation("Searching items for UserId={UserId}, Query={SearchQuery}", userId, searchQuery);
+                query = query.Where(i => i.Name.ToLower().Contains(searchQuery.ToLower()));
+            }
+            
 
             if (isTrashFolder == true)
             {
@@ -69,43 +80,61 @@ namespace CloudCore.Services.Implementations
                     .Any(p => p.Id == i.ParentId && p.IsDeleted == false)));
             }
             else
-
-                query = query.Where(i => i.IsDeleted == false && i.ParentId == parentId);
+            {
+                if (string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    query = query.Where(i => i.IsDeleted == false && i.ParentId == parentId);
+                }
+                else
+                {
+                    query = query.Where(i => i.IsDeleted == false);
+                }
+            }
 
 
             bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-            query = query.OrderBy(i => i.Type == "folder" ? 0 : 1);
+
+            var allItems = await query.ToListAsync();
+            var totalCount = allItems.Count;
+
+            IOrderedEnumerable<Item> orderedItems = allItems.OrderBy(i => i.Type == "folder" ? 0 : 1);
 
             switch ((sortBy ?? "name").ToLowerInvariant())
             {
                 case "size":
                 case "filesize":
-                    query = desc
-                        ? query.OrderByDescending(i => i.FileSize ?? 0)
-                        : query.OrderBy(i => i.FileSize ?? 0);
+                    orderedItems = desc
+                        ? orderedItems.ThenByDescending(i => i.FileSize ?? 0)
+                        : orderedItems.ThenBy(i => i.FileSize ?? 0);
                     break;
 
                 case "modified":
                 case "updatedat":
-                    query = desc
-                        ? query.OrderByDescending(i => i.UpdatedAt)
-                        : query.OrderBy(i => i.UpdatedAt);
+                    orderedItems = desc
+                        ? orderedItems.ThenByDescending(i => i.UpdatedAt)
+                        : orderedItems.ThenBy(i => i.UpdatedAt);
+                    break;
+
+                case "created":
+                case "createdat":
+                    orderedItems = desc
+                        ? orderedItems.ThenByDescending(i => i.CreatedAt)
+                        : orderedItems.ThenBy(i => i.CreatedAt);
                     break;
 
                 case "name":
                 default:
-                    query = desc
-                        ? query.OrderByDescending(i => i.Name)
-                        : query.OrderBy(i => i.Name);
+                    orderedItems = desc
+                        ? orderedItems.ThenByDescending(i => i.Name, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
+                        : orderedItems.ThenBy(i => i.Name, StringComparison.OrdinalIgnoreCase.WithNaturalSort());
                     break;
             }
 
-            var totalCount = await query.CountAsync();
 
-            var items = await query
+            var items = orderedItems
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToList();
 
             _logger.LogInformation("Fetched {Count} items. UserId={UserId}, ParentId={ParentId}, TotalCount={TotalCount}", items.Count, userId, parentId, totalCount);
 
@@ -228,6 +257,17 @@ namespace CloudCore.Services.Implementations
             // WITHOUT USERPATH!!!
             return path;
         }
+
+        public async Task<string> GetBreadcrumbPathAsync(Item folder)
+        {
+            var fullPath = await GetFolderPathAsync(folder);
+
+            _logger.LogInformation("Building breadcrumb path for Folder ID: {FolderId}", folder.Id);
+            var breadcrumb = fullPath.Split(Path.DirectorySeparatorChar).ToList();
+            _logger.LogInformation("Builded breadcrumb path for Folder ID: {FolderId}, Path: {Path}", folder.Id, breadcrumb);
+            return fullPath;
+        }
+
 
         public async Task<bool> IsNameUniqueAsync(string name, int userId, string itemType, int? parentId, int? excludeItemId = null)
         {
@@ -457,5 +497,106 @@ namespace CloudCore.Services.Implementations
                 .Where(i => itemIds.Contains(i.Id))
                 .ExecuteDeleteAsync();
         }
+
+        // public async Task<TeamspaceLimits> GetPrivateLimits(int userId)
+        // {
+        //     using var context = _dbContextFactory.CreateDbContext();
+        //
+        //     var user = await context.Users
+        //     .AsNoTracking()
+        //     .FirstOrDefaultAsync(u => u.Id == userId);
+        //
+        //     if (user == null)
+        //         throw new InvalidOperationException("User not found"); //FIXME: Use the error handler
+        //
+        //     return user.SubscriptionPlan switch
+        //     {
+        //         "free" => new PrivateLimits
+        //         {
+        //             StorageLimitMb = 10240    // 10 GB
+        //         },
+        //         "premium" => new PrivateLimits
+        //         {
+        //             StorageLimitMb = 20480    // 20 GB
+        //         },
+        //         "enterprise" => new PrivateLimits
+        //         {
+        //             StorageLimitMb = 51200    // 50 GB
+        //         },
+        //         _ => throw new InvalidOperationException("Invalid subscription plan") //FIXME: use the error handler
+        //     };
+        // }
+        //
+        //  public async Task<bool> IsExceedingPrivateLimit(int userId)
+        // {
+        //     using var context = _dbContextFactory.CreateDbContext();
+        //
+        //     var user = await context.Users
+        //       .AsNoTracking()
+        //       .FirstOrDefaultAsync(u => u.Id == userId);
+        //
+        //     if (userId == null)
+        //         return false;
+        //
+        //     //TODO: 
+        // }
+
+        public async Task<TeamspaceLimits> GetTeamspaceLimitsAsync(int userId)
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+
+            var user = await context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                throw new InvalidOperationException("User not found"); //FIXME: Use the erro handler
+
+            return user.SubscriptionPlan switch
+            {
+                "free" => new TeamspaceLimits
+                {
+                    StorageLimitMb = 5120,        // 5 GB
+                    MemberLimit = 5,               // 5 members
+                    MaxTeamspaces = 2              // 2 teamspaces max
+                },
+                "premium" => new TeamspaceLimits
+                {
+                    StorageLimitMb = 51200,       // 50 GB
+                    MemberLimit = 25,              // 25 members
+                    MaxTeamspaces = 10             // 10 teamspaces max
+                },
+                "enterprise" => new TeamspaceLimits
+                {
+                    StorageLimitMb = 512000,      // 500 GB
+                    MemberLimit = 100,             // 100 members
+                    MaxTeamspaces = -1             // Unlimited
+                },
+                _ => throw new InvalidOperationException("Invalid subscription plan") //FIXME: Use the error handler
+            };
+        }
+
+        public async Task<bool> CanCreateTeamspaceAsync(int userId)
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+
+            var user = await context.Users
+                .AsNoTracking()
+                .Include(u => u.Teamspaces)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return false;
+
+            var limits = await GetTeamspaceLimitsAsync(userId);
+
+            // Check if unlimited (-1) or under limit
+            if (limits.MaxTeamspaces == -1)
+                return true;
+
+            return user.TeamspacesOwned < limits.MaxTeamspaces;
+        }
+
+
     }
 }

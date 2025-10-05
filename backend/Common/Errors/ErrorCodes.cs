@@ -16,6 +16,8 @@
         public const string UNSUPPORTED_TYPE = "UNSUPPORTED_TYPE";
         public const string NO_ITEMS = "NO_ITEMS";
         public const string PARENT_FOLDER_DELETED = "PARENT_FOLDER_DELETED";
+        public const string NULL_OR_EMPTY = "NULL_OR_EMPTY";
+        public const string NOT_ALLOWED_SYMBOL = "NOT_ALLOWED_SYMBOL";
 
 
 
