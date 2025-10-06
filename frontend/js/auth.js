@@ -147,8 +147,20 @@ class AuthManager {
         }
     }
 
+    setupLanguageSwitcher() {
+        const languageBtn = document.getElementById('languageBtn');
+        if (languageBtn) {
+            languageBtn.addEventListener('click', () => {
+                console.log('Language switch clicked');
+                this.i18n.switchLanguage();
+                location.reload();
+            });
+        }
+    }
+
     initializeLoginPage() {
         this.i18n.updateUI();
+        this.setupLanguageSwitcher();
 
         document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -163,6 +175,7 @@ class AuthManager {
 
     initializeRegisterPage() {
         this.i18n.updateUI();
+        this.setupLanguageSwitcher();
 
         // Real-time password confirmation validation
         document.getElementById('confirmPassword')?.addEventListener('input', function() {

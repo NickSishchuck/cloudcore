@@ -33,6 +33,13 @@ export const translations = {
         uploadGetStarted: 'Upload files or create folders to get started',
         restoring: 'Restoring',
         restored: 'restored',
+        renaming: 'Renaming',
+        renamed: 'Renamed to',
+        deleting: 'Deleting',
+        deleted: 'deleted',
+        failedRename: 'Failed to rename',
+        failedDelete: 'Failed to delete',
+        creatingArchive: 'Creating archive',
         
         // Auth
         username: 'Username',
@@ -40,16 +47,23 @@ export const translations = {
         emailAddress: 'Email Address',
         confirmPassword: 'Confirm Password',
         signIn: 'Sign In',
+        signingIn: 'Signing in...',
         createAccount: 'Create Account',
+        creatingAccount: 'Creating account...',
         noAccount: "Don't have an account?",
         alreadyAccount: 'Already have an account?',
+        welcomeBack: 'Welcome back, {username}!',
+        accountCreated: 'Account created! Welcome, {username}!',
         
         // Errors and notifications
         downloading: 'Downloading',
         downloaded: 'Downloaded',
         failedDownload: 'Failed to download',
         uploadFailed: 'Upload failed',
-        invalidCredentials: 'Invalid username or password'
+        invalidCredentials: 'Invalid username or password',
+        signInFailed: 'Sign in failed',
+        registrationFailed: 'Registration failed. Please try again.',
+        passwordsNoMatch: 'Passwords do not match'
     },
     uk: {
         // Header
@@ -85,6 +99,13 @@ export const translations = {
         uploadGetStarted: 'Завантажте файли або створіть папки',
         restoring: 'Відновлення',
         restored: 'відновлено',
+        renaming: 'Перейменування',
+        renamed: 'Перейменовано на',
+        deleting: 'Видалення',
+        deleted: 'видалено',
+        failedRename: 'Не вдалося перейменувати',
+        failedDelete: 'Не вдалося видалити',
+        creatingArchive: 'Створення архіву',
         
         // Auth
         username: 'Ім\'я користувача',
@@ -92,16 +113,23 @@ export const translations = {
         emailAddress: 'Електронна адреса',
         confirmPassword: 'Підтвердити пароль',
         signIn: 'Увійти',
+        signingIn: 'Вхід...',
         createAccount: 'Створити обліковий запис',
+        creatingAccount: 'Створення облікового запису...',
         noAccount: 'Немає облікового запису?',
         alreadyAccount: 'Вже маєте обліковий запис?',
+        welcomeBack: 'З поверненням, {username}!',
+        accountCreated: 'Обліковий запис створено! Вітаємо, {username}!',
         
         // Errors and notifications
         downloading: 'Завантажується',
         downloaded: 'Завантажено',
         failedDownload: 'Не вдалося завантажити',
         uploadFailed: 'Помилка завантаження',
-        invalidCredentials: 'Неправильне ім\'я або пароль'
+        invalidCredentials: 'Неправильне ім\'я або пароль',
+        signInFailed: 'Помилка входу',
+        registrationFailed: 'Помилка реєстрації. Спробуйте ще раз.',
+        passwordsNoMatch: 'Паролі не збігаються'
     }
 };
 

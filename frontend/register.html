@@ -10,11 +10,12 @@
 <body>
 <div class="register-container">
     <div class="language-switcher">
-        <button class="language-btn" id="languageBtn" onclick="switchLanguage()" title="Switch language">
-            <span class="language-flag" id="langFlag">🌐</span>
-            <span class="language-code" id="langCode">EN</span>
+        <button class="language-btn" id="languageBtn" title="Switch language">
+            <span class="language-flag">🌐</span>
+            <span class="language-code">EN</span>
         </button>
     </div>
+    
     <h1>☁️ CloudCore</h1>
 
     <div id="error-message" class="error" style="display: none;"></div>
@@ -31,8 +32,7 @@
 
         <div class="form-group">
             <label for="email" data-i18n="emailAddress">Email Address</label>
-            <input type="email" id="email" name="email" required
-                   maxlength="100">
+            <input type="email" id="email" name="email" required maxlength="100">
         </div>
 
         <div class="form-group">
@@ -50,239 +50,12 @@
         <button type="submit" class="btn btn-primary" id="registerBtn" data-i18n="createAccount">Create Account</button>
     </form>
 
-    <div class="login-link"><span data-i18n="alreadyAccount">Already have an account?</span> <a href="login.html" data-i18n="signIn">Sign in</a>
+    <div class="login-link">
+        <span data-i18n="alreadyAccount">Already have an account?</span> 
+        <a href="login.html" data-i18n="signIn">Sign in</a>
     </div>
 </div>
 
-<script>
-    const API_URL = 'http://localhost:5000';
-    let currentLanguage = localStorage.getItem('cloudcore-language') || 'en';
-
-    // Translation object - following the same structure as main CloudCore system
-    const translations = {
-        en: {
-            title: 'CloudCore - Create Account',
-            username: 'Username',
-            emailAddress: 'Email Address',
-            password: 'Password',
-            confirmPassword: 'Confirm Password',
-            createAccount: 'Create Account',
-            creatingAccount: 'Creating account...',
-            alreadyAccount: 'Already have an account?',
-            signIn: 'Sign in',
-            accountCreated: 'Account created successfully! Welcome, {username}!',
-            registrationFailed: 'Registration failed. Please try again.',
-            connectionError: 'Unable to connect to server. Please try again.',
-            registrationSuccessful: '🎉 Registration successful!',
-            passwordsNoMatch: 'Passwords do not match',
-            invalidCredentials: 'Invalid registration data',
-            usernameTooltip: 'Only letters, numbers, and underscores allowed',
-            emailTooltip: 'Please enter a valid email address', 
-            passwordTooltip: 'Password must be at least 6 characters long',
-            confirmPasswordTooltip: 'Please confirm your password'
-        },
-        uk: {
-            title: 'CloudCore - Створення облікового запису',
-            username: 'Ім\'я користувача',
-            emailAddress: 'Електронна адреса',
-            password: 'Пароль',
-            confirmPassword: 'Підтвердити пароль',
-            createAccount: 'Створити обліковий запис',
-            creatingAccount: 'Створюю обліковий запис...',
-            alreadyAccount: 'Вже маєте обліковий запис?',
-            signIn: 'Увійти',
-            accountCreated: 'Обліковий запис створено успішно! Вітаємо, {username}!',
-            registrationFailed: 'Помилка реєстрації. Спробуйте ще раз.',
-            connectionError: 'Неможливо підключитися до сервера. Спробуйте ще раз.',
-            registrationSuccessful: '🎉 Успішна реєстрація!',
-            passwordsNoMatch: 'Паролі не збігаються',
-            invalidCredentials: 'Невірні дані для реєстрації',
-            usernameTooltip: 'Дозволені лише літери, цифри та підкреслення',
-            emailTooltip: 'Будь ласка, введіть дійсну електронну адресу',
-            passwordTooltip: 'Пароль повинен містити не менше 6 символів', 
-            confirmPasswordTooltip: 'Будь ласка, підтвердіть свій пароль'
-        }
-    };
-
-    // Translation helper function - same as main system
-    function t(key) {
-        return translations[currentLanguage][key] || key;
-    }
-
-    // Language switching function - exactly like in main system
-    function switchLanguage() {
-        currentLanguage = currentLanguage === 'en' ? 'uk' : 'en';
-        localStorage.setItem('cloudcore-language', currentLanguage);
-        updateLanguageButton();
-        updateUILanguage();
-    }
-
-    // Update language button display - same as main system
-    function updateLanguageButton() {
-        const btn = document.getElementById('languageBtn');
-        const flag = btn.querySelector('.language-flag');
-        const code = btn.querySelector('.language-code');
-        
-        if (currentLanguage === 'uk') {
-            flag.textContent = '🇺🇦';
-            code.textContent = 'UA';
-            btn.title = 'Перемкнути мову';
-        } else {
-            flag.textContent = '🌐';
-            code.textContent = 'EN';
-            btn.title = 'Switch language';
-        }
-    }
-
-    // Update UI language - using data-i18n pattern like main system
-    function updateUILanguage() {
-        document.title = t('title');
-        
-        // Update all elements with data-i18n attributes
-        document.querySelectorAll('[data-i18n]').forEach(element => {
-            const key = element.getAttribute('data-i18n');
-            if (translations[currentLanguage][key]) {
-                element.textContent = translations[currentLanguage][key];
-            }
-        });
-
-        document.getElementById('username').title = t('usernameTooltip');
-        document.getElementById('email').title = t('emailTooltip'); 
-        document.getElementById('password').title = t('passwordTooltip');
-        document.getElementById('confirmPassword').title = t('confirmPasswordTooltip');
-    }
-    // Show error message
-    function showError(message) {
-        const errorDiv = document.getElementById('error-message');
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-        document.getElementById('success-message').style.display = 'none';
-    }
-
-    // Show success message
-    function showSuccess(message) {
-        const successDiv = document.getElementById('success-message');
-        successDiv.textContent = message;
-        successDiv.style.display = 'block';
-        document.getElementById('error-message').style.display = 'none';
-    }
-
-    // Hide all messages
-    function hideMessages() {
-        document.getElementById('error-message').style.display = 'none';
-        document.getElementById('success-message').style.display = 'none';
-    }
-
-    // Validate password confirmation
-    function validatePasswords() {
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        if (password !== confirmPassword) {
-            showError(t('passwordsNoMatch'));
-            return false;
-        }
-
-        return true;
-    }
-
-    // Handle registration form submission
-    document.getElementById('registerForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        if (!validatePasswords()) {
-            return;
-        }
-
-        const username = document.getElementById('username').value;
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const registerBtn = document.getElementById('registerBtn');
-
-        // Disable button and show loading
-        registerBtn.disabled = true;
-        registerBtn.textContent = t('creatingAccount');
-        hideMessages();
-
-        try {
-            const response = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: username,
-                    email: email,
-                    password: password
-                })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // Success! Store token and redirect
-                localStorage.setItem('cloudcore_token', data.token);
-                localStorage.setItem('cloudcore_user', JSON.stringify({
-                    id: data.userId,
-                    username: data.username,
-                    email: data.email
-                }));
-
-                console.log('🎉 Registration successful!');
-                console.log('JWT Token:', data.token);
-                console.log('User Info:', data);
-
-                showSuccess(t('accountCreated').replace('{username}', data.username));
-
-                // Redirect to main page after 2 seconds
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 2000);
-
-            } else {
-                // Registration failed
-                let errorMessage = t('registrationFailed'); // default message
-                
-                if (data.message) {
-                    errorMessage = data.message; // Use server message if available
-                }
-                
-                showError(errorMessage);
-            }
-
-        } catch (error) {
-            console.error('Registration error:', error);
-            showError(t('connectionError'));
-        } finally {
-            // Re-enable button
-            registerBtn.disabled = false;
-            registerBtn.textContent = t('createAccount');
-        }
-    });
-
-    // Add real-time password confirmation validation
-    document.getElementById('confirmPassword').addEventListener('input', function() {
-        const password = document.getElementById('password').value;
-        const confirmPassword = this.value;
-
-        if (confirmPassword && password !== confirmPassword) {
-            this.style.borderColor = '#d93025';
-        } else {
-            this.style.borderColor = '#dadce0';
-        }
-    });
-
-    // Check if user is already logged in
-    window.addEventListener('load', function() {
-        const token = localStorage.getItem('cloudcore_token');
-        if (token) {
-            console.log('User already logged in, redirecting...');
-            window.location.href = 'index.html';
-        }
-
-        updateLanguageButton();
-        updateUILanguage();
-    });
-</script>
+<script type="module" src="js/auth.js"></script>
 </body>
 </html>
