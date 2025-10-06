@@ -81,6 +81,7 @@ namespace CloudCore
                 builder.Services.AddScoped<ITrashCleanupService, TrashCleanupService>();
                 builder.Services.AddScoped<IItemManagerService, ItemManagerService>();
                 builder.Services.AddScoped<IStorageCalculationService, StorageCalculationService>();
+                builder.Services.AddScoped<ITeamspaceService, TeamspaceService>();
 
 
 
