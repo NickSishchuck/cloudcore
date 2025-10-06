@@ -37,5 +37,22 @@
         public const string OPERATION_FAILED = "OPERATION_FAILED";
         public const string UNEXPECTED_ERROR = "UNEXPECTED_ERROR";
         public const string IO_ERROR = "IO_ERROR";
+
+        public const string TEAMSPACE_NOT_FOUND = "TEAMSPACE_NOT_FOUND";
+        public const string TEAMSPACE_ACCESS_DENIED = "TEAMSPACE_ACCESS_DENIED";
+        public const string TEAMSPACE_LIMIT_REACHED = "TEAMSPACE_LIMIT_REACHED";
+
+        public const string MEMBER_NOT_FOUND = "MEMBER_NOT_FOUND";
+        public const string MEMBER_ALREADY_EXISTS = "MEMBER_ALREADY_EXISTS";
+        public const string MEMBER_LIMIT_REACHED = "MEMBER_LIMIT_REACHED";
+        public const string CANNOT_REMOVE_ADMIN = "CANNOT_REMOVE_ADMIN";
+        public const string CANNOT_LEAVE_AS_ADMIN = "CANNOT_LEAVE_AS_ADMIN";
+        public const string USER_NOT_FOUND = "USER_NOT_FOUND";
+        public const string TEAMSPACE_NAME_TAKEN = "TEAMSPACE_NAME_TAKEN";
+
+        public const string INSUFFICIENT_PERMISSION = "INSUFFICIENT_PERMISSION";
+        public const string INVALID_PERMISSION = "INVALID_PERMISSION";
+
+        public const string STORAGE_LIMIT_EXCEEDED = "STORAGE_LIMIT_EXCEEDED";
     }
 }
