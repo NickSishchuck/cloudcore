@@ -28,21 +28,23 @@ namespace CloudCore.Services.Interfaces
         /// <param name="sortBy">Field to sort the items by (e.g., "name", "size", "modified").</param>
         /// <param name="sortDir">Sort direction: "asc" for ascending, "desc" for descending.</param>
         /// <param name="isTrashFolder">If true, only fetches items from the trash folder; otherwise, gets normal items.</param>
+        /// <param name="teamspaceId">Optional teamspace id.</param>
         /// <returns>
         /// A paginated response containing the list of items and pagination metadata.
         /// </returns>
-        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null);
+        Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null);
 
         /// <summary>
-        /// Asynchronously retrieves an item by its ID, user ID, and optional type.
+        /// DEPRECATED? Asynchronously retrieves an item by its ID, user ID, and optional type.
         /// </summary>
         /// <param name="userId">The ID of the user who owns the item.</param>
         /// <param name="itemId">The ID of the item to retrieve.</param>
         /// <param name="type">The type of the item.</param>
+        /// <param name="teamspaceId">Optional teamspace id.</param>
         /// <returns>
         /// The task result contains the item if found; otherwise, null.
         /// </returns>
-        Task<Item?> GetItemAsync(int userId, int itemId, string type);
+        Task<Item?> GetItemAsync(int userId, int itemId, string type, int? teamspaceId = null);
 
         /// <summary>
         /// Asynchronously builds and retrieves the breadcrumb path string for a given item specified by user ID, item ID, and type.
@@ -81,7 +83,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user requesting the download.</param>
         /// <param name="itemsId">A list of IDs for the items to be included in the archive.</param>
         /// <returns>A tuple containing the archive's data stream and a suggested file name.</returns>
-        Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync( int userId,List<int> itemsId);
+        Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync(int userId, List<int> itemsId);
 
         #endregion
 
@@ -110,16 +112,18 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user uploading the file.</param>
         /// <param name="file">The <see cref="IFormFile"/> object from the request.</param>
         /// <param name="parentId">Optional. The ID of the parent folder to upload into. If null, uploads to the root.</param>
+        /// <param name="teamspaceId">Optional teamspace id.</param>
         /// <returns>An <see cref="UploadResult"/> indicating the outcome and details of the newly created file.</returns>
-        Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null);
+        Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null, int? teamspaceId = null);
 
         /// <summary>
         /// Orchestrates the creation of a new, empty folder.
         /// </summary>
         /// <param name="userId">The ID of the user creating the folder.</param>
         /// <param name="request">A <see cref="FolderCreateRequest"/> DTO containing the folder's name and parent ID.</param>
+        /// <param name="teamspaceId">Optional teamspace id.</param>
         /// <returns>A <see cref="CreateFolderResult"/> indicating the outcome and details of the new folder.</returns>
-        Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request);
+        Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request, int? teamspaceId = null);
 
         /// <summary>
         /// Orchestrates the restoration of a previously soft-deleted item from the trash.

@@ -26,7 +26,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="sortDir">The sort direction ("asc" for ascending, "desc" for descending). Defaults to "asc".</param>
         /// <param name="IsTrashFolder">A flag indicating whether to fetch items from the trash (where IsDeleted is true).</param>
         /// <returns>A Task that resolves to a PaginatedResponse containing the list of items and pagination metadata.</returns>
-        Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false, string? searchQuery = null);
+        Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false, string? searchQuery = null, int? teamspaceId = null);
 
         /// <summary>
         /// Asynchronously retrieves a single item by its ID, ensuring it belongs to the specified user.
@@ -45,7 +45,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user who owns the item.</param>
         /// <param name="itemId">The ID of the item to retrieve.</param>
         /// <returns>The deleted <see cref="Item"/>, or null if not found.</returns>
-        Task<Item?> GetDeletedItemAsync(int userId,int itemtId);
+        Task<Item?> GetDeletedItemAsync(int userId, int itemtId);
 
         /// <summary>
         /// Asynchronously retrieves a IEnumerable of items by its ID, ensuring it belongs to the specified user.

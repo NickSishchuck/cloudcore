@@ -29,7 +29,7 @@ namespace CloudCore.Services.Implementations
             _itemManagerService = itemManagerService;
         }
 
-        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null)
+        public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null)
         {
             var (items, totalCount) = await _itemRepository.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder, searchQuery);
             int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
@@ -48,8 +48,8 @@ namespace CloudCore.Services.Implementations
             };
         }
 
-        
-        public async Task<Item?> GetItemAsync(int userId, int itemId, string type)
+
+        public async Task<Item?> GetItemAsync(int userId, int itemId, string type, int? teamspaceId = null)
         {
             return await _itemRepository.GetItemAsync(userId, itemId, type);
         }
@@ -57,7 +57,7 @@ namespace CloudCore.Services.Implementations
         public async Task<string> GetBreadcrumbPathAsync(int userId, int folderId, string type)
         {
             var folder = await GetItemAsync(userId, folderId, type);
-            if(folder == null)
+            if (folder == null)
             {
                 _logger.LogWarning("Folder not found for User Id: {UserId}, Folder Id: {FolderId}", userId, folderId);
                 throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND);
@@ -91,7 +91,7 @@ namespace CloudCore.Services.Implementations
             if (file == null || file.IsDeleted == true)
             {
                 _logger.LogWarning("DownloadFile failed: File with ID {FilerId} not found for user {UserId}", fileId, userId);
-                throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND );
+                throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND);
             }
 
             var fullPath = _itemStorageService.GetFileFullPath(userId, file.FilePath);
@@ -143,30 +143,30 @@ namespace CloudCore.Services.Implementations
 
             var itemToRestore = await _itemRepository.GetDeletedItemAsync(userId, itemId);
             if (itemToRestore == null)
-                return new RestoreResult 
-                { 
+                return new RestoreResult
+                {
                     IsSuccess = false,
                     ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "Item not found in recycle bin." 
+                    Message = "Item not found in recycle bin."
                 };
 
             var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(itemToRestore.Name, itemToRestore.Type, userId, itemToRestore.ParentId);
             if (!uniquenessValidation.IsValid)
-                return new RestoreResult 
-                { 
+                return new RestoreResult
+                {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode, 
-                    Message = uniquenessValidation.ErrorMessage 
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
                 };
 
             if (itemToRestore.Type == "file" && itemToRestore.ParentId.HasValue)
             {
                 var parentExists = await _validationService.ValidateItemExistsAsync(itemToRestore.ParentId.Value, userId, "folder");
                 if (!parentExists.IsValid)
-                    return new RestoreResult 
-                    { 
-                        IsSuccess = false, 
-                        ErrorCode = ErrorCodes.PARENT_FOLDER_DELETED, 
+                    return new RestoreResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.PARENT_FOLDER_DELETED,
                         Message = "Cannot restore item because its parent folder was also deleted."
                     };
             }
@@ -181,11 +181,11 @@ namespace CloudCore.Services.Implementations
             {
                 await _itemRepository.UpdateItemsInTransactionAsync(allItems);
                 _logger.LogInformation("Item {ItemId} and its children restored successfully.", itemId);
-                return new RestoreResult 
-                { 
+                return new RestoreResult
+                {
                     IsSuccess = true,
                     ErrorCode = ErrorCodes.RESTORED_SUCCESSFULLY,
-                    Message = "Item restored successfully" 
+                    Message = "Item restored successfully"
                 };
             }
             catch (Exception ex)
@@ -205,32 +205,33 @@ namespace CloudCore.Services.Implementations
         public async Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId)
         {
             _logger.LogInformation("Delete request received. UserId={UserId}, ItemId={ItemId}", userId, itemId);
-                var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
 
-                if (item == null)
+            if (item == null)
+            {
+                _logger.LogWarning("Delete failed: item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
                 {
-                    _logger.LogWarning("Delete failed: item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
-                    return new DeleteResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                        Message = "File not found"
-                    };
-                }
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "File not found"
+                };
+            }
 
-                _logger.LogInformation("Item retrieved for deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
+            _logger.LogInformation("Item retrieved for deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
 
-                var childItems = new List<Item>();
+            var childItems = new List<Item>();
 
-                if (item.Type == "folder")
-                {
-                    childItems = await _itemRepository.GetAllChildItemsAsync(userId, itemId);
-                    _logger.LogInformation("Folder detected. Found {ChildCount} child items for ItemId={ItemId}", childItems.Count, item.Id);
-                }
-                _logger.LogInformation("Performing soft delete for ItemId={ItemId} (and {ChildCount} children)", item.Id, childItems.Count);
+            if (item.Type == "folder")
+            {
+                childItems = await _itemRepository.GetAllChildItemsAsync(userId, itemId);
+                _logger.LogInformation("Folder detected. Found {ChildCount} child items for ItemId={ItemId}", childItems.Count, item.Id);
+            }
+            _logger.LogInformation("Performing soft delete for ItemId={ItemId} (and {ChildCount} children)", item.Id, childItems.Count);
 
-                var itemsToSoftDelete = _itemManagerService.PrepareItemsForSoftDelete(item, childItems);
-            try { 
+            var itemsToSoftDelete = _itemManagerService.PrepareItemsForSoftDelete(item, childItems);
+            try
+            {
                 await _itemRepository.UpdateItemsInTransactionAsync(itemsToSoftDelete);
 
                 _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
@@ -275,51 +276,51 @@ namespace CloudCore.Services.Implementations
 
 
 
-                var itemExistsValidation = await _validationService.ValidateItemExistsAsync(itemId, userId);
-                if (!itemExistsValidation.IsValid)
+            var itemExistsValidation = await _validationService.ValidateItemExistsAsync(itemId, userId);
+            if (!itemExistsValidation.IsValid)
+            {
+                _logger.LogWarning("Item existence validation failed. UserId={UserId}, ItemId={ItemId}, ErrorCode={ErrorCode}", userId, itemId, itemExistsValidation.ErrorCode);
+                return new RenameResult
                 {
-                    _logger.LogWarning("Item existence validation failed. UserId={UserId}, ItemId={ItemId}, ErrorCode={ErrorCode}", userId, itemId, itemExistsValidation.ErrorCode);
-                    return new RenameResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = itemExistsValidation.ErrorCode,
-                        Message = itemExistsValidation.ErrorMessage
-                    };
-                }
+                    IsSuccess = false,
+                    ErrorCode = itemExistsValidation.ErrorCode,
+                    Message = itemExistsValidation.ErrorMessage
+                };
+            }
 
-                var item = await _itemRepository.GetItemAsync(userId, itemId, null);
-                _logger.LogInformation("Item retrieved successfully. ItemId={ItemId}, CurrentName={CurrentName}, ParentId={ParentId}", item.Id, item.Name, item.ParentId);
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+            _logger.LogInformation("Item retrieved successfully. ItemId={ItemId}, CurrentName={CurrentName}, ParentId={ParentId}", item.Id, item.Name, item.ParentId);
 
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(newName, item.Type, userId, item.ParentId, itemId, true);
-                if (!uniquenessValidation.IsValid)
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(newName, item.Type, userId, item.ParentId, itemId, true);
+            if (!uniquenessValidation.IsValid)
+            {
+                _logger.LogWarning("Uniqueness validation failed. ItemId={ItemId}, NewName={NewName}, ErrorCode={ErrorCode}", item.Id, newName, uniquenessValidation.ErrorCode);
+                return new RenameResult
                 {
-                    _logger.LogWarning("Uniqueness validation failed. ItemId={ItemId}, NewName={NewName}, ErrorCode={ErrorCode}", item.Id, newName, uniquenessValidation.ErrorCode);
-                    return new RenameResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = uniquenessValidation.ErrorCode,
-                        Message = uniquenessValidation.ErrorMessage
-                    };
-                }
+                    IsSuccess = false,
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
+                };
+            }
 
-                var childItems = new List<Item> { };
-                var folderPath = String.Empty;
+            var childItems = new List<Item> { };
+            var folderPath = String.Empty;
 
 
-                if (item.Type == "folder")
-                {
-                    _logger.LogInformation("Fetching child items for ItemId={ItemId}", item.Id);
-                    childItems = await _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id);
-                    folderPath = await _itemRepository.GetFolderPathAsync(item);
-                    folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
-                    _logger.LogInformation("Folder Path is {FolderPath}", folderPath);
-                }
+            if (item.Type == "folder")
+            {
+                _logger.LogInformation("Fetching child items for ItemId={ItemId}", item.Id);
+                childItems = await _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id);
+                folderPath = await _itemRepository.GetFolderPathAsync(item);
+                folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
+                _logger.LogInformation("Folder Path is {FolderPath}", folderPath);
+            }
 
-                _logger.LogInformation("Renaming item physically. ItemId={ItemId}, NewName={NewName}, ChildCount={ChildCount}", item.Id, newName, childItems.Count);
-                var itemsToRename = _itemManagerService.PrepareItemsForRenaming(item, newName, childItems, folderPath);
+            _logger.LogInformation("Renaming item physically. ItemId={ItemId}, NewName={NewName}, ChildCount={ChildCount}", item.Id, newName, childItems.Count);
+            var itemsToRename = _itemManagerService.PrepareItemsForRenaming(item, newName, childItems, folderPath);
 
-            try 
-            { 
+            try
+            {
                 await _itemRepository.UpdateItemsInTransactionAsync(itemsToRename);
                 _logger.LogInformation("Item renamed successfully in DB. ItemId={ItemId}, NewName={NewName}", item.Id, newName);
 
@@ -346,7 +347,7 @@ namespace CloudCore.Services.Implementations
 
         }
 
-        public async Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null)
+        public async Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null, int? teamspaceId = null)
         {
             var fileValidation = _validationService.ValidateFile(file);
             if (!fileValidation.IsValid)
@@ -362,36 +363,37 @@ namespace CloudCore.Services.Implementations
 
             string targetDirectory = String.Empty;
 
-                if (parentId.HasValue)
-                {
-                    var parentFolder = await _itemRepository.GetItemAsync(userId, parentId.Value, "folder");
+            if (parentId.HasValue)
+            {
+                var parentFolder = await _itemRepository.GetItemAsync(userId, parentId.Value, "folder");
 
-                    if (parentFolder == null)
-                    {
-                        _logger.LogWarning("Upload failed: Parent folder with ID {ParentId} not found for user {UserId}", parentId.Value, userId);
-                        return new UploadResult
-                        {
-                            IsSuccess = false,
-                            ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                            Message = "The destination folder does not exist."
-                        };
-                    }
-                    var parentFolderPath = await _itemRepository.GetFolderPathAsync(parentFolder);
-                    targetDirectory = parentFolderPath;
-                }
-
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(file.FileName, "file", userId, parentId, null, true);
-                if (!uniquenessValidation.IsValid)
+                if (parentFolder == null)
                 {
+                    _logger.LogWarning("Upload failed: Parent folder with ID {ParentId} not found for user {UserId}", parentId.Value, userId);
                     return new UploadResult
                     {
                         IsSuccess = false,
-                        ErrorCode = uniquenessValidation.ErrorCode,
-                        Message = uniquenessValidation.ErrorMessage
+                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                        Message = "The destination folder does not exist."
                     };
                 }
+                var parentFolderPath = await _itemRepository.GetFolderPathAsync(parentFolder);
+                targetDirectory = parentFolderPath;
+            }
 
-            try {
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(file.FileName, "file", userId, parentId, null, true);
+            if (!uniquenessValidation.IsValid)
+            {
+                return new UploadResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
+                };
+            }
+
+            try
+            {
 
                 createdItem = await _itemManagerService.ProcessUploadAsync(userId, parentId, file, targetDirectory);
 
@@ -412,13 +414,13 @@ namespace CloudCore.Services.Implementations
                 if (createdItem != null && !string.IsNullOrEmpty(createdItem.FilePath))
                 {
                     _logger.LogInformation("Attempting to delete orphaned file at {FilePath}", createdItem.FilePath);
-                     _itemStorageService.DeleteItemPhysicaly(createdItem);
+                    _itemStorageService.DeleteItemPhysicaly(createdItem);
                 }
                 throw;
             }
         }
 
-        public async Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request)
+        public async Task<CreateFolderResult> CreateFolderAsync(int userId, FolderCreateRequest request, int? teamspaceId = null)
         {
             var nameValidation = _validationService.ValidateItemName(request.Name);
             if (!nameValidation.IsValid)
@@ -429,28 +431,28 @@ namespace CloudCore.Services.Implementations
                     Message = nameValidation.ErrorMessage
                 };
 
-                // Validate parent folder exists if specified
-                if (request.ParentId.HasValue)
-                {
-                    var parentValidation = await _validationService.ValidateItemExistsAsync(request.ParentId.Value, userId);
-                    if (!parentValidation.IsValid)
-                        return new CreateFolderResult
-                        {
-                            IsSuccess = false,
-                            ErrorCode = parentValidation.ErrorCode,
-                            Message = parentValidation.ErrorMessage
-                        };
-                }
-
-                // Check if folder with same name already exists
-                var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(request.Name, "folder", userId, request.ParentId, null, true);
-                if (!uniquenessValidation.IsValid)
+            // Validate parent folder exists if specified
+            if (request.ParentId.HasValue)
+            {
+                var parentValidation = await _validationService.ValidateItemExistsAsync(request.ParentId.Value, userId);
+                if (!parentValidation.IsValid)
                     return new CreateFolderResult
                     {
                         IsSuccess = false,
-                        ErrorCode = uniquenessValidation.ErrorCode,
-                        Message = uniquenessValidation.ErrorMessage
+                        ErrorCode = parentValidation.ErrorCode,
+                        Message = parentValidation.ErrorMessage
                     };
+            }
+
+            // Check if folder with same name already exists
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(request.Name, "folder", userId, request.ParentId, null, true);
+            if (!uniquenessValidation.IsValid)
+                return new CreateFolderResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
+                };
 
             var folder = new Item
             {
@@ -463,8 +465,9 @@ namespace CloudCore.Services.Implementations
                 IsDeleted = false
             };
 
-            try { 
-                
+            try
+            {
+
 
                 await _itemRepository.AddItemInTranscationAsync(folder);
 

@@ -22,6 +22,8 @@ namespace CloudCore.Services.Interfaces
 
         Task<IEnumerable<TeamspaceMemberResponse>> GetTeamspaceMembersAsync(int teamspaceId, int userId);
 
+        Task<TeamspaceResultResponses.DeleteTeamspaceResult> DeleteTeamspaceAsync(int teamspaceId, int userId);
+
         Task<TeamspaceResultResponses.LeaveTeamspaceResult> LeaveTeamspaceAsync(int userId, int teamspaceId);
 
 

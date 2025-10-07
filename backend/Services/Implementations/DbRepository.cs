@@ -55,7 +55,7 @@ namespace CloudCore.Services.Implementations
             return result;
         }
 
-        public async Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null)
+        public async Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null)
         {
             _logger.LogInformation("Fetching items. UserId={UserId}, ParentId={ParentId}, Page={Page}, PageSize={PageSize}, SortBy={SortBy}, SortDir={SortDir}, IsTrashFolder={IsTrashFolder}", userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder);
 
@@ -70,7 +70,7 @@ namespace CloudCore.Services.Implementations
                 _logger.LogInformation("Searching items for UserId={UserId}, Query={SearchQuery}", userId, searchQuery);
                 query = query.Where(i => i.Name.ToLower().Contains(searchQuery.ToLower()));
             }
-            
+
 
             if (isTrashFolder == true)
             {

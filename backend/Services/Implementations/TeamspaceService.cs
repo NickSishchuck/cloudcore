@@ -914,7 +914,7 @@ namespace CloudCore.Services.Implementations
             // Permission hierarchy: admin > write > read
             return requiredPermission.ToLower() switch
             {
-                "read" => true,
+                "read" => true, // Any permission level has read access
                 "write" => userPermission == "write" || userPermission == "admin",
                 "admin" => userPermission == "admin",
                 _ => false
