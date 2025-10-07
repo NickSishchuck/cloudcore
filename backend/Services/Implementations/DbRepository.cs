@@ -70,6 +70,10 @@ namespace CloudCore.Services.Implementations
                 _logger.LogInformation("Searching items for UserId={UserId}, Query={SearchQuery}", userId, searchQuery);
                 query = query.Where(i => i.Name.ToLower().Contains(searchQuery.ToLower()));
             }
+            if (teamspaceId.HasValue)
+            {
+                query = query.Where(i => i.TeamspaceId == teamspaceId);
+            }
 
 
             if (isTrashFolder == true)

@@ -702,17 +702,13 @@ namespace CloudCore.Services.Implementations
             return await _teamspaceService.HasPermissionAsync(userId, teamspaceId, requiredPermission);
         }
 
-        public async Task<bool> VerifyItemBelongsToTeamspaceAsync(
-            int itemId,
-            int teamspaceId)
+        public async Task<bool> VerifyItemBelongsToTeamspaceAsync(int itemId, int teamspaceId)    //HACK: Passing userId=0 would cause some trouble
         {
             var item = await _itemRepository.GetItemAsync(0, itemId, null);
             return item?.TeamspaceId == teamspaceId;
         }
 
-        public async Task<bool> CheckStorageLimitAsync(
-            int teamspaceId,
-            long fileSizeBytes)
+        public async Task<bool> CheckStorageLimitAsync(int teamspaceId, long fileSizeBytes) //HACK: Passing userId=0 would cause some trouble
         {
             var teamspace = await _teamspaceService.GetTeamspaceByIdAsync(teamspaceId, 0);
 
