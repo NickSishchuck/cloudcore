@@ -85,6 +85,7 @@ namespace CloudCore
                 builder.Services.AddScoped<IStorageCalculationService, StorageCalculationService>();
                 builder.Services.AddScoped<ITeamspaceService, TeamspaceService>();
                 builder.Services.AddScoped<ITeamspaceApplication, TeamspaceApplication>();
+                builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
 
 
 

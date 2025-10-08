@@ -1,8 +1,12 @@
 USE CloudCoreDB;
-
-INSERT INTO users (username, email, password_hash) VALUES
-    ('admin', 'admin@cloudcore.com', 'password123'),
-    ('user', 'user@cloudcore.com', 'password123');
+--
+-- INSERT INTO users (username, email, password_hash) VALUES
+--     ('admin', 'admin@cloudcore.com', 'password123'),
+--     ('user', 'user@cloudcore.com', 'password123');
+--
+INSERT INTO users (username, email, password_hash, subscription_plan, subscription_status, personal_storage_used_mb, teamspaces_owned) VALUES
+    ('admin', 'admin@cloudcore.com', 'password123', 'enterprise', 'active', 0, 0),
+    ('user', 'user@cloudcore.com', 'password123', 'premium', 'active', 0, 0);
 
 INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
     ('test.html', 'file', NULL, 1, 'test.html', 138, 'text/html', FALSE);
@@ -104,3 +108,6 @@ INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_ty
     ('folder58', 'folder', NULL, 1, NULL, NULL, NULL, FALSE),
     ('folder59', 'folder', NULL, 1, NULL, NULL, NULL, FALSE),
     ('folder60', 'folder', NULL, 1, NULL, NULL, NULL, FALSE);
+
+
+

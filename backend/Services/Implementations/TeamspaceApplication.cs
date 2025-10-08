@@ -16,6 +16,7 @@ namespace CloudCore.Services.Implementations
         private readonly IValidationService _validationService;
         private readonly IItemManagerService _itemManagerService;
         private readonly ILogger<TeamspaceApplication> _logger;
+        private readonly IStorageTrackingService _storageTrackingService;
 
         public TeamspaceApplication(
             ITeamspaceService teamspaceService,
@@ -24,7 +25,8 @@ namespace CloudCore.Services.Implementations
             IZipArchiveService zipArchiveService,
             IValidationService validationService,
             IItemManagerService itemManagerService,
-            ILogger<TeamspaceApplication> logger)
+            ILogger<TeamspaceApplication> logger,
+            IStorageTrackingService storageTrackingService)
         {
             _teamspaceService = teamspaceService;
             _itemRepository = itemRepository;
@@ -33,6 +35,7 @@ namespace CloudCore.Services.Implementations
             _validationService = validationService;
             _itemManagerService = itemManagerService;
             _logger = logger;
+            _storageTrackingService = storageTrackingService;
         }
 
         #region Item Retrieval
@@ -161,15 +164,14 @@ namespace CloudCore.Services.Implementations
         #region File Operations
 
         public async Task<UploadResult> UploadFileToTeamspaceAsync(
-            int userId,
-            int teamspaceId,
-            IFormFile file,
-            int? parentId = null)
+                int userId,
+                int teamspaceId,
+                IFormFile file,
+                int? parentId = null)
         {
             _logger.LogInformation("Uploading file to teamspace. TeamspaceId={TeamspaceId}, FileName={FileName}",
                 teamspaceId, file.FileName);
 
-            // Validate file
             var fileValidation = _validationService.ValidateFile(file);
             if (!fileValidation.IsValid)
             {
@@ -181,25 +183,23 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            // Check storage limits
-            var canUpload = await CheckStorageLimitAsync(teamspaceId, file.Length);
+            var canUpload = await _storageTrackingService.CanAddToTeamspaceStorageAsync(teamspaceId, file.Length);
             if (!canUpload)
             {
-                var teamspace = await _teamspaceService.GetTeamspaceByIdAsync(teamspaceId, userId);
+                var (usedMb, limitMb) = await _storageTrackingService.GetTeamspaceStorageInfoAsync(teamspaceId);
                 long fileSizeMb = file.Length / (1024 * 1024);
 
                 return new UploadResult
                 {
                     IsSuccess = false,
                     ErrorCode = ErrorCodes.STORAGE_LIMIT_EXCEEDED,
-                    Message = $"Upload would exceed teamspace storage limit ({teamspace?.StorageUsedMb + fileSizeMb}MB / {teamspace?.StorageLimitMb}MB)"
+                    Message = $"Upload would exceed teamspace storage limit ({usedMb + fileSizeMb}MB / {limitMb}MB)"
                 };
             }
 
             Item? createdItem = null;
             string targetDirectory = string.Empty;
 
-            // Validate parent folder if specified
             if (parentId.HasValue)
             {
                 var parentFolder = await _itemRepository.GetItemAsync(userId, parentId.Value, "folder");
@@ -238,17 +238,17 @@ namespace CloudCore.Services.Implementations
 
             try
             {
-                // Process upload
                 createdItem = await _itemManagerService.ProcessUploadAsync(
                     userId,
                     parentId,
                     file,
                     targetDirectory);
 
-                // Set teamspace ID
                 createdItem.TeamspaceId = teamspaceId;
 
                 await _itemRepository.AddItemInTranscationAsync(createdItem);
+
+                await _storageTrackingService.AddToTeamspaceStorageAsync(teamspaceId, file.Length);
 
                 _logger.LogInformation("File uploaded to teamspace successfully. ItemId={ItemId}, TeamspaceId={TeamspaceId}",
                     createdItem.Id, teamspaceId);
@@ -479,11 +479,10 @@ namespace CloudCore.Services.Implementations
                 };
             }
         }
-
         public async Task<DeleteResult> SoftDeleteTeamspaceItemAsync(
-            int userId,
-            int teamspaceId,
-            int itemId)
+                int userId,
+                int teamspaceId,
+                int itemId)
         {
             _logger.LogInformation("Soft deleting teamspace item. TeamspaceId={TeamspaceId}, ItemId={ItemId}",
                 teamspaceId, itemId);
@@ -512,6 +511,10 @@ namespace CloudCore.Services.Implementations
             {
                 await _itemRepository.UpdateItemsInTransactionAsync(itemsToDelete);
 
+                var allItems = new List<Item>(itemsToDelete) { item };
+                long totalBytes = allItems.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+                await _storageTrackingService.RemoveFromTeamspaceStorageAsync(teamspaceId, totalBytes);
+
                 _logger.LogInformation("Item soft deleted in teamspace successfully. ItemId={ItemId}", itemId);
 
                 return new DeleteResult
@@ -532,11 +535,10 @@ namespace CloudCore.Services.Implementations
                 };
             }
         }
-
         public async Task<RestoreResult> RestoreTeamspaceItemAsync(
-            int userId,
-            int teamspaceId,
-            int itemId)
+                int userId,
+                int teamspaceId,
+                int itemId)
         {
             _logger.LogInformation("Restoring teamspace item. TeamspaceId={TeamspaceId}, ItemId={ItemId}",
                 teamspaceId, itemId);
@@ -553,7 +555,6 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            // Check uniqueness for restore
             var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(
                 item.Name,
                 item.Type,
@@ -579,11 +580,29 @@ namespace CloudCore.Services.Implementations
                 itemsToRestore.AddRange(descendants);
             }
 
+            long totalBytes = itemsToRestore.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+            var canRestore = await _storageTrackingService.CanAddToTeamspaceStorageAsync(teamspaceId, totalBytes);
+
+            if (!canRestore)
+            {
+                var (usedMb, limitMb) = await _storageTrackingService.GetTeamspaceStorageInfoAsync(teamspaceId);
+                long restoreSizeMb = totalBytes / (1024 * 1024);
+
+                return new RestoreResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.STORAGE_LIMIT_EXCEEDED,
+                    Message = $"Restore would exceed teamspace storage limit ({usedMb + restoreSizeMb}MB / {limitMb}MB)"
+                };
+            }
+
             _itemManagerService.PrepareItemsForRestore(itemsToRestore);
 
             try
             {
                 await _itemRepository.UpdateItemsInTransactionAsync(itemsToRestore);
+
+                await _storageTrackingService.AddToTeamspaceStorageAsync(teamspaceId, totalBytes);
 
                 _logger.LogInformation("Item restored in teamspace successfully. ItemId={ItemId}", itemId);
 
@@ -605,7 +624,6 @@ namespace CloudCore.Services.Implementations
                 };
             }
         }
-
         #endregion
 
         #region Download Operations
@@ -702,23 +720,14 @@ namespace CloudCore.Services.Implementations
             return await _teamspaceService.HasPermissionAsync(userId, teamspaceId, requiredPermission);
         }
 
-        public async Task<bool> VerifyItemBelongsToTeamspaceAsync(int itemId, int teamspaceId)    //HACK: Passing userId=0 would cause some trouble
+        public async Task<bool> VerifyItemBelongsToTeamspaceAsync(int itemId, int teamspaceId)
         {
             var item = await _itemRepository.GetItemAsync(0, itemId, null);
             return item?.TeamspaceId == teamspaceId;
         }
-
-        public async Task<bool> CheckStorageLimitAsync(int teamspaceId, long fileSizeBytes) //HACK: Passing userId=0 would cause some trouble
+        public async Task<bool> CheckStorageLimitAsync(int teamspaceId, long fileSizeBytes)
         {
-            var teamspace = await _teamspaceService.GetTeamspaceByIdAsync(teamspaceId, 0);
-
-            if (teamspace == null)
-            {
-                return false;
-            }
-
-            long fileSizeMb = fileSizeBytes / (1024 * 1024);
-            return (teamspace.StorageUsedMb + fileSizeMb) <= teamspace.StorageLimitMb;
+            return await _storageTrackingService.CanAddToTeamspaceStorageAsync(teamspaceId, fileSizeBytes); //TODO: Clear the wrapper
         }
 
         #endregion

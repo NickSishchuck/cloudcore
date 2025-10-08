@@ -19,7 +19,8 @@ namespace CloudCore.Services.Implementations
         private readonly IItemRepository _itemRepository;
         private readonly IItemManagerService _itemManagerService;
         private readonly ILogger<ItemApplication> _logger;
-        public ItemApplication(IZipArchiveService zipArchiveService, IItemStorageService itemStorageService, IValidationService validationService, IItemRepository itemRepository, ILogger<ItemApplication> logger, IItemManagerService itemManagerService)
+        private readonly IStorageTrackingService _storageTrackingService;
+        public ItemApplication(IZipArchiveService zipArchiveService, IItemStorageService itemStorageService, IValidationService validationService, IItemRepository itemRepository, ILogger<ItemApplication> logger, IItemManagerService itemManagerService, IStorageTrackingService storageTrackingService)
         {
             _zipArchiveService = zipArchiveService;
             _itemStorageService = itemStorageService;
@@ -27,6 +28,7 @@ namespace CloudCore.Services.Implementations
             _itemRepository = itemRepository;
             _logger = logger;
             _itemManagerService = itemManagerService;
+            _storageTrackingService = storageTrackingService;
         }
 
         public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null)
@@ -175,11 +177,17 @@ namespace CloudCore.Services.Implementations
 
             var allItems = new List<Item>(descendants) { itemToRestore };
 
+            long totalBytes = allItems.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+            var canRestore = await _storageTrackingService.CanAddToPersonalStorageAsync(userId, totalBytes);
+
             _itemManagerService.PrepareItemsForRestore(allItems);
 
             try
             {
                 await _itemRepository.UpdateItemsInTransactionAsync(allItems);
+
+                await _storageTrackingService.UpdateStorageForItemsAsync(userId, allItems, isAdding: true);
+
                 _logger.LogInformation("Item {ItemId} and its children restored successfully.", itemId);
                 return new RestoreResult
                 {
@@ -230,9 +238,14 @@ namespace CloudCore.Services.Implementations
             _logger.LogInformation("Performing soft delete for ItemId={ItemId} (and {ChildCount} children)", item.Id, childItems.Count);
 
             var itemsToSoftDelete = _itemManagerService.PrepareItemsForSoftDelete(item, childItems);
+
             try
             {
                 await _itemRepository.UpdateItemsInTransactionAsync(itemsToSoftDelete);
+
+                var allItems = new List<Item>(itemsToSoftDelete) { item };
+
+                await _storageTrackingService.UpdateStorageForItemsAsync(userId, allItems, isAdding: false);
 
                 _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
 
@@ -359,6 +372,23 @@ namespace CloudCore.Services.Implementations
                     Message = fileValidation.ErrorMessage
                 };
             }
+
+            var canUpload = await _storageTrackingService.CanAddToPersonalStorageAsync(userId, file.Length);
+            if (!canUpload)
+            {
+                var (usedMb, limitMb) = await _storageTrackingService.GetPersonalStorageInfoAsync(userId);
+                long fileSizeMb = file.Length / (1024 * 1024);
+
+                _logger.LogWarning("Storage limit exceeded for user {UserId}. Used: {UsedMb}MB, Limit: {LimitMb}MB, Attempting: {FileMb}MB",
+                    userId, usedMb, limitMb, fileSizeMb);
+
+                return new UploadResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.STORAGE_LIMIT_EXCEEDED,
+                    Message = $"Upload would exceed your storage limit ({usedMb + fileSizeMb}MB / {limitMb}MB)"
+                };
+            }
             Item createdItem = null;
 
             string targetDirectory = String.Empty;
@@ -399,6 +429,10 @@ namespace CloudCore.Services.Implementations
 
                 await _itemRepository.AddItemInTranscationAsync(createdItem);
                 _logger.LogInformation("Item added successfully in DB.");
+
+                await _storageTrackingService.AddToPersonalStorageAsync(userId, file.Length);
+                _logger.LogInformation("Personal storage updated for user {UserId} (+{SizeMb}MB)",
+                    userId, file.Length / (1024 * 1024));
 
                 return new UploadResult
                 {

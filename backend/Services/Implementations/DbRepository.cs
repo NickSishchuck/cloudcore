@@ -386,7 +386,7 @@ namespace CloudCore.Services.Implementations
             if (folderId.HasValue)
             {
                 var allChildItems = await GetAllChildItemsAsync(folderId.Value, userId);
-                var files = allChildItems.Where(item => item.Type == "file" && item.IsDeleted == false); //FIX: Filter deleted items
+                var files = allChildItems.Where(item => item.Type == "file" && item.IsDeleted == false);
                 long totalSize = files.Sum(f => f.FileSize ?? 0);
                 int fileCount = files.Count();
                 return (totalSize, fileCount);
@@ -404,7 +404,6 @@ namespace CloudCore.Services.Implementations
                 {
                     if (item.Type == "file")
                     {
-                        // FIX: Use null-coalescing instead of cast
                         totalSize += item.FileSize ?? 0;
                         fileCount++;
                     }
