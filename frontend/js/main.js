@@ -8,7 +8,7 @@ class CloudCoreDrive {
         this.i18n = new I18n();
         this.api = new ApiClient();
         this.notifications = getNotificationManager();
-        
+
         // State
         this.currentUserId = null;
         this.currentUser = null;
@@ -16,25 +16,46 @@ class CloudCoreDrive {
         this.isTrashView = false;
         this.breadcrumbPath = [];
         this.selectedItems = new Set();
-        
+
         // Pagination
         this.currentPage = 1;
         this.pageSize = 30;
         this.hasNextPage = false;
         this.isLoadingMore = false;
         this.allLoadedItems = [];
-        
+
         // Sorting
         this.sortBy = 'name';
         this.sortDir = 'asc';
         this.currentSearchQuery = null;
-        
+
         // DOM elements
         this.fileListBody = null;
         this.fileList = null;
         this.contextMenu = null;
-        
+
+        this.initializeTheme();
+
         this.initializeAuth();
+    }
+
+    initializeTheme() {
+        const savedTheme = localStorage.getItem('cloudcore-theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const currentTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+
+        this.setTheme(currentTheme);
+    }
+
+    setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('cloudcore-theme', theme);
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        this.setTheme(newTheme);
     }
 
     initializeAuth() {
@@ -52,14 +73,14 @@ class CloudCoreDrive {
         this.currentUserId = this.currentUser.id;
 
         console.log('🔐 Authenticated as:', this.currentUser.username);
-        
+
         document.getElementById('userInfo').textContent = this.currentUser.username;
-        
+
         // Cache DOM elements
         this.fileListBody = document.getElementById('fileListBody');
         this.fileList = document.getElementById('fileList');
         this.contextMenu = document.getElementById('contextMenu');
-        
+
         this.initializeEventListeners();
         this.i18n.updateUI();
         this.loadFiles();
@@ -67,55 +88,61 @@ class CloudCoreDrive {
 
     initializeEventListeners() {
         console.log('Setting up event listeners...');
-        
+
+        // Theme toggle button
+        document.getElementById('themeBtn').addEventListener('click', () => {
+            console.log('Theme toggle clicked');
+            this.toggleTheme();
+        });
+
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
             console.log('Logout clicked');
-            this.logout();
+            this.showLogoutModal();
         });
-        
+
         // Language switcher
         document.getElementById('languageBtn').addEventListener('click', () => {
             console.log('Language switch clicked');
             this.i18n.switchLanguage();
             location.reload();
         });
-        
+
         // New dropdown
         document.getElementById('newButton').addEventListener('click', (e) => {
             console.log('New button clicked');
             e.stopPropagation();
             this.toggleNewDropdown();
         });
-        
+
         // Upload handlers
         document.getElementById('uploadFiles').addEventListener('click', () => {
             console.log('Upload files clicked');
             this.hideNewDropdown();
             document.getElementById('fileInput').click();
         });
-        
+
         document.getElementById('uploadFolder').addEventListener('click', () => {
             console.log('Upload folder clicked');
             this.hideNewDropdown();
             if (!isWebkitDirectorySupported()) {
-                this.notifications.error('Folder upload not supported');
+                this.notifications.error(this.i18n.t('folderUploadNotSupported'));
                 return;
             }
             document.getElementById('folderInput').click();
         });
-        
+
         // File inputs
         document.getElementById('fileInput').addEventListener('change', (e) => {
             console.log('File input changed:', e.target.files.length);
             this.handleFileUpload(e);
         });
-        
+
         document.getElementById('folderInput').addEventListener('change', (e) => {
             console.log('Folder input changed:', e.target.files.length);
             this.handleFolderUpload(e);
         });
-        
+
         // Search
         document.getElementById('searchBox').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -123,12 +150,12 @@ class CloudCoreDrive {
                 this.performSearch(e.target.value);
             }
         });
-        
+
         // Sidebar navigation
         document.querySelectorAll('.sidebar-item').forEach(item => {
             item.addEventListener('click', (e) => this.handleSidebarClick(e));
         });
-        
+
         // Sorting headers
         ['name', 'created', 'modified', 'size'].forEach(header => {
             const th = document.querySelector(`th[data-i18n="${header}"]`);
@@ -136,26 +163,27 @@ class CloudCoreDrive {
                 th.addEventListener('click', () => this.applySort(header));
             }
         });
-        
+
         // Scroll for infinite loading
         const container = document.getElementById('fileContainer');
         container.addEventListener('scroll', this.debounce((e) => this.handleScroll(e), 120));
-        
+
         // Close dropdowns and context menu
         document.addEventListener('click', () => {
             this.hideNewDropdown();
             this.hideContextMenu();
         });
-        
+
         // Setup drag and drop
         this.setupDragAndDrop();
-        
+
         console.log('Event listeners set up complete');
     }
 
     async loadFiles(folderId = null, resetPagination = true, isTrashView = false) {
         console.log('loadFiles called:', { folderId, resetPagination, isTrashView });
-        
+
+        this.currentFolderId = folderId;
         if (resetPagination) {
             this.currentPage = 1;
             this.allLoadedItems = [];
@@ -166,50 +194,49 @@ class CloudCoreDrive {
 
         try {
             this.isTrashView = isTrashView;
-            
+
             const params = {
                 page: String(this.currentPage),
                 pageSize: String(this.pageSize),
                 sortBy: this.sortBy,
                 sortDir: this.sortDir
             };
-            
+
             if (this.currentSearchQuery) {
                 params.searchQuery = this.currentSearchQuery;
             }
-            
+
             if (!isTrashView && folderId !== null) {
                 params.parentId = String(folderId);
             }
-            
+
             console.log('Fetching files with params:', params);
-            
-            const result = isTrashView 
+
+            const result = isTrashView
                 ? await this.api.getTrash(this.currentUserId, params)
                 : await this.api.getFiles(this.currentUserId, params);
-            
+
             console.log('Files received:', result);
-            
+
             const newItems = Array.isArray(result?.data) ? result.data : [];
             const pagination = result?.pagination;
-            
+
             if (pagination) {
                 this.hasNextPage = Boolean(pagination.hasNext);
             }
-            
+
             if (resetPagination) {
                 this.allLoadedItems = newItems;
             } else {
                 this.allLoadedItems.push(...newItems);
             }
-            
+
             this.renderFiles();
-            this.currentFolderId = folderId;
             this.updateBreadcrumbs();
-            
+
         } catch (error) {
             console.error('loadFiles error:', error);
-            this.notifications.error('Failed to load files: ' + error.message);
+            this.notifications.error(this.i18n.t('failedRename'));
         } finally {
             if (resetPagination) this.hideLoading();
         }
@@ -217,21 +244,59 @@ class CloudCoreDrive {
 
     renderFiles() {
         console.log('Rendering files:', this.allLoadedItems.length);
-        
-        if (this.allLoadedItems.length === 0) {
-            this.showEmptyState();
-            return;
-        }
-        
-        this.hideEmptyState();
-        this.fileListBody.innerHTML = '';
+
+
         this.fileList.style.display = 'table';
-        
-        this.allLoadedItems.forEach(item => {
-            const row = this.createFileRow(item);
-            this.fileListBody.appendChild(row);
-        });
-        
+        this.fileListBody.innerHTML = '';
+
+        if (this.allLoadedItems.length === 0) {
+            const emptyRow = document.createElement('tr');
+            if (this.currentSearchQuery) {
+                emptyRow.innerHTML = `
+                    <td colspan="4" style="padding: 0; border: none;">
+                        <div class="empty-state">
+                            <span class="material-symbols-outlined empty-icon">
+                                search_off
+                            </span>
+                            <h3 data-i18n="noSearchResults">Нічого не знайдено</h3>
+                            <p data-i18n="noSearchResultsMessage">Спробуйте інший запит</p>
+                        </div>
+                    </td>
+                `;
+            } else if (this.isTrashView) {
+                emptyRow.innerHTML = `
+                    <td colspan="4" style="padding: 0; border: none;">
+                        <div class="empty-state">
+                            <span class="material-symbols-outlined empty-icon">
+                                delete_outline
+                            </span>
+                            <h3 data-i18n="emptyTrash">Корзина пуста</h3>
+                            <p data-i18n="emptyTrashMessage">Удалённые файлы будут храниться здесь 30 дней</p>
+                        </div>
+                    </td>
+                `;
+            } else {
+                emptyRow.innerHTML = `
+                    <td colspan="4" style="padding: 0; border: none;">
+                        <div class="empty-state">
+                            <span class="material-symbols-outlined empty-icon">
+                                folder_open
+                            </span>
+                            <h3 data-i18n="emptyFolder">Эта папка пуста</h3>
+                            <p data-i18n="uploadGetStarted">Загрузите файлы или папки, чтобы начать работу</p>
+                        </div>
+                    </td>
+                `;
+            }
+            this.fileListBody.appendChild(emptyRow);
+            this.i18n.updateUI();
+        } else {
+            this.allLoadedItems.forEach(item => {
+                const row = this.createFileRow(item);
+                this.fileListBody.appendChild(row);
+            });
+        }
+
         this.updateSortIndicators();
         console.log('Files rendered');
     }
@@ -242,13 +307,18 @@ class CloudCoreDrive {
         row.dataset.itemId = item.id;
         row.dataset.itemType = item.type;
 
-        const icon = getFileIcon(item);
+        const iconInfo = getFileIcon(item);
         const sizeDisplay = item.type === 'file'
             ? (item.fileSize ? formatFileSize(item.fileSize) : '-')
             : '-';
 
         row.innerHTML = `
-            <td><span class="file-list-icon ${icon.class}">${icon.emoji}</span> ${item.name}</td>
+            <td>
+                <span class="material-symbols-outlined file-list-icon ${iconInfo.class}">
+                    ${iconInfo.icon}
+                </span>
+                ${item.name}
+            </td>
             <td>${formatDateTime(item.createdAt)}</td>
             <td>${formatDateTime(item.updatedAt)}</td>
             <td>${sizeDisplay}</td>
@@ -265,7 +335,7 @@ class CloudCoreDrive {
     handleFileClick(e, item, row) {
         e.stopPropagation();
         console.log('File clicked:', item.name);
-        
+
         document.querySelectorAll('.file-list-row.selected').forEach(el => {
             el.classList.remove('selected');
         });
@@ -277,7 +347,7 @@ class CloudCoreDrive {
     handleFileDoubleClick(e, item) {
         console.log('File double-clicked:', item.name);
         if (this.isTrashView) return;
-        
+
         if (item.type === 'folder') {
             this.navigateToFolder(item);
         } else {
@@ -294,48 +364,48 @@ class CloudCoreDrive {
 
         const menuHTML = this.isTrashView ? `
             <div class="context-menu-item" data-action="restore">
-                <span class="context-menu-icon">🔄</span>
+                <span class="material-symbols-outlined">restore_from_trash</span>
                 <span>${this.i18n.t('restore')}</span>
             </div>
             <div class="context-menu-separator"></div>
             <div class="context-menu-item danger" data-action="delete-permanently">
-                <span class="context-menu-icon">❌</span>
+                <span class="material-symbols-outlined">delete_forever</span>
                 <span>${this.i18n.t('deletePermanently')}</span>
             </div>
         ` : (item.type === 'folder' ? `
             <div class="context-menu-item" data-action="download-folder">
-                <span class="context-menu-icon">⬇️</span>
+                <span class="material-symbols-outlined">download</span>
                 <span>${this.i18n.t('downloadFolder')}</span>
             </div>
             <div class="context-menu-separator"></div>
             <div class="context-menu-item" data-action="rename">
-                <span class="context-menu-icon">✏️</span>
+                <span class="material-symbols-outlined">edit</span>
                 <span>${this.i18n.t('rename')}</span>
             </div>
             <div class="context-menu-separator"></div>
             <div class="context-menu-item danger" data-action="delete">
-                <span class="context-menu-icon">🗑️</span>
+                <span class="material-symbols-outlined">delete</span>
                 <span>${this.i18n.t('deleteFolder')}</span>
             </div>
         ` : `
             <div class="context-menu-item" data-action="download">
-                <span class="context-menu-icon">⬇️</span>
+                <span class="material-symbols-outlined">download</span>
                 <span>${this.i18n.t('downloadFile')}</span>
             </div>
             <div class="context-menu-separator"></div>
             <div class="context-menu-item" data-action="rename">
-                <span class="context-menu-icon">✏️</span>
+                <span class="material-symbols-outlined">edit</span>
                 <span>${this.i18n.t('rename')}</span>
             </div>
             <div class="context-menu-separator"></div>
             <div class="context-menu-item danger" data-action="delete">
-                <span class="context-menu-icon">🗑️</span>
+                <span class="material-symbols-outlined">delete</span>
                 <span>${this.i18n.t('delete')}</span>
             </div>
         `);
 
         this.contextMenu.innerHTML = menuHTML;
-        
+
         // Attach click handlers to menu items
         this.contextMenu.querySelectorAll('.context-menu-item').forEach(menuItem => {
             menuItem.addEventListener('click', (e) => {
@@ -369,7 +439,7 @@ class CloudCoreDrive {
 
     handleContextAction(action, item) {
         console.log('Handling context action:', action, 'for', item.name);
-        
+
         switch (action) {
             case 'download':
                 this.downloadFile(item);
@@ -392,7 +462,7 @@ class CloudCoreDrive {
 
     async navigateToFolder(folder) {
         console.log('Navigating to folder:', folder.name);
-        
+
         if (this.currentSearchQuery) {
             this.currentSearchQuery = null;
             document.getElementById('searchBox').value = '';
@@ -403,7 +473,7 @@ class CloudCoreDrive {
                 name: folder.name
             });
         }
-        
+
         this.loadFiles(folder.id, true);
     }
 
@@ -411,7 +481,7 @@ class CloudCoreDrive {
         try {
             const folderPath = await this.api.getFolderPath(this.currentUserId, folder.id);
             const pathParts = folderPath.split(/[/\\]/).filter(part => part.trim() !== '');
-            
+
             this.breadcrumbPath = pathParts.map((name, index) => ({
                 id: index === pathParts.length - 1 ? folder.id : null,
                 name: name
@@ -425,98 +495,337 @@ class CloudCoreDrive {
     async downloadFile(file) {
         try {
             console.log('Downloading file:', file.name);
-            this.notifications.info(this.i18n.t('downloading') + ' ' + file.name);
+            this.notifications.info(this.i18n.t('downloading', { filename: file.name }));
             const blob = await this.api.downloadFile(this.currentUserId, file.id);
             downloadBlob(blob, file.name);
-            this.notifications.success(this.i18n.t('downloaded') + ': ' + file.name);
+            this.notifications.success(this.i18n.t('downloaded', { filename: file.name }));
         } catch (error) {
             console.error('Download error:', error);
-            this.notifications.error(this.i18n.t('failedDownload') + ' ' + file.name);
+            this.notifications.error(this.i18n.t('failedDownload'), { filename: file.name });
         }
     }
 
     async downloadFolder(folder) {
         try {
             console.log('Downloading folder:', folder.name);
-            this.notifications.info(this.i18n.t('creatingArchive') + ' ' + folder.name);
+            this.notifications.info(this.i18n.t('creatingArchive', { foldername: folder.name }));
             const blob = await this.api.downloadFolder(this.currentUserId, folder.id);
             downloadBlob(blob, folder.name + '.zip');
-            this.notifications.success(this.i18n.t('downloaded') + ': ' + folder.name + '.zip');
+            this.notifications.success(this.i18n.t('downloaded', { filename: folder.name + '.zip' }));
         } catch (error) {
             console.error('Download folder error:', error);
-            this.notifications.error(this.i18n.t('failedDownload') + ' ' + folder.name);
+            this.notifications.error(this.i18n.t('failedDownload', { filename: folder.name}));
         }
     }
 
     async renameItem(item) {
-        const newName = prompt(`Rename "${item.name}" to:`, item.name);
-        if (!newName || newName.trim() === '' || newName === item.name) return;
+        this.showRenameModal(item);
+    }
 
+    showRenameModal(item) {
+        const modal = document.getElementById('renameModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+        const input = document.getElementById('renameInput');
+        const hint = document.getElementById('renameHint');
+
+        if (!modal || !overlay || !input) {
+            console.error('Rename modal elements not found');
+            return;
+        }
+
+        input.value = item.name;
+        hint.textContent = this.i18n.t('renameHint') || 'Enter a new name for this item';
+
+        const confirmBtn = document.getElementById('renameConfirmBtn');
+        const cancelBtn = document.getElementById('renameCancelBtn');
+        const closeBtn = document.getElementById('renameModalClose');
+
+        if (!confirmBtn || !cancelBtn || !closeBtn) {
+            console.error('Rename modal buttons not found');
+            return;
+        }
+
+        const validateName = () => {
+            const newName = input.value.trim();
+            const isValid = newName.length > 0 && newName !== item.name;
+            confirmBtn.disabled = !isValid;
+            return isValid;
+        };
+
+        input.addEventListener('input', validateName);
+
+        const handleConfirm = async () => {
+            const newName = input.value.trim();
+            if (!validateName()) return;
+
+            this.hideRenameModal();
+            await this.performRename(item, newName);
+
+            // Cleanup
+            input.removeEventListener('input', validateName);
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleCancel);
+            input.removeEventListener('keydown', handleKeyDown);
+        };
+
+        const handleCancel = () => {
+            this.hideRenameModal();
+
+            // Cleanup
+            input.removeEventListener('input', validateName);
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleCancel);
+            input.removeEventListener('keydown', handleKeyDown);
+        };
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Enter' && validateName()) {
+                e.preventDefault();
+                handleConfirm();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handleCancel();
+            }
+        };
+
+        // Attach event listeners
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        closeBtn.addEventListener('click', handleCancel);
+        overlay.addEventListener('click', handleCancel);
+        input.addEventListener('keydown', handleKeyDown);
+
+        // Show modal
+        modal.classList.add('show');
+        overlay.classList.add('show');
+
+        // Focus input and select text
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 100);
+
+        // Initial validation
+        validateName();
+
+        console.log('Rename modal shown for:', item.name);
+    }
+
+
+    hideRenameModal() {
+        const modal = document.getElementById('renameModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+
+        if (modal) modal.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+
+        console.log('Rename modal hidden');
+    }
+
+    async performRename(item, newName) {
         try {
             console.log('Renaming item:', item.name, 'to', newName);
-            this.notifications.info(this.i18n.t('renaming') + ' ' + item.name);
-            await this.api.renameItem(this.currentUserId, item.id, newName.trim());
-            this.notifications.success(this.i18n.t('renamed') + ' "' + newName.trim() + '"');
+            this.notifications.info(this.i18n.t('renaming', { filename: item.name }));
+
+            await this.api.renameItem(this.currentUserId, item.id, newName);
+
+            this.notifications.success(this.i18n.t('renamed', { 
+            oldName: item.name, 
+            newName: newName 
+        }));
+
             this.loadFiles(this.currentFolderId, true, this.isTrashView);
         } catch (error) {
             console.error('Rename error:', error);
-            this.notifications.error(this.i18n.t('failedRename') + ' ' + item.name);
+            this.notifications.error(this.i18n.t('failedRename', { filename: item.name }));
         }
     }
 
     async deleteItem(item) {
-        const confirmMsg = this.isTrashView 
-            ? `Permanently delete "${item.name}"?`
-            : `Delete "${item.name}"?`;
-            
-        if (!confirm(confirmMsg)) return;
+        this.showDeleteModal(item);
+    }
 
+    showDeleteModal(item) {
+        const modal = document.getElementById('deleteModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+        const messageEl = document.getElementById('deleteModalMessage');
+
+        if (!modal || !overlay || !messageEl) {
+            console.error('Modal elements not found');
+            return;
+        }
+
+        const message = this.isTrashView
+            ? this.i18n.t('confirmDeletePermanent', { filename: item.name })
+            : this.i18n.t('confirmDelete', { filename: item.name });
+
+        messageEl.textContent = message;
+
+        const confirmBtn = document.getElementById('deleteConfirmBtn');
+        const cancelBtn = document.getElementById('deleteCancelBtn');
+        const closeBtn = document.getElementById('deleteModalClose');
+
+        if (!confirmBtn || !cancelBtn || !closeBtn) {
+            console.error('Modal buttons not found');
+            return;
+        }
+
+        const handleConfirm = () => {
+            this.hideDeleteModal();
+            this.performDelete(item);
+
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleCancel);
+        };
+
+        const handleCancel = () => {
+            this.hideDeleteModal();
+
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleCancel);
+        };
+
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        closeBtn.addEventListener('click', handleCancel);
+        overlay.addEventListener('click', handleCancel);
+
+        modal.classList.add('show');
+        overlay.classList.add('show');
+
+        console.log('Delete modal shown for:', item.name);
+    }
+
+    hideDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+
+        if (modal) modal.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+
+        console.log('Delete modal hidden');
+    }
+
+    async performDelete(item) {
         try {
-            console.log('Deleting item:', item.name);
-            this.notifications.info(this.i18n.t('deleting') + ' ' + item.name);
+            console.log('Удаление элемента:', item.name);
+            this.notifications.info(this.i18n.t('deleting', { filename: item.name }));
+
             await this.api.deleteItem(this.currentUserId, item.id);
-            this.notifications.success(item.name + ' ' + this.i18n.t('deleted'));
-            
-            // Remove from UI
+
+            this.notifications.success(this.i18n.t('deleted', { filename: item.name }));
+
             const row = this.fileListBody.querySelector(`[data-item-id="${item.id}"]`);
             if (row) row.remove();
-            
+
             this.allLoadedItems = this.allLoadedItems.filter(i => i.id !== item.id);
-            
+
             if (this.allLoadedItems.length === 0) {
                 this.showEmptyState();
             }
         } catch (error) {
-            console.error('Delete error:', error);
-            this.notifications.error(this.i18n.t('failedDelete') + ' ' + item.name);
+            console.error('Ошибка удаления:', error);
+            this.notifications.error(this.i18n.t('failedDelete', { filename: item.name }));
         }
     }
+
+    showLogoutModal() {
+        const modal = document.getElementById('logoutModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+        
+        if (!modal || !overlay) {
+            console.error('Logout modal elements not found');
+            return;
+        }
+        
+        const confirmBtn = document.getElementById('logoutConfirmBtn');
+        const cancelBtn = document.getElementById('logoutCancelBtn');
+        const closeBtn = document.getElementById('logoutModalClose');
+        
+        if (!confirmBtn || !cancelBtn || !closeBtn) {
+            console.error('Logout modal buttons not found');
+            return;
+        }
+        
+        const handleConfirm = () => {
+            this.hideLogoutModal();
+            this.logout();
+            
+            // Cleanup
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleCancel);
+        };
+        
+        const handleCancel = () => {
+            this.hideLogoutModal();
+            
+            // Cleanup
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleCancel);
+        };
+        
+        // Attach event listeners
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        closeBtn.addEventListener('click', handleCancel);
+        overlay.addEventListener('click', handleCancel);
+        
+        // Show modal
+        modal.classList.add('show');
+        overlay.classList.add('show');
+        
+        console.log('Logout modal shown');
+    }
+
+    hideLogoutModal() {
+        const modal = document.getElementById('logoutModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+        
+        if (modal) modal.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+        
+        console.log('Logout modal hidden');
+    }
+
+
 
     async restoreItem(item) {
         try {
             console.log('Restoring item:', item.name);
-            this.notifications.info(this.i18n.t('restoring') + ' ' + item.name);
+            this.notifications.info(this.i18n.t('restoring', { filename: item.name }));
             await this.api.restoreItem(this.currentUserId, item.id);
-            this.notifications.success(item.name + ' ' + this.i18n.t('restored'));
-            
-            // Remove from UI
+            this.notifications.success(this.i18n.t('restored', { filename: item.name }));
+
             const row = this.fileListBody.querySelector(`[data-item-id="${item.id}"]`);
             if (row) row.remove();
-            
+
             this.allLoadedItems = this.allLoadedItems.filter(i => i.id !== item.id);
-            
+
             if (this.allLoadedItems.length === 0) {
                 this.showEmptyState();
             }
         } catch (error) {
             console.error('Restore error:', error);
-            this.notifications.error('Error restoring: ' + item.name);
+            this.notifications.error(this.i18n.t('failedRestore', { filename: item.name }));
         }
     }
 
     handleSidebarClick(e) {
         console.log('Sidebar clicked');
-        
+
         document.querySelectorAll('.sidebar-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -524,7 +833,7 @@ class CloudCoreDrive {
 
         const section = e.currentTarget.dataset.section;
         const searchContainer = document.querySelector('.search-container');
-        
+
         if (section === 'trash') {
             searchContainer.style.display = 'none';
             this.breadcrumbPath = [];
@@ -541,7 +850,7 @@ class CloudCoreDrive {
     async handleFileUpload(e) {
         const files = Array.from(e.target.files);
         console.log('handleFileUpload:', files.length, 'files');
-        
+
         if (!files || files.length === 0) {
             console.log('No files selected');
             return;
@@ -553,16 +862,23 @@ class CloudCoreDrive {
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             try {
+
                 console.log(`Uploading file ${i + 1}/${files.length}:`, file.name);
-                this.notifications.info(`Uploading ${file.name} (${i + 1}/${files.length})`);
-                
+
+                this.notifications.info(this.i18n.t('uploadingFile', {
+                    filename: file.name,
+                    current: i + 1,
+                    total: files.length
+                }));
+
                 await this.api.uploadFile(this.currentUserId, file, this.currentFolderId);
                 successCount++;
-                this.notifications.success(file.name + ' uploaded');
+
+                this.notifications.success(this.i18n.t('uploadSuccess', { filename: file.name }));
             } catch (error) {
                 console.error('Upload error:', file.name, error);
                 errorCount++;
-                this.notifications.error('Failed to upload ' + file.name);
+                this.notifications.error(this.i18n.t('uploadFailedSingle', { filename: file.name }));
             }
         }
 
@@ -574,11 +890,11 @@ class CloudCoreDrive {
     async handleFolderUpload(e) {
         const files = Array.from(e.target.files);
         console.log('handleFolderUpload:', files.length, 'files');
-        
+
         if (!files || files.length === 0) return;
 
         const folderStructure = buildFolderStructure(files);
-        this.notifications.info(`Uploading folder with ${files.length} files`);
+        this.notifications.info(this.i18n.t('uploadingFolder', { count: files.length }));
 
         let successCount = 0;
         let errorCount = 0;
@@ -600,9 +916,12 @@ class CloudCoreDrive {
         }
 
         if (errorCount === 0) {
-            this.notifications.success(`Successfully uploaded ${successCount} files`);
+            this.notifications.success(this.i18n.t('uploadFolderSuccess', { count: successCount }));
         } else {
-            this.notifications.warning(`Uploaded ${successCount}, failed ${errorCount} files`);
+            this.notifications.warning(this.i18n.t('uploadFolderPartial', {
+                successCount: successCount,
+                errorCount: errorCount
+            }));
         }
 
         await this.loadFiles(this.currentFolderId, true);
@@ -649,7 +968,7 @@ class CloudCoreDrive {
     setupDragAndDrop() {
         console.log('Setting up drag and drop');
         const container = document.getElementById('fileContainer');
-        
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             container.addEventListener(eventName, (e) => {
                 e.preventDefault();
@@ -670,7 +989,7 @@ class CloudCoreDrive {
         container.addEventListener('drop', async (e) => {
             container.classList.remove('dragover');
             console.log('Files dropped');
-            
+
             const files = Array.from(e.dataTransfer.files);
             if (files.length > 0) {
                 // Trigger file upload
@@ -678,7 +997,7 @@ class CloudCoreDrive {
                 const dt = new DataTransfer();
                 files.forEach(file => dt.items.add(file));
                 input.files = dt.files;
-                
+
                 // Manually trigger the change event
                 const event = new Event('change', { bubbles: true });
                 input.dispatchEvent(event);
@@ -689,7 +1008,7 @@ class CloudCoreDrive {
     updateBreadcrumbs() {
         const breadcrumbs = document.getElementById('breadcrumbs');
         if (!breadcrumbs) return;
-        
+
         breadcrumbs.innerHTML = '';
 
         const homeBreadcrumb = document.createElement('a');
@@ -715,8 +1034,8 @@ class CloudCoreDrive {
                 breadcrumbs.appendChild(separator);
 
                 const breadcrumb = document.createElement('a');
-                breadcrumb.className = index === this.breadcrumbPath.length - 1 
-                    ? 'breadcrumb current' 
+                breadcrumb.className = index === this.breadcrumbPath.length - 1
+                    ? 'breadcrumb current'
                     : 'breadcrumb';
                 breadcrumb.href = '#';
                 breadcrumb.textContent = folder.name;
@@ -787,8 +1106,10 @@ class CloudCoreDrive {
 
         const active = headers[this.sortBy];
         if (active) {
-            const arrow = this.sortDir === 'asc' ? ' 🔼' : ' 🔽';
-            active.textContent = active.dataset.label + arrow;
+            const icon = document.createElement('span');
+            icon.className = 'material-symbols-outlined sort-icon';
+            icon.textContent = this.sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward';
+            active.appendChild(icon);
         }
     }
 
@@ -867,10 +1188,16 @@ class CloudCoreDrive {
         this.api.clearAuthToken();
         window.location.href = 'login.html';
     }
+
 }
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing CloudCoreDrive');
     new CloudCoreDrive();
+});
+
+window.addEventListener('beforeunload', (e) => {
+    console.log('🔴 PAGE IS RELOADING!');
+    console.trace(); // Покажет стек вызовов
 });

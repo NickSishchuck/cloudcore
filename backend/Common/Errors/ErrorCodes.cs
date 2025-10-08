@@ -34,6 +34,7 @@
         public const string RESTORED_SUCCESSFULLY = "RESTORED_SUCCESSFULLY";
 
         public const string ACCESS_DENIED = "ACCESS_DENIED";
+        public const string BAD_REQUEST = "BAD_REQUEST";
         public const string OPERATION_FAILED = "OPERATION_FAILED";
         public const string UNEXPECTED_ERROR = "UNEXPECTED_ERROR";
         public const string IO_ERROR = "IO_ERROR";

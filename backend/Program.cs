@@ -86,6 +86,7 @@ namespace CloudCore
                 builder.Services.AddScoped<ITeamspaceService, TeamspaceService>();
                 builder.Services.AddScoped<ITeamspaceApplication, TeamspaceApplication>();
                 builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
+                builder.Services.AddScoped<UserAuthorizationFilter>();
 
 
 
@@ -111,10 +112,12 @@ namespace CloudCore
                 builder.Services.AddAuthorization();
 
                 // Add controllers and endpoints
-                builder.Services.AddControllers();
+                builder.Services.AddControllers(options =>
+                {
+                    options.Filters.Add<UserAuthorizationFilter>();
+                });
                 builder.Services.AddEndpointsApiExplorer();
 
-                //builder.Services.AddSwaggerGen();
 
                 builder.Services.AddSwaggerGen(options =>
                 {

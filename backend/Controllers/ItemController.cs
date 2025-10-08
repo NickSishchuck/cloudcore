@@ -16,39 +16,13 @@ namespace CloudCore.Controllers
     [Authorize] // Require authentication for all endpoints
     public class ItemController : ControllerBase
     {
-        private readonly IValidationService _validationService;
         private readonly IItemApplication _itemApplication;
         private readonly ILogger<ItemController> _logger;
 
         public ItemController(IValidationService validationService, IItemApplication itemApplication, ILogger<ItemController> logger)
         {
-            _validationService = validationService;
             _itemApplication = itemApplication;
             _logger = logger;
-        }
-
-        /// <summary>
-        /// Gets the current user ID from JWT token
-        /// </summary>
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.Parse(userIdClaim ?? "0");
-        }
-
-        private ActionResult? VerifyUser(int userId)
-        {
-            var currentUserId = GetCurrentUserId();
-
-            _logger.LogInformation($"Verifying user authorization. Target User ID: {userId}, Requester User ID: {currentUserId}.");
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-            {
-                _logger.LogWarning($"User authorization failed. Error: {authValidation.ErrorMessage}, Code: {authValidation.ErrorCode}, Target User ID: {userId}, Requester User ID: {currentUserId}.");
-                return StatusCode(403, ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode));
-            }
-            _logger.LogInformation($"User authorization successful for Target User ID: {userId}.");
-            return null;
         }
         /// <summary>
         /// Retrieves all items for a specific user within a given parent directory.
@@ -59,9 +33,6 @@ namespace CloudCore.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Item>>> GetItemsAsync([Required] int userId, int? parentId, [FromQuery] QueryParameters queryParams)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
 
             _logger.LogInformation("Fetching items for User ID: {UserId}, Parent ID: {ParentId}, Page: {Page}, Page Size: {PageSize}, Search Query: {SearchQuery}.", userId, parentId, queryParams.Page, queryParams.PageSize, queryParams.SearchQuery);
 
@@ -78,9 +49,6 @@ namespace CloudCore.Controllers
         [HttpGet("folder/path/{folderId}")]
         public async Task<IActionResult> GetFolderPath([Required] int userId, int folderId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
 
             _logger.LogInformation("Fetching folder path for User ID: {UserId}, Folder ID: {FolderId}", userId, folderId);
             string folderPath = await _itemApplication.GetBreadcrumbPathAsync(userId, folderId, "folder");
@@ -111,9 +79,6 @@ namespace CloudCore.Controllers
         [HttpGet("{folderId}/downloadfolder")]
         public async Task<IActionResult> DownloadFolderAsync([Required] int userId, [Required] int folderId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
 
             _logger.LogInformation("User {UserId} initiated download for Folder ID: {FolderId}.", userId, folderId);
             var (archiveStream, fileName) = await _itemApplication.DownloadFolderAsync(userId, folderId);
@@ -131,9 +96,6 @@ namespace CloudCore.Controllers
         [HttpGet("{fileId}/download")]
         public async Task<IActionResult> DownloadFileAsync([Required] int userId, [Required] int fileId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
 
             _logger.LogInformation("User {UserId} initiated download for File ID: {FileId}.", userId, fileId);
 
@@ -162,9 +124,6 @@ namespace CloudCore.Controllers
         [HttpPost("download/multiple")]
         public async Task<IActionResult> DownloadMultipleItemsAsZipAsync([Required] int userId, [FromBody] List<int> itemsId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
 
             _logger.LogInformation("User {UserId} initiated download for {ItemCount} items.", userId, itemsId.Count);
             var (archiveStream, fileName) = await _itemApplication.DownloadMultipleItemsAsZipAsync(userId, itemsId);
@@ -189,10 +148,6 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RenameItemAsync([Required] int userId, [Required] int itemId, [StringLength(250)][FromBody] string newName)
         {
-
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
 
             _logger.LogInformation("User {UserId} attempting to rename Item ID: {ItemId} to '{NewName}'.", userId, itemId, newName);
             var result = await _itemApplication.RenameItemAsync(userId, itemId, newName);
@@ -222,52 +177,10 @@ namespace CloudCore.Controllers
         }
 
 
-        // WILL BE DELETED
-        /// <summary>
-        /// Gets the total size and file count for a directory
-        /// </summary>
-        /// <param name="userId">User identifier from route</param>
-        /// <param name="folderId">Folder identifier to calculate size for</param>
-        /// <returns>Object containing total size in bytes and file count</returns>
-        //[HttpGet("{folderId}/size")]
-        //public async Task<ActionResult<object>> GetFolderSizeAsync([Required] int userId, [Required] int folderId)
-        //{
-        //    var authResult = VerifyUser(userId);
-        //    if (authResult != null)
-        //        return authResult;
-
-        //    var result = await _itemRepository.GetFolderSizeAsync(userId, folderId);
-        //    return Ok(result);
-
-        //}
-
-        /// <summary>
-        /// Gets sizes for multiple folders in a single request
-        /// </summary>
-        /// <param name="userId">User identifier from route</param>
-        /// <param name="folderIds">List of folder IDs to calculate sizes for</param>
-        /// <returns>Dictionary of folder sizes</returns>
-        //[HttpPost("sizes")]
-        //public async Task<ActionResult<Dictionary<int, object>>> GetMultipleFolderSizesAsync([Required] int userId, [FromBody] List<int> folderIds)
-        //{
-        //    var authResult = VerifyUser(userId);
-        //    if (authResult != null)
-        //        return authResult;
-
-        //    if (folderIds == null || folderIds.Count == 0)
-        //        return BadRequest(ApiResponse.Error("No folders specified", "NO_FOLDERS_SPECIFIED"));
-
-        //    var results = await _itemRepository.GetMultipleFolderSizesAsync(userId, folderIds);
-        //    return Ok(results);
-
-        //}
-
         [HttpDelete("{itemId}/delete")]
         public async Task<IActionResult> DeleteItemAsync(int userId, int itemId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+
 
             _logger.LogInformation("User {UserId} attempting to delete Item ID: {ItemId}.", userId, itemId);
 
@@ -281,9 +194,7 @@ namespace CloudCore.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+
 
             _logger.LogInformation("User {UserId} attempting to upload file '{FileName}' to Parent ID: {ParentId}.", userId, file.FileName, parentId);
 
@@ -329,8 +240,7 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> CreateFolderAsync([Required] int userId, [FromBody] FolderCreateRequest request)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
 
             _logger.LogInformation("User {UserId} attempting to create folder '{FolderName}' in Parent ID: {ParentId}.", userId, request.Name, request.ParentId);
@@ -362,9 +272,6 @@ namespace CloudCore.Controllers
         [HttpGet("trash")]
         public async Task<ActionResult<IEnumerable<Item>>> GetDeletedItemsAsync([Required] int userId, int? parentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 30, [FromQuery] string? sortBy = "name", [FromQuery] string? sortDir = "asc")
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) 
-                return authResult;
 
             _logger.LogInformation("Fetching trash items for User ID: {UserId}, Page: {Page}, PageSize: {PageSize}.", userId, page, pageSize);
 
@@ -384,10 +291,7 @@ namespace CloudCore.Controllers
 
         [HttpPut("{itemId}/restore")]
         public async Task<IActionResult> RestoreItemAsync(int userId, int itemId)
-        {
-            var authResult = VerifyUser(userId);
-            if (authResult != null)
-                return authResult;
+        { 
 
             _logger.LogInformation("User {UserId} attempting to restore Item ID: {ItemId}.", userId, itemId);
             var result = await _itemApplication.RestoreItemAsync(userId, itemId);

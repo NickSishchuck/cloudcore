@@ -18,7 +18,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="childItems">Optional list of all descendant items if the primary item is a folder.</param>
         /// <param name="folderPath">The current absolute path of the folder on disk. Required only if renaming a folder.</param>
         /// <returns>A list of all item entities (primary and children) that have been modified and need to be updated in the database.</returns>
-        List<Item> PrepareItemsForRenaming(Item item, string newName, List<Item> childItems = null, string folderPath = null);
+        List<Item> PrepareItemsForRenaming(Item item, string newName, List<Item>? childItems = null, string? folderPath = null);
 
         /// <summary>
         /// Prepares an item and its children (if it's a folder) for a soft-delete operation.
@@ -27,7 +27,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="item">The primary item to be soft-deleted.</param>
         /// <param name="childItems">Optional list of all descendant items if the primary item is a folder.</param>
         /// <returns>A list of all item entities that have been marked as deleted and need to be updated in the database.</returns>
-        List<Item> PrepareItemsForSoftDelete(Item item, List<Item> childItems = null);
+        List<Item> PrepareItemsForSoftDelete(Item item, List<Item>? childItems = null);
 
         /// <summary>
         /// Prepares one or more items for restoration from a soft-deleted state.
@@ -51,7 +51,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user uploading the file.</param>
         /// <param name="parentId">Optional. The ID of the parent folder where the file will be located.</param>
         /// <param name="file">The uploaded file from the HTTP request.</param>
-        /// <param name="targetDirectory">The relative directory path where the file should be saved.</param>
+        /// <param name="taregetDirectory">The relative directory path where the file should be saved.</param>
         /// <returns>A new Item entity, populated with metadata from the uploaded file, ready to be saved to the database.</returns>
         Task<Item> ProcessUploadAsync(int userId, int? parentId, IFormFile file, string taregetDirectory);
 

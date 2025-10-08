@@ -12,13 +12,9 @@ namespace CloudCore.Services.Interfaces
         #region Path Management
 
         /// <summary>
-        /// Builds the absolute file path for the specified user by combining the user’s storage path 
-        /// with the provided relative path. Validates the path to prevent directory traversal outside 
-        /// of the user’s storage.
+        /// Builds the file path for the specified user by the user’s storage path.
         /// </summary>
         /// <param name="userId">The user identifier.</param>
-        /// <param name="relativePath">The relative file path within the user’s storage.</param>
-        /// <returns>The absolute file path.</returns>
         /// <exception cref="UnauthorizedAccessException">
         /// Thrown if the resolved path points outside of the user’s storage directory.
         /// </exception>
@@ -88,7 +84,7 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="item">The item entity to be deleted.</param>
         /// <param name="folderPath">Optional. The absolute path to the item if already known.</param>
-        void DeleteItemPhysicaly(Item item, string folderPath = null);
+        void DeleteItemPhysicaly(Item item, string? folderPath = null);
 
         /// <summary>
         /// Physically renames a file or folder on the disk.
@@ -98,7 +94,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="childItems">Not used in this implementation but kept for interface consistency.</param>
         /// <param name="folderPath">The current absolute path of the item. Required for renaming.</param>
         /// <returns>The new relative path of the renamed item.</returns>
-        string RenameItemPhysicaly(Item item, string newName, IEnumerable<Item> childItems = null, string folderPath = null);
+        string RenameItemPhysicaly(Item item, string newName, IEnumerable<Item>? childItems = null, string? folderPath = null);
 
         #endregion
 

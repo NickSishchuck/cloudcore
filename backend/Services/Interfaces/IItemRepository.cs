@@ -33,9 +33,9 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="userId">The ID of the user who owns the item.</param>
         /// <param name="itemtId">The ID of the item to retrieve.</param>
-        /// <param name="itemtType">The Type of the item to retrieve.</param>
+        /// <param name="itemType">The Type of the item to retrieve.</param>
         /// <returns>A Task that resolves to the Item object if found; otherwise, null.</returns>
-        Task<Item?> GetItemAsync(int userId, int itemtId, string? itemType);
+        Task<Item> GetItemAsync(int userId, int itemtId, string? itemType);
 
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user who owns the item.</param>
         /// <param name="itemId">The ID of the item to retrieve.</param>
         /// <returns>The deleted <see cref="Item"/>, or null if not found.</returns>
-        Task<Item?> GetDeletedItemAsync(int userId, int itemtId);
+        Task<Item> GetDeletedItemAsync(int userId, int itemId);
 
         /// <summary>
         /// Asynchronously retrieves a IEnumerable of items by its ID, ensuring it belongs to the specified user.

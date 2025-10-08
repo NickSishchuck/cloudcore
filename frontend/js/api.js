@@ -30,7 +30,6 @@ export class ApiClient {
     async handleResponse(response) {
         if (response.status === 401) {
             this.clearAuthToken();
-            window.location.href = 'login.html';
             throw new Error('Unauthorized');
         }
 
