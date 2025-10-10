@@ -36,45 +36,39 @@ namespace CloudCore.Services.Implementations
             var tempFilePath = Path.GetTempFileName() + ".zip";
             _logger.LogInformation("Creating temporary archive at: {TempPath}", tempFilePath);
 
-            List<Item> allDescendants = new();
-            await foreach(var desc in _itemRepository.GetAllChildItemsAsync(userId, folderId))
-            {
-                allDescendants.Add(desc);
-            }
-            var allNotDeletedDescendants = allDescendants.Where(i => i.IsDeleted == false);
-            var itemsByParent = allNotDeletedDescendants.ToLookup(item => item.ParentId);
 
             using (var fileSteam = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
             using (var zipArchive = new ZipArchive(fileSteam, ZipArchiveMode.Create, true))
             {
                 _logger.LogInformation("Starting to build zip archive recursively.");
-                AddChildrenToZip(zipArchive, itemsByParent, folderId, folderName);
+                await AddChildrenToZipAsync(zipArchive, userId, folderId, string.Empty);
             }
 
             _logger.LogInformation("Temporary archive created successfully. Returning stream.");
             return new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
         }
-        private void AddChildrenToZip(ZipArchive archive, ILookup<int?, Item> itemsByParent, int? parentId, string currentPath)
+        private async Task AddChildrenToZipAsync(ZipArchive archive, int userId, int? parentId, string currentPath)
         {
-            if (!itemsByParent.Contains(parentId))
-            {
-                return;
-            }
+            _logger.LogDebug("Processing children for ParentId: {ParentId}, Path: '{Path}'", parentId, currentPath);
 
-            foreach (var item in itemsByParent[parentId])
+            // Get all child items of the current parent
+            await foreach (var item in _itemRepository.GetDirectChildrenAsync(userId, parentId))
             {
+
                 var entryPath = Path.Combine(currentPath, item.Name).Replace('\\', '/');
 
                 if (item.Type == "folder")
                 {
                     _logger.LogDebug("Creating directory entry in archive: '{EntryPath}'", entryPath);
                     archive.CreateEntry(entryPath + "/");
-                    AddChildrenToZip(archive, itemsByParent, item.Id, entryPath);
+
+                    // Recurse into the folder to add its children
+                    await AddChildrenToZipAsync(archive, userId, item.Id, entryPath);
                 }
                 else if (item.Type == "file")
                 {
                     _logger.LogDebug("Adding file entry to archive: '{EntryPath}'", entryPath);
-                    AddFileToZipAsync(archive, item, entryPath).GetAwaiter().GetResult();
+                    await AddFileToZipAsync(archive, item, entryPath);
                 }
             }
         }
@@ -111,9 +105,8 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task<FileStream> CreateMultipleItemArchiveAsync(int userId, List<Item> itemsIds)
+        public async Task<FileStream> CreateMultipleItemArchiveAsync(int userId, IAsyncEnumerable<Item> itemsIds)
         {
-            _logger.LogInformation("Starting CreateMultipleItemArchive for UserId: {UserId} with {ItemCount} root items.", userId, itemsIds.Count);
             await ValidateMultipleItemsArchive(userId, itemsIds); // Checks if archive will be valid
 
             var tempFilePath = Path.GetTempFileName() + ".zip";
@@ -122,19 +115,16 @@ namespace CloudCore.Services.Implementations
             using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
             using (var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Create, true))
             {
-                foreach (var item in itemsIds) // For each item in list
+                await foreach (var item in itemsIds) // For each item in list
                 {
                     if (item.Type == "folder") // If item is folder
                     {
                         _logger.LogInformation("Processing folder '{ItemName}' (ID: {ItemId}) for multi-item archive.", item.Name, item.Id);
-                        var descendants = new List<Item>();
+
                         await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, item.Id))
                         {
-                            descendants.Add(child);
+                            await AddItemToZipLazily(zipArchive, child, item.Name);
                         }
-
-                        var itemsByParent = descendants.ToLookup(i => i.ParentId);
-                        AddChildrenToZip(zipArchive, itemsByParent, item.Id, item.Name);
                     }
                     else if (item.Type == "file")
                     {
@@ -147,7 +137,25 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, List<Item> items)
+
+        private async Task AddItemToZipLazily(ZipArchive zip, Item item, string basePath)
+        {
+            var entryPath = Path.Combine(basePath, item.Name).Replace('\\', '/');
+
+            if (item.Type == "folder")
+            {
+                zip.CreateEntry(entryPath + "/");
+                await foreach (var child in _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id))
+                {
+                    await AddItemToZipLazily(zip, child, entryPath);
+                }
+            }
+            else if (item.Type == "file")
+            {
+                await AddFileToZipAsync(zip, item, entryPath);
+            }
+        }
+        public async Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, IAsyncEnumerable<Item> items)
         {
             return await _storageCalculationService.CalculateMultipleItemsSizeAsync(userId, items);
         }
@@ -156,12 +164,23 @@ namespace CloudCore.Services.Implementations
         /// Validates that multiple items meet archive size and file count constraints
         /// </summary>
         /// <param name="userId">User ID for item validation</param>
-        /// <param name="items">Collection of items to validate for archiving</param>
+        /// <param name="items">IAsyncEnumerable<Item> collection of items to validate for archiving</param>
         /// <returns>Task that completes successfully if validation passes</returns>
         /// <exception cref="InvalidOperationException">Thrown when size exceeds 2000MB or file count exceeds 10000</exception>
-        private async Task ValidateMultipleItemsArchive(int userId, List<Item> items)
+        private async Task ValidateMultipleItemsArchive(int userId, IAsyncEnumerable<Item> items)
         {
-            var (totalSize, fileCount) = await _storageCalculationService.CalculateMultipleItemsSizeAsync(userId, items);
+            long totalSize = 0;
+            int fileCount = 0;
+
+            await foreach (var item in items)
+            {
+                if (item.IsDeleted == false && item.Type == "file")
+                {
+                    totalSize += item.FileSize ?? 0;
+                    fileCount++;
+                }
+            }
+
             var validationResult = _validationService.ValidateArchiveSize(totalSize, fileCount);
             if (!validationResult.IsValid)
                 throw new InvalidOperationException(validationResult.ErrorMessage);

@@ -87,7 +87,7 @@ namespace CloudCore.Services.Interfaces
 
         #endregion
 
-        #region Another
+        #region Other
         /// <summary>
         /// Orchestrates the renaming of an existing item.
         /// </summary>
@@ -105,6 +105,9 @@ namespace CloudCore.Services.Interfaces
         /// <param name="itemId">The ID of the item to move to trash.</param>
         /// <returns>A <see cref="DeleteResult"/> indicating the outcome of the operation.</returns>
         Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId);
+
+
+        Task<BatchDeleteResult> SoftDeleteItemsAsync(int userId, List<int> itemIds);
 
         /// <summary>
         /// Orchestrates the entire process of uploading a new file.

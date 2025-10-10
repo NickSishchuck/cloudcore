@@ -26,7 +26,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">User ID for authorization and file path resolution</param>
         /// <param name="itemsIds">List of item to include in the archive</param>
         /// <returns>Memory stream containing the ZIP archive data</returns>
-        Task<FileStream> CreateMultipleItemArchiveAsync(int userId, List<Item> itemsIds);
+        Task<FileStream> CreateMultipleItemArchiveAsync(int userId, IAsyncEnumerable<Item> itemsIds);
 
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace CloudCore.Services.Interfaces
         /// Accumulates totals from all items regardless of their type
         /// Handles mixed collections efficiently without duplicate database queries
         /// </remarks>
-        Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, List<Item> items);
+        Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, IAsyncEnumerable<Item> items);
 
     }
 }

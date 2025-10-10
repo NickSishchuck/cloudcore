@@ -15,6 +15,8 @@ namespace CloudCore.Services.Interfaces
         /// <returns>A list of all child items found recursively under the parent folder</returns>
         IAsyncEnumerable<Item> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
 
+        IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, bool includeDeleted = false);
+
         /// <summary>
         /// Asynchronously retrieves a paginated IEnumerable of items for a specific user, with options for filtering and sorting.
         /// </summary>
@@ -53,7 +55,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user who owns the item.</param>
         /// <param name="itemsIds">The IDs of the items to retrieve.</param>
         /// <returns>A Task that resolves to the Item object if found; otherwise, null.</returns>
-        Task<IEnumerable<Item>> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds);
+        IAsyncEnumerable<Item> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds);
 
 
         /// <summary>
@@ -119,7 +121,7 @@ namespace CloudCore.Services.Interfaces
         /// Atomically updates multiple items in the database, committing all changes in a single transaction.
         /// </summary>
         /// <param name="items">The collection of items to be updated.</param>
-        Task UpdateItemsInTransactionAsync(List<Item> items);
+        Task UpdateItemsInTransactionAsync(IAsyncEnumerable<Item> items, int batchSize = 500);
 
         /// <summary>
         /// Adds a single item in the database in a dedicated transaction, rolling back if any error occurs.

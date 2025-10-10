@@ -274,12 +274,21 @@ namespace CloudCore.Services.Implementations
 
         #region Batch Operations
 
-        public async Task UpdateStorageForItemsAsync(int userId, List<Item> items, bool isAdding)
+        public async Task UpdateStorageForItemsAsync(int userId, IAsyncEnumerable<Item> items, bool isAdding)
         {
-            // Calculate total size of all files
-            long totalBytes = items
-                .Where(i => i.Type == "file" && i.FileSize.HasValue)
-                .Sum(i => i.FileSize!.Value);
+            long totalBytes = 0;
+            Item? firstItem = null;
+
+            await foreach (var item in items)
+            {
+
+                firstItem ??= item;
+
+                if (item.Type == "file" && item.FileSize.HasValue)
+                {
+                    totalBytes += item.FileSize.Value;
+                }
+            }
 
             if (totalBytes == 0)
             {
@@ -287,8 +296,6 @@ namespace CloudCore.Services.Implementations
                 return;
             }
 
-            // Determine if items belong to a teamspace
-            var firstItem = items.FirstOrDefault();
             if (firstItem?.TeamspaceId.HasValue == true)
             {
                 // Teamspace items

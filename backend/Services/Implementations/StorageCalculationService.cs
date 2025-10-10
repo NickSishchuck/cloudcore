@@ -41,17 +41,17 @@ namespace CloudCore.Services.Implementations
 
         public async Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(
             int userId,
-            List<Item> items)
+            IAsyncEnumerable<Item> items)
         {
-            _logger.LogInformation(
-                "Calculating size for {ItemCount} items for user {UserId}",
-                items.Count, userId);
 
             long totalSize = 0;
             int fileCount = 0;
 
-            foreach (var item in items)
+            await foreach (var item in items)
             {
+                if (item.IsDeleted == false)
+                    continue;
+
                 if (item.Type == "file")
                 {
                     totalSize += item.FileSize ?? 0;

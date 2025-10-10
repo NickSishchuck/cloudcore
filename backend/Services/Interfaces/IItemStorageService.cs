@@ -93,10 +93,9 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="item">The item to be renamed.</param>
         /// <param name="newName">The new name for the item.</param>
-        /// <param name="childItems">Not used in this implementation but kept for interface consistency.</param>
         /// <param name="folderPath">The current absolute path of the item. Required for renaming.</param>
         /// <returns>The new relative path of the renamed item.</returns>
-        string RenameItemPhysically(Item item, string newName, IEnumerable<Item>? childItems = null, string? folderPath = null);
+        string RenameItemPhysically(Item item, string newName, string? folderPath = null);
 
 
         #endregion

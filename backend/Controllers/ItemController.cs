@@ -192,6 +192,15 @@ namespace CloudCore.Controllers
 
         }
 
+        //[HttpPost("delete/batch")]
+        //public async Task<IActionResult> DeleteItemsBatchAsync(int userId, [FromBody] List<int> itemIds)
+        //{
+        //    _logger.LogInformation("User {UserId} attempting to delete {ItemCount} items.", userId, itemIds.Count);
+        //    var result = await _itemApplication.SoftDeleteItemsBatchAsync(userId, itemIds);
+        //    _logger.LogInformation("{DeletedCount} out of {ItemCount} items successfully moved to trash for User ID: {UserId}.", result.DeletedCount, itemIds.Count, userId);
+        //    return Ok(result);
+        //}
+
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)
         {
@@ -241,8 +250,6 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> CreateFolderAsync([Required] int userId, [FromBody] FolderCreateRequest request)
         {
-
-
 
             _logger.LogInformation("User {UserId} attempting to create folder '{FolderName}' in Parent ID: {ParentId}.", userId, request.Name, request.ParentId);
 
@@ -330,5 +337,7 @@ namespace CloudCore.Controllers
 
             return Ok(result);
         }
+
+
     }
 }

@@ -10,6 +10,7 @@ using Serilog;
 using Serilog.Events;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace CloudCore
 {
@@ -71,6 +72,17 @@ namespace CloudCore
 
                 // Add db context (in case of multiple use of context, context factory provided)
                 builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+
+                builder.Services.Configure<FormOptions>(options =>
+                {
+                    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+                });
+
+                builder.WebHost.ConfigureKestrel(options =>
+                {
+                    options.Limits.MaxRequestBodySize = 104857600; // 100 MB
+                });
 
                 // Add services
                 builder.Services.AddScoped<IItemStorageService, ItemStorageService>();

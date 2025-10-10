@@ -1,3 +1,5 @@
+using CloudCore.Domain.Entities;
+
 namespace CloudCore.Services.Interfaces
 {
     /// <summary>
@@ -79,7 +81,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">User ID</param>
         /// <param name="items">Items being added/removed</param>
         /// <param name="isAdding">True if adding, false if removing</param>
-        Task UpdateStorageForItemsAsync(int userId, List<Domain.Entities.Item> items, bool isAdding);
+        Task UpdateStorageForItemsAsync(int userId, IAsyncEnumerable<Item> items, bool isAdding);
 
         /// <summary>
         /// Recalculates and updates actual storage usage from database

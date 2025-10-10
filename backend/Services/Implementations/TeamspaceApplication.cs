@@ -436,28 +436,27 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            List<Item> childItems = new();
+            IAsyncEnumerable<Item> childItemsAsync;
             string? folderPath = null;
 
             if (item.Type == "folder")
             {
-                await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
-                {
-                    childItems.Add(child);
-                }
+                childItemsAsync = _itemRepository.GetAllChildItemsAsync(userId, itemId)
+                                                 .Prepend(item); // parent folder
                 folderPath = await _itemRepository.GetFolderPathAsync(item);
                 folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
+                _logger.LogInformation("Folder Path is {FolderPath}", folderPath);
+            }
+            else
+            {
+                childItemsAsync = AsyncEnumerable.Repeat(item, 1);
             }
 
-            var itemsToRename = _itemManagerService.PrepareItemsForRenaming(
-                item,
-                newName,
-                childItems,
-                folderPath);
+            var itemsToRenameAsync = _itemManagerService.PrepareItemsForRenaming(item, newName, childItemsAsync, folderPath);
 
             try
             {
-                await _itemRepository.UpdateItemsInTransactionAsync(itemsToRename);
+                await _itemRepository.UpdateItemsInTransactionAsync(itemsToRenameAsync);
 
                 _logger.LogInformation("Item renamed in teamspace successfully. ItemId={ItemId}, NewName={NewName}",
                     itemId, newName);
@@ -501,24 +500,30 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            List<Item> childItems = new();
-            
+            IAsyncEnumerable<Item> itemsToDeleteAsync;
+
             if (item.Type == "folder")
             {
-                await foreach(var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
-                {
-                    childItems.Add(child);
-                }
+                itemsToDeleteAsync = _itemRepository.GetAllChildItemsAsync(userId, itemId)
+                                                   .Prepend(item);
+            }
+            else
+            {
+                itemsToDeleteAsync = AsyncEnumerable.Repeat(item, 1);
             }
 
-            var itemsToDelete = _itemManagerService.PrepareItemsForSoftDelete(item, childItems);
+            var preparedItemsAsync = _itemManagerService.PrepareItemsForSoftDeleteAsync(itemsToDeleteAsync);
 
             try
             {
-                await _itemRepository.UpdateItemsInTransactionAsync(itemsToDelete);
+                await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
 
-                var allItems = new List<Item>(itemsToDelete) { item };
-                long totalBytes = allItems.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+                long totalBytes = 0;
+                await foreach (var i in itemsToDeleteAsync)
+                {
+                    if (i.Type == "file")
+                        totalBytes += i.FileSize ?? 0;
+                }
                 await _storageTrackingService.RemoveFromTeamspaceStorageAsync(teamspaceId, totalBytes);
 
                 _logger.LogInformation("Item soft deleted in teamspace successfully. ItemId={ItemId}", itemId);
@@ -579,18 +584,25 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            List<Item> itemsToRestore = new() { item };
-            List<Item> descendants = new();
+            IAsyncEnumerable<Item> itemsToRestoreAsync;
+
             if (item.Type == "folder")
             {
-                await foreach (var desc in _itemRepository.GetAllChildItemsAsync(userId, itemId))
-                {
-                    descendants.Add(desc);
-                }
-                itemsToRestore.AddRange(descendants);
+                itemsToRestoreAsync = _itemRepository.GetAllChildItemsAsync(userId, itemId)
+                                                    .Prepend(item);
+            }
+            else
+            {
+                itemsToRestoreAsync = AsyncEnumerable.Repeat(item, 1);
             }
 
-            long totalBytes = itemsToRestore.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+            long totalBytes = 0;
+            await foreach (var i in itemsToRestoreAsync)
+            {
+                if (i.Type == "file")
+                    totalBytes += i.FileSize ?? 0;
+            }
+
             var canRestore = await _storageTrackingService.CanAddToTeamspaceStorageAsync(teamspaceId, totalBytes);
 
             if (!canRestore)
@@ -606,11 +618,11 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            _itemManagerService.PrepareItemsForRestore(itemsToRestore);
+            var preparedItemsAsync = _itemManagerService.PrepareItemsForRestoreAsync(itemsToRestoreAsync);
 
             try
             {
-                await _itemRepository.UpdateItemsInTransactionAsync(itemsToRestore);
+                await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
 
                 await _storageTrackingService.AddToTeamspaceStorageAsync(teamspaceId, totalBytes);
 
@@ -702,17 +714,15 @@ namespace CloudCore.Services.Implementations
             _logger.LogInformation("Downloading multiple teamspace items. TeamspaceId={TeamspaceId}, Count={Count}",
                 teamspaceId, itemIds.Count);
 
-            var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemIds);
+            var itemsStream = _itemRepository.GetItemsByIdsForUserAsync(userId, itemIds).Where(i => i.TeamspaceId == teamspaceId && i.IsDeleted == false);
 
             // Verify all items belong to the teamspace
-            var teamspaceItems = items.Where(i => i.TeamspaceId == teamspaceId && i.IsDeleted == false).ToList();
-
-            if (teamspaceItems.Count == 0)
+            if (!await itemsStream.AnyAsync())
             {
                 throw new FileNotFoundException(ErrorCodes.ITEM_NOT_FOUND);
             }
 
-            var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, teamspaceItems);
+            var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, itemsStream);
             var fileName = $"teamspace_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
 
             return (archiveStream, fileName);

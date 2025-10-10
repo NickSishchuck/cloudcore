@@ -47,16 +47,37 @@ namespace CloudCore.Services.Implementations
                 ORDER BY Level, Type DESC, Name;"
             ;
 
-                await foreach (var item in context.Items.FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
-                .AsNoTracking()
-                                                        .AsAsyncEnumerable())
-                {
+            await foreach (var item in context.Items.FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
+                                                    .AsNoTracking()
+                                                    .AsAsyncEnumerable())
+            {
                     yield return item;
-        }
+            }
+
             }
             finally
             {
                 await context.DisposeAsync();
+            }
+        }
+
+        public async IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, bool includeDeleted = false)
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.UserId == userId && i.ParentId == parentId);
+
+
+            if (includeDeleted == false)
+            {
+                query = query.Where(i => i.IsDeleted == false);
+            }
+
+            await foreach (var item in query.AsAsyncEnumerable())
+            {
+                yield return item;
             }
         }
 
@@ -73,7 +94,7 @@ namespace CloudCore.Services.Implementations
             if (!string.IsNullOrEmpty(searchQuery))
             {
                 _logger.LogInformation("Searching items for UserId={UserId}, Query={SearchQuery}", userId, searchQuery);
-                query = query.Where(i => i.Name.ToLower().Contains(searchQuery.ToLower()));
+                query = query.Where(i => EF.Functions.Like(i.Name.ToLower(), $"%{searchQuery.ToLower()}%"));
             }
             if (teamspaceId.HasValue)
             {
@@ -189,26 +210,23 @@ namespace CloudCore.Services.Implementations
             return item;
         }
 
-        public async Task<IEnumerable<Item>> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds)
+        public async IAsyncEnumerable<Item> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds)
         {
             if (itemsIds == null || itemsIds.Count == 0)
             {
-                _logger.LogWarning("GetItemsByIdsForUserAsync called with an empty or null list of IDs for UserId: {UserId}", userId);
-                return Enumerable.Empty<Item>();
+                _logger.LogWarning("GetItemsByIdsForUserAsync called with empty or null IDs for UserId: {UserId}", userId);
+                yield break;
             }
-
-            _logger.LogInformation("Fetching {ItemCount} items by IDs for UserId: {UserId}", itemsIds.Count, userId);
 
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-            var items = await context.Items
+            await foreach (var item in context.Items
                 .AsNoTracking()
                 .Where(i => i.UserId == userId && i.IsDeleted == false && itemsIds.Contains(i.Id))
-                .ToListAsync();
-
-            _logger.LogInformation("Found {FoundCount} out of {RequestedCount} items for UserId: {UserId}", items.Count, itemsIds.Count, userId);
-
-            return items;
+                .AsAsyncEnumerable())
+            {
+                yield return item;
+            }
         }
 
         public async Task<IEnumerable<Item>> GetDeletedItemsByIdsAsync(List<int> itemsIds)
@@ -386,53 +404,24 @@ namespace CloudCore.Services.Implementations
 
         public async Task<(long totalSize, int fileCount)> CalculateArchiveSizeAsync(int userId, int? folderId)
         {
-            using var _context = _dbContextFactory.CreateDbContext();
+            long totalSize = 0;
+            int fileCount = 0;
 
-            if (folderId.HasValue)
-            {
-                long totalSize = 0;
-                int fileCount = 0;
-
-                await foreach (var item in GetAllChildItemsAsync(userId, folderId.Value))
-                {
-                    if (item.Type == "file")
-                    {
-                        totalSize += item.FileSize ?? 0;
-                        fileCount++;
-                    }
-                }
-                
-                return (totalSize, fileCount);
-            }
-            else
-            {
-                var items = await _context.Items
+            await foreach (var item in folderId.HasValue
+                ? GetAllChildItemsAsync(userId, folderId.Value)
+                : _dbContextFactory.CreateDbContext().Items
                     .AsNoTracking()
-                    .Where(item => item.UserId == userId && item.IsDeleted == false && item.ParentId == folderId)
-                    .ToListAsync();
-
-                long totalSize = 0;
-                int fileCount = 0;
-                foreach (var item in items)
+                    .Where(i => i.UserId == userId && i.IsDeleted == false && i.ParentId == folderId)
+                    .AsAsyncEnumerable())
+            {
+                if (item.Type == "file")
                 {
-                    if (item.Type == "file")
-                    {
-                        totalSize += item.FileSize ?? 0;
-                        fileCount++;
-                    }
+                    totalSize += item.FileSize ?? 0;
+                    fileCount++;
                 }
-
-                var subfolders = items.Where(i => i.Type == "folder").ToList();
-
-                foreach (var folder in subfolders)
-                {
-                    var (subSize, subCount) = await CalculateArchiveSizeAsync(userId, folder.Id);
-                    totalSize += subSize;
-                    fileCount += subCount;
-                }
-
-                return (totalSize, fileCount);
             }
+
+            return (totalSize, fileCount);
         }
         public async Task AddItemInTranscationAsync(Item item)
         {
@@ -454,26 +443,48 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task UpdateItemsInTransactionAsync(List<Item> items)
+        public async Task UpdateItemsInTransactionAsync(IAsyncEnumerable<Item> items, int batchSize = 500)
         {
-            using var context = _dbContextFactory.CreateDbContext();
+            await using var context = _dbContextFactory.CreateDbContext();
             await using var transaction = await context.Database.BeginTransactionAsync();
 
-            _logger.LogInformation("Starting transaction to update {ItemCount} items.", items.Count);
+            _logger.LogInformation("Starting transaction to update items lazily.");
             try
             {
-                context.UpdateRange(items);
-                await context.SaveChangesAsync();
+                var batch = new List<Item>(batchSize);
+                int totalProcessed = 0;
+
+                await foreach (var item in items)
+                {
+                    batch.Add(item);
+
+                    if (batch.Count >= batchSize)
+                    {
+                        context.UpdateRange(batch);
+                        await context.SaveChangesAsync();
+                        totalProcessed += batch.Count;
+                        _logger.LogDebug("Saved batch of {Count} items, total: {Total}", batch.Count, totalProcessed);
+                        batch.Clear();
+                    }
+                }
+
+                if (batch.Count > 0)
+                {
+                    context.UpdateRange(batch);
+                    await context.SaveChangesAsync();
+                    totalProcessed += batch.Count;
+                    _logger.LogDebug("Saved final batch of {Count} items", batch.Count);
+                }
+
                 await transaction.CommitAsync();
-                _logger.LogInformation("Transaction committed successfully. Updated {ItemCount} items.", items.Count);
+                _logger.LogInformation("Transaction committed successfully. Total items updated: {Total}", totalProcessed);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Transaction failed. Rolling back changes.");
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Transaction failed. Rolled back changes for {ItemCount} items.", items.Count);
                 throw;
             }
-
         }
 
         public async Task DeleteItemPermanentlyAsync(Item item)

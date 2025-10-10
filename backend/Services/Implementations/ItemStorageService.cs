@@ -127,7 +127,7 @@ namespace CloudCore.Services.Implementations
             return MimeTypeMappings.TryGetValue(extension ?? "", out var mimeType) ? mimeType : "application/octet-stream";
         }
 
-        public string? RenameItemPhysically(Item item, string newName, IEnumerable<Item>? childItems = null, string? folderPath = null)
+        public string? RenameItemPhysically(Item item, string newName, string? folderPath = null)
         {
             if (item.Type == "file")
             {
