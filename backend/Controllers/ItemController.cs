@@ -192,14 +192,23 @@ namespace CloudCore.Controllers
 
         }
 
-        //[HttpPost("delete/batch")]
-        //public async Task<IActionResult> DeleteItemsBatchAsync(int userId, [FromBody] List<int> itemIds)
-        //{
-        //    _logger.LogInformation("User {UserId} attempting to delete {ItemCount} items.", userId, itemIds.Count);
-        //    var result = await _itemApplication.SoftDeleteItemsBatchAsync(userId, itemIds);
-        //    _logger.LogInformation("{DeletedCount} out of {ItemCount} items successfully moved to trash for User ID: {UserId}.", result.DeletedCount, itemIds.Count, userId);
-        //    return Ok(result);
-        //}
+        [HttpDelete("delete/batch")]
+        public async Task<IActionResult> DeleteItemsBatchAsync(int userId, [FromBody] List<int> itemIds)
+        {
+            _logger.LogInformation("User {UserId} attempting to delete {ItemCount} items.", userId, itemIds.Count);
+            var result = await _itemApplication.SoftDeleteItemsAsync(userId, itemIds);
+
+            if (!result.IsSuccess)
+            {
+                return result.ErrorCode switch
+                {
+                    ErrorCodes.ITEM_NOT_FOUND => NotFound(result),
+                    _ => StatusCode(500, result)
+                };
+            }
+
+            return Ok(result);
+        }
 
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)

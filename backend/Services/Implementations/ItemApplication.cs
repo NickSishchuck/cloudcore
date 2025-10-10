@@ -307,8 +307,75 @@ namespace CloudCore.Services.Implementations
 
         public async Task<BatchDeleteResult> SoftDeleteItemsAsync(int userId, List<int> itemIds)
         {
-            throw new NotImplementedException();
+            _logger.LogInformation("Batch soft delete started for user {UserId}, items: {ItemIds}", userId, string.Join(", ", itemIds));
+
+            var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemIds).ToListAsync();
+
+            if (items.Count == 0)
+            {
+                _logger.LogWarning("Batch delete failed: no items found for user {UserId}", userId);
+                return new BatchDeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "No items found for deletion."
+                };
+            }
+
+            long totalBytes = 0;
+            var allStreams = new List<IAsyncEnumerable<Item>>();
+
+            foreach (var item in items)
+            {
+                var stream = CreateItemStream(userId, item);
+                await foreach (var i in stream)
+                {
+                    if (i.Type == "file" && i.FileSize.HasValue)
+                        totalBytes += i.FileSize.Value;
+                }
+            }
+
+            async IAsyncEnumerable<Item> CombineStreams()
+            {
+                foreach (var item in items)
+                {
+                    var stream = CreateItemStream(userId, item);
+                    await foreach (var i in stream)
+                        yield return i;
+                }
+            }
+
+            try
+            {
+                var combinedStream = CombineStreams();
+
+                var preparedItems = _itemManagerService.PrepareItemsForSoftDeleteAsync(combinedStream);
+
+                await _itemRepository.UpdateItemsInTransactionAsync(preparedItems);
+                _logger.LogInformation("All items updated in DB successfully for user {UserId}", userId);
+
+                await _storageTrackingService.RemoveFromPersonalStorageAsync(userId, totalBytes);
+                _logger.LogInformation("Storage updated successfully for user {UserId}", userId);
+
+                return new BatchDeleteResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
+                    Message = $"Successfully deleted {items.Count} items."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Batch delete failed for user {UserId}", userId);
+                return new BatchDeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = "An unexpected error occurred during batch delete."
+                };
+            }
         }
+
 
         public async Task<RenameResult> RenameItemAsync(int userId, int itemId, string newName)
         {
