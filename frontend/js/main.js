@@ -16,7 +16,7 @@ class CloudCoreDrive {
         this.isTrashView = false;
         this.breadcrumbPath = [];
         this.selectedItems = new Set();
-
+    
         // Pagination
         this.currentPage = 1;
         this.pageSize = 30;
@@ -316,6 +316,7 @@ class CloudCoreDrive {
         row.className = this.isTrashView ? 'file-list-row trash-mode' : 'file-list-row';
         row.dataset.itemId = item.id;
         row.dataset.itemType = item.type;
+        row.draggable = !this.isTrashView;
 
         const iconInfo = getFileIcon(item);
         const sizeDisplay = item.type === 'file' 
@@ -356,8 +357,186 @@ class CloudCoreDrive {
         row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
         row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
 
+        if (!this.isTrashView) {
+        row.addEventListener('dragstart', (e) => this.handleRowDragStart(e, item, row));
+        row.addEventListener('dragend', (e) => this.handleRowDragEnd(e, row));
+        
+        
+        if (item.type === 'folder') {
+            row.addEventListener('dragover', (e) => {
+                
+                if (e.dataTransfer.types.includes('text/plain')) {
+                    this.handleRowDragOver(e, item, row);
+                }
+            });
+            row.addEventListener('dragleave', (e) => this.handleRowDragLeave(e, row));
+            row.addEventListener('drop', (e) => {
+                
+                if (e.dataTransfer.types.includes('text/plain')) {
+                    this.handleRowDrop(e, item);
+                }
+            });
+        }
+    }
+
         return row;
     }
+
+    handleRowDragStart(e, item, row) {
+    if (!this.selectedItems.has(item)) {
+        document.querySelectorAll('.file-list-row.selected').forEach(el => el.classList.remove('selected'));
+        this.selectedItems.clear();
+        this.selectedItems.add(item);
+        row.classList.add('selected');
+    }
+
+    this.draggedItems = Array.from(this.selectedItems).map(i => i.id);
+    this.dragSourceType = 'internal';
+    this.isDraggingInternal = true;
+    
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify(this.draggedItems));
+    
+
+    const ghostElement = this.createDragGhost(item);
+    document.body.appendChild(ghostElement);
+    
+
+    ghostElement.offsetHeight;
+    
+
+    e.dataTransfer.setDragImage(ghostElement, 50, 25);
+    
+
+    setTimeout(() => {
+        if (ghostElement && ghostElement.parentNode) {
+            document.body.removeChild(ghostElement);
+        }
+    }, 100);
+    
+    row.classList.add('dragging');
+    console.log('Dragging items:', this.draggedItems);
+}
+
+createDragGhost(item) {
+    const ghostElement = document.createElement('div');
+    ghostElement.className = 'drag-ghost';
+    
+    const iconInfo = getFileIcon(item);
+    const count = this.selectedItems.size;
+    
+
+    const displayName = item.name.length > 25 ? item.name.substring(0, 25) + '...' : item.name;
+    
+
+    ghostElement.innerHTML = `
+        <span class="material-symbols-outlined ${iconInfo.class}">${iconInfo.icon}</span>
+        <span class="drag-ghost-text">${displayName}</span>
+        ${count > 1 ? `<span class="drag-ghost-count">${count}</span>` : ''}
+    `;
+    
+
+    ghostElement.style.cssText = `
+        position: fixed;
+        top: -9999px;
+        left: -9999px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        opacity: 1;
+    `;
+    
+    return ghostElement;
+}
+
+handleRowDragEnd(e, row) {
+    row.classList.remove('dragging');
+    
+
+    document.querySelectorAll('.file-list-row').forEach(r => {
+        r.classList.remove('drag-over');
+    });
+    
+    console.log('Drag ended');
+}
+
+handleRowDragOver(e, item, row) {
+    if (item.type !== 'folder') return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    
+
+    if (!this.selectedItems.has(item)) {
+        row.classList.add('drag-over');
+    }
+}
+
+handleRowDragLeave(e, row) {
+
+    if (!row.contains(e.relatedTarget)) {
+        row.classList.remove('drag-over');
+    }
+}
+
+async handleRowDrop(e, targetItem) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    document.querySelectorAll('.file-list-row').forEach(r => {
+        r.classList.remove('drag-over');
+    });
+    
+    if (targetItem.type !== 'folder') {
+        console.log('Target is not a folder');
+        return;
+    }
+    
+    if (!this.draggedItems || this.draggedItems.length === 0) {
+        console.log('No items to move');
+        return;
+    }
+
+    if (this.draggedItems.includes(targetItem.id)) {
+        console.log('Cannot move folder into itself');
+        this.draggedItems = null;
+        this.dragSourceType = null;
+        this.isDraggingInternal = false;
+        document.body.classList.remove('dragging');
+        return;
+    }
+
+
+    try {
+        console.log(`Moving ${this.draggedItems.length} item(s) to folder:`, targetItem.name);
+
+        for (const itemId of this.draggedItems) {
+            await this.api.moveItem(this.currentUserId, itemId, targetItem.id);
+        }
+        
+        const itemsText = this.draggedItems.length === 1 
+            ? '1 item' 
+            : `${this.draggedItems.length} items`;
+        
+        this.notifications.success(`Moved ${itemsText} to ${targetItem.name}`);
+        
+        this.selectedItems.clear();
+        await this.loadFiles(this.currentFolderId, true);
+        
+    } catch (error) {
+        console.error('Move error:', error);
+        this.notifications.error(this.i18n.t('failedToMove'));
+    }
+    
+    this.draggedItems = null;
+    this.dragSourceType = null;
+}
 
 
     initializeDeselectOnClick() {
@@ -1058,92 +1237,193 @@ class CloudCoreDrive {
         }
     }
 
-    setupDragAndDrop() {
-        console.log('Setting up drag and drop');
-        const container = document.getElementById('fileContainer');
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            container.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
-
-        container.addEventListener('dragenter', () => {
+setupDragAndDrop() {
+    console.log('Setting up drag and drop');
+    const container = document.getElementById('fileContainer');
+    
+    container.addEventListener('dragover', (e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+            e.preventDefault();
+            e.stopPropagation();
             container.classList.add('dragover');
-        });
+        }
+    }, false);
 
-        container.addEventListener('dragleave', (e) => {
-            if (!container.contains(e.relatedTarget)) {
-                container.classList.remove('dragover');
-            }
-        });
+    container.addEventListener('dragenter', (e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+            e.preventDefault();
+            e.stopPropagation();
+            container.classList.add('dragover');
+        }
+    }, false);
 
-        container.addEventListener('drop', async (e) => {
+    container.addEventListener('dragleave', (e) => {
+        if (e.target === container || !container.contains(e.relatedTarget)) {
             container.classList.remove('dragover');
+        }
+    }, false);
+
+    container.addEventListener('drop', async (e) => {
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            container.classList.remove('dragover');
+            
             console.log('Files dropped');
-
             const files = Array.from(e.dataTransfer.files);
-            if (files.length > 0) {
-                // Trigger file upload
-                const input = document.getElementById('fileInput');
-                const dt = new DataTransfer();
-                files.forEach(file => dt.items.add(file));
-                input.files = dt.files;
+            console.log(`Dropped ${files.length} files`);
 
-                // Manually trigger the change event
-                const event = new Event('change', { bubbles: true });
-                input.dispatchEvent(event);
-            }
-        });
-    }
+            const input = document.getElementById('fileInput');
+            const dt = new DataTransfer();
+            files.forEach(file => dt.items.add(file));
+            input.files = dt.files;
+            
+            const event = new Event('change', { bubbles: true });
+            input.dispatchEvent(event);
+        }
+    }, false);
+}
+
+
+
+
 
     updateBreadcrumbs() {
-        const breadcrumbs = document.getElementById('breadcrumbs');
-        if (!breadcrumbs) return;
+    const breadcrumbs = document.getElementById('breadcrumbs');
+    if (!breadcrumbs) return;
+    
+    breadcrumbs.innerHTML = '';
 
-        breadcrumbs.innerHTML = '';
+    const homeBreadcrumb = document.createElement('a');
+    homeBreadcrumb.className = 'breadcrumb';
+    homeBreadcrumb.href = '#';
+    
+    if (this.isTrashView) {
+        homeBreadcrumb.textContent = this.i18n.t('trash');
+        homeBreadcrumb.classList.add('current');
+        breadcrumbs.appendChild(homeBreadcrumb);
+    } else {
+        homeBreadcrumb.textContent = this.i18n.t('myDrive');
+        homeBreadcrumb.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.navigateToRoot();
+        });
+        
+        this.setupBreadcrumbDragDrop(homeBreadcrumb, null);
+        
+        breadcrumbs.appendChild(homeBreadcrumb);
 
-        const homeBreadcrumb = document.createElement('a');
-        homeBreadcrumb.className = 'breadcrumb';
-        homeBreadcrumb.href = '#';
+        this.breadcrumbPath.forEach((folder, index) => {
+            const separator = document.createElement('span');
+            separator.className = 'breadcrumb-separator';
+            separator.textContent = '/';
+            breadcrumbs.appendChild(separator);
 
-        if (this.isTrashView) {
-            homeBreadcrumb.textContent = this.i18n.t('trash');
-            homeBreadcrumb.classList.add('current');
-            breadcrumbs.appendChild(homeBreadcrumb);
-        } else {
-            homeBreadcrumb.textContent = this.i18n.t('myDrive');
-            homeBreadcrumb.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.navigateToRoot();
-            });
-            breadcrumbs.appendChild(homeBreadcrumb);
+            const breadcrumb = document.createElement('a');
+            breadcrumb.className = index === this.breadcrumbPath.length - 1 
+                ? 'breadcrumb current' 
+                : 'breadcrumb';
+            breadcrumb.href = '#';
+            breadcrumb.textContent = folder.name;
 
-            this.breadcrumbPath.forEach((folder, index) => {
-                const separator = document.createElement('span');
-                separator.className = 'breadcrumb-separator';
-                separator.textContent = ' > ';
-                breadcrumbs.appendChild(separator);
+            if (index < this.breadcrumbPath.length - 1) {
+                breadcrumb.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.navigateToFolderInPath(index);
+                });
+                
+                this.setupBreadcrumbDragDrop(breadcrumb, folder.id);
+            }
 
-                const breadcrumb = document.createElement('a');
-                breadcrumb.className = index === this.breadcrumbPath.length - 1
-                    ? 'breadcrumb current'
-                    : 'breadcrumb';
-                breadcrumb.href = '#';
-                breadcrumb.textContent = folder.name;
+            breadcrumbs.appendChild(breadcrumb);
+        });
+    }
+}
 
-                if (index < this.breadcrumbPath.length - 1) {
-                    breadcrumb.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.navigateToFolderInPath(index);
-                    });
+setupBreadcrumbDragDrop(breadcrumbElement, folderId) {
+    breadcrumbElement.addEventListener('dragover', (e) => {
+        if (e.dataTransfer.types.includes('text/plain')) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+            breadcrumbElement.classList.add('drag-over-breadcrumb');
+        }
+    });
+
+    breadcrumbElement.addEventListener('dragleave', (e) => {
+        breadcrumbElement.classList.remove('drag-over-breadcrumb');
+    });
+
+    breadcrumbElement.addEventListener('drop', async (e) => {
+        if (e.dataTransfer.types.includes('text/plain')) {
+            e.preventDefault();
+            e.stopPropagation();
+            breadcrumbElement.classList.remove('drag-over-breadcrumb');
+
+            if (!this.draggedItems || this.draggedItems.length === 0) {
+                console.log('No items to move');
+                return;
+            }
+
+            const targetFolderId = folderId; 
+
+            if (targetFolderId === this.currentFolderId) {
+                console.log('Cannot move to the same folder');
+                return;
+            }
+
+            try {
+                const targetName = folderId === null 
+                    ? this.i18n.t('myDrive') 
+                    : breadcrumbElement.textContent.trim();
+
+                console.log(`Moving ${this.draggedItems.length} item(s) to:`, targetName);
+
+                // TODO
+                if (this.draggedItems.length > 1) {
+                    const result = await this.api.bulkMoveItems(
+                        this.currentUserId, 
+                        this.draggedItems, 
+                        targetFolderId
+                    );
+
+                    if (result.successCount > 0) {
+                        const successText = result.successCount === 1 
+                            ? '1 item' 
+                            : `${result.successCount} items`;
+                        this.notifications.success(`Moved ${successText} to ${targetName}`);
+                    }
+
+                    if (result.failureCount > 0) {
+                        const failureText = result.failureCount === 1 
+                            ? '1 item failed' 
+                            : `${result.failureCount} items failed`;
+                        this.notifications.warning(`${failureText} to move`);
+                    }
+                } else {
+
+                    await this.api.moveItem(
+                        this.currentUserId, 
+                        this.draggedItems[0], 
+                        targetFolderId
+                    );
+                    this.notifications.success(`Moved to ${targetName}`);
                 }
 
-                breadcrumbs.appendChild(breadcrumb);
-            });
+
+                this.selectedItems.clear();
+                await this.loadFiles(this.currentFolderId, true);
+
+            } catch (error) {
+                console.error('Move error:', error);
+                this.notifications.error(error.message || this.i18n.t('failedToMove'));
+            }
+
+            this.draggedItems = null;
+            this.dragSourceType = null;
         }
-    }
+    });
+}
 
     navigateToRoot() {
         if (this.currentSearchQuery) {
@@ -1290,7 +1570,3 @@ document.addEventListener('DOMContentLoaded', () => {
     new CloudCoreDrive();
 });
 
-window.addEventListener('beforeunload', (e) => {
-    console.log('🔴 PAGE IS RELOADING!');
-    console.trace(); // Покажет стек вызовов
-});

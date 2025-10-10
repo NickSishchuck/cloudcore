@@ -146,7 +146,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="itemId">ID of the item being moved.</param>
         /// <param name="targetId">ID of the target destination folder.</param>
         /// <returns>A result indicating success or failure with user-friendly messages.</returns>
-        Task<MoveResult> MoveItemAsync(int userId, int itemId, int targetId);
+        Task<MoveResult> MoveItemAsync(int userId, int itemId, int? targetId);
 
         #endregion
     }

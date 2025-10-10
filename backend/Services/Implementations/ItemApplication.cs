@@ -647,10 +647,9 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task<MoveResult> MoveItemAsync(int userId, int itemId, int targetId)
+        public async Task<MoveResult> MoveItemAsync(int userId, int itemId, int? targetId)
         {
             var item = await _itemRepository.GetItemAsync(userId, itemId, null);
-            var targetItem = await _itemRepository.GetItemAsync(userId, targetId, null);
             if (item == null)
             {
                 _logger.LogWarning("MoveItem failed: Item with ID {ItemId} not found for user {UserId}", itemId, userId);
@@ -661,43 +660,52 @@ namespace CloudCore.Services.Implementations
                     Message = "Item to move not found."
                 };
             }
-            if (targetItem == null)
+
+            Item targetItem = null;
+            bool isMovingToRoot = targetId == null || targetId == 0;
+
+            if (!isMovingToRoot)
             {
-                _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
-                return new MoveResult
+                targetItem = await _itemRepository.GetItemAsync(userId, (int)targetId, null);
+                if (targetItem == null)
                 {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "Target folder not found."
-                };
-            }
-            if (targetItem.Type != "folder")
-            {
-                _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} is not a folder for user {UserId}", targetId, userId);
-                return new MoveResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.INVALID_TARGET,
-                    Message = "Target item is not a folder."
-                };
-            }
-            if (item.Type == "folder")
-            {
-                var cicularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, targetId);
-                if (!cicularValidation.IsValid)
-                {
-                    _logger.LogWarning("MoveItem failed: Cicular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
                     return new MoveResult
                     {
                         IsSuccess = false,
-                        ErrorCode = cicularValidation.ErrorCode,
-                        Message = cicularValidation.ErrorMessage
+                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                        Message = "Target folder not found."
+                    };
+                }
+                if (targetItem.Type != "folder")
+                {
+                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} is not a folder for user {UserId}", targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.INVALID_TARGET,
+                        Message = "Target item is not a folder."
                     };
                 }
             }
 
-            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(item.Name, item.Type, userId, targetId, itemId, true);
+            if (item.Type == "folder" && !isMovingToRoot)
+            {
+                var circularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, (int)targetId);
+                if (!circularValidation.IsValid)
+                {
+                    _logger.LogWarning("MoveItem failed: Circular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = circularValidation.ErrorCode,
+                        Message = circularValidation.ErrorMessage
+                    };
+                }
+            }
 
+            int? actualTargetId = isMovingToRoot ? null : targetId;
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(item.Name, item.Type, userId, actualTargetId, itemId, true);
             if (!uniquenessValidation.IsValid)
             {
                 _logger.LogWarning("MoveItem failed: Uniqueness validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
@@ -711,13 +719,9 @@ namespace CloudCore.Services.Implementations
 
             try
             {
-                // Get all child items if folder
                 IAsyncEnumerable<Item> childItemsAsync = CreateItemStream(userId, item);
-
-                // Get base path for user storage
                 var basePath = _itemStorageService.GetUserStoragePath(userId);
 
-                // Path to source folder (if item is a folder)
                 string sourceFolderPath = null;
                 if (item.Type == "folder")
                 {
@@ -726,25 +730,19 @@ namespace CloudCore.Services.Implementations
                     _logger.LogInformation("Source folder path: {Path}", sourceFolderPath);
                 }
 
-                // Path to destination folder
                 string destinationFolderPath;
-                if (targetItem.Id == 0)
+                if (isMovingToRoot)
                 {
-                    // Destination is the root folder
                     destinationFolderPath = basePath;
                 }
                 else
                 {
-                    // Destination is a subfolder
                     var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem);
                     destinationFolderPath = Path.Combine(basePath, targetRelativePath);
                 }
                 _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
 
-
-                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, targetId, sourceFolderPath, destinationFolderPath, childItemsAsync);
-
-
+                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, actualTargetId, sourceFolderPath, destinationFolderPath, childItemsAsync);
                 await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
 
                 var itemsForCount = _itemRepository.GetAllChildItemsAsync(userId, itemId).Prepend(item);
@@ -770,5 +768,6 @@ namespace CloudCore.Services.Implementations
                 };
             }
         }
+
     }
 }

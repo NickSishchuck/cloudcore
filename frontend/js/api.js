@@ -178,4 +178,22 @@ export class ApiClient {
         
         return response.text();
     }
+
+
+    async moveItem(userId, itemId, targetFolderId) {
+        const targetId = (targetFolderId === null || targetFolderId === undefined) ? 0 : targetFolderId;
+        
+        const response = await fetch(`${this.baseUrl}/user/${userId}/mydrive/${itemId}/move/${targetId}`, {
+            method: 'POST',
+            headers: this.getHeaders()
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || errorData.title || `Failed to move item: ${response.statusText}`);
+        }
+        
+        return await response.json();
+    }
+
 }

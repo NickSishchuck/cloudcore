@@ -71,7 +71,7 @@ namespace CloudCore.Services.Implementations
             throw new NotSupportedException($"Item type '{item.Type}' is not supported for renaming.");
         }
 
-        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null)
+        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));

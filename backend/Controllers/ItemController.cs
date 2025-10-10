@@ -321,8 +321,8 @@ namespace CloudCore.Controllers
             return Ok(result);
         }
 
-        [HttpPost("{itemId}/move/{targetId}")]
-        public async Task<IActionResult> MoveItemAsync(int userId, int itemId, int targetId)
+        [HttpPost("{itemId}/move/{targetId?}")]
+        public async Task<IActionResult> MoveItemAsync(int userId, int itemId, int? targetId)
         {
             _logger.LogInformation("User {UserId} attempting to move Item ID: {ItemID} to Target ID: {TargetId}", userId, itemId, targetId);
             var result = await _itemApplication.MoveItemAsync(userId, itemId, targetId);

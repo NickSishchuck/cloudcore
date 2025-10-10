@@ -67,7 +67,7 @@ namespace CloudCore.Services.Interfaces
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="destinationFolderPath"/> is null or whitespace, or when <paramref name="sourceFolderPath"/> is missing for folder type items.</exception>
         /// <exception cref="NotSupportedException">Thrown when the item type is not 'file' or 'folder'.</exception>
-        IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null);
+        IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null);
 
 
 
