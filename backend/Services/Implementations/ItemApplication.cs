@@ -114,14 +114,14 @@ namespace CloudCore.Services.Implementations
 
         }
 
-        public async Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync(int userId, List<int> itemsId)
+        public async Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync(int userId, List<int> itemsIds)
         {
 
-            var itemsValidation = await _validationService.ValidateItemIdsAsync(itemsId, userId);
+            var itemsValidation = await _validationService.ValidateItemIdsAsync(itemsIds, userId);
             if (!itemsValidation.IsValid)
                 throw new InvalidOperationException(itemsValidation.ErrorMessage);
 
-            var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemsId);
+            var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemsIds);
             int itemCount = items.Count();
             if (itemCount == 0)
                 throw new FileNotFoundException(ErrorCodes.FILE_NOT_FOUND);
@@ -172,9 +172,16 @@ namespace CloudCore.Services.Implementations
                         Message = "Cannot restore item because its parent folder was also deleted."
                     };
             }
-
-            var descendants = (itemToRestore.Type == "folder") ? await _itemRepository.GetAllChildItemsAsync(userId, itemId) : new List<Item>();
-
+            _logger.LogInformation("Getting descendants for item {ItemId} of type {ItemType}", itemToRestore.Id, itemToRestore.Type ?? "any");
+            var descendants = new List<Item>();
+            if (itemToRestore.Type == "folder")
+            {
+                await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                {
+                    descendants.Add(child);
+                }
+            }
+            _logger.LogInformation("Found {Count} descendants for item {ItemId}", descendants.Count, itemToRestore.Id);
             var allItems = new List<Item>(descendants) { itemToRestore };
 
             long totalBytes = allItems.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
@@ -209,6 +216,7 @@ namespace CloudCore.Services.Implementations
             }
         }
 
+
         // Refactored
         public async Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId)
         {
@@ -232,8 +240,10 @@ namespace CloudCore.Services.Implementations
 
             if (item.Type == "folder")
             {
-                childItems = await _itemRepository.GetAllChildItemsAsync(userId, itemId);
-                _logger.LogInformation("Folder detected. Found {ChildCount} child items for ItemId={ItemId}", childItems.Count, item.Id);
+                await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                {
+                    childItems.Add(child);
+                }
             }
             _logger.LogInformation("Performing soft delete for ItemId={ItemId} (and {ChildCount} children)", item.Id, childItems.Count);
 
@@ -323,7 +333,10 @@ namespace CloudCore.Services.Implementations
             if (item.Type == "folder")
             {
                 _logger.LogInformation("Fetching child items for ItemId={ItemId}", item.Id);
-                childItems = await _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id);
+                await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                {
+                    childItems.Add(child);
+                }
                 folderPath = await _itemRepository.GetFolderPathAsync(item);
                 folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
                 _logger.LogInformation("Folder Path is {FolderPath}", folderPath);
@@ -448,7 +461,7 @@ namespace CloudCore.Services.Implementations
                 if (createdItem != null && !string.IsNullOrEmpty(createdItem.FilePath))
                 {
                     _logger.LogInformation("Attempting to delete orphaned file at {FilePath}", createdItem.FilePath);
-                    _itemStorageService.DeleteItemPhysicaly(createdItem);
+                    _itemStorageService.DeleteItemPhysically(createdItem);
                 }
                 throw;
             }
@@ -540,6 +553,142 @@ namespace CloudCore.Services.Implementations
             }
         }
 
+        public async Task<MoveResult> MoveItemAsync(int userId, int itemId, int targetId)
+        {
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+            var targetItem = await _itemRepository.GetItemAsync(userId, targetId, null);
+            if (item == null)
+            {
+                _logger.LogWarning("MoveItem failed: Item with ID {ItemId} not found for user {UserId}", itemId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "Item to move not found."
+                };
+            }
+            if (targetItem == null)
+            {
+                _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "Target folder not found."
+                };
+            }
+            if (targetItem.Type != "folder")
+            {
+                _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} is not a folder for user {UserId}", targetId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.INVALID_TARGET,
+                    Message = "Target item is not a folder."
+                };
+            }
+            if (item.Type == "folder")
+            {
+                var cicularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, targetId);
+                if (!cicularValidation.IsValid)
+                {
+                    _logger.LogWarning("MoveItem failed: Cicular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = cicularValidation.ErrorCode,
+                        Message = cicularValidation.ErrorMessage
+                    };
+                }
+            }
 
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(item.Name, item.Type, userId, targetId, itemId, true);
+
+            if (!uniquenessValidation.IsValid)
+            {
+                _logger.LogWarning("MoveItem failed: Uniqueness validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
+                };
+            }
+
+            try
+            {
+                // Get all child items if folder
+                var childItems = new List<Item>();
+
+                if (item.Type == "folder")
+                {
+                    await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                    {
+                        childItems.Add(child);
+                    }
+                    _logger.LogInformation("Loaded {Count} child items for folder {ItemId}", childItems.Count, itemId);
+                }
+
+                // Get base path for user storage
+                var basePath = _itemStorageService.GetUserStoragePath(userId);
+
+                // Path to source folder (if item is a folder)
+                string sourceFolderPath = null;
+                if (item.Type == "folder")
+                {
+                    var sourceFolderPathRelative = await _itemRepository.GetFolderPathAsync(item);
+                    sourceFolderPath = Path.Combine(basePath, sourceFolderPathRelative);
+                    _logger.LogInformation("Source folder path: {Path}", sourceFolderPath);
+                }
+
+                // Path to destination folder
+                string destinationFolderPath;
+                if (targetItem.Id == null)
+                {
+                    // Destination is the root folder
+                    destinationFolderPath = basePath;
+                }
+                else
+                {
+                    // Destination is a subfolder
+                    var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem);
+                    destinationFolderPath = Path.Combine(basePath, targetRelativePath);
+                }
+                _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
+
+                // Prepare items for moving
+                _logger.LogInformation("Preparing items for moving. ItemId={ItemId}, ChildCount={ChildCount}",
+                    itemId, childItems.Count);
+
+                var itemsToUpdate = _itemManagerService.PrepareItemsForMoving(item, targetId, sourceFolderPath, destinationFolderPath, childItems.Any() ? childItems : null);
+
+
+                await _itemRepository.UpdateItemsInTransactionAsync(itemsToUpdate);
+
+                _logger.LogInformation("Item moved successfully. ItemId={ItemId}, TargetId={TargetId}, UpdatedItemsCount={Count}",
+                    itemId, targetId, itemsToUpdate.Count);
+
+                return new MoveResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.MOVED_SUCCESSFULLY,
+                    Message = $"Item '{item.Name}' moved successfully",
+                    ItemId = item.Id,
+                    UpdatedItemsCount = itemsToUpdate.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during move. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = "An unexpected error occurred. Please try again later."
+                };
+            }
+
+
+        }
     }
 }

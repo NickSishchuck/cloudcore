@@ -27,7 +27,7 @@ namespace CloudCore.Services.Implementations
                 _logger.LogInformation("Starting rename operation for item {ItemId} of type {ItemType} to new name '{NewName}'.",
                 item.Id, item.Type, newName);
 
-                var newRelativePath = _itemStorageService.RenameItemPhysicaly(item, newName);
+                var newRelativePath = _itemStorageService.RenameItemPhysically(item, newName);
 
                 _logger.LogInformation("Renaming file physically: {OldName} -> {NewName}", item.Name, newName);
 
@@ -54,7 +54,7 @@ namespace CloudCore.Services.Implementations
                     }
                 }
 
-                _itemStorageService.RenameItemPhysicaly(item, newName, childItems, folderPath);
+                _itemStorageService.RenameItemPhysically(item, newName, childItems, folderPath);
 
                 _logger.LogInformation("Folder rename completed. Updated {ChildCount} child items.", childItems?.Count ?? 0);
 
@@ -66,6 +66,105 @@ namespace CloudCore.Services.Implementations
             }
             _logger.LogError("Unsupported item type {ItemType} for renaming.", item.Type);
             throw new NotSupportedException($"Item type '{item.Type}' is not supported for renaming.");
+        }
+
+        public List<Item> PrepareItemsForMoving(Item item, int newParentId, string sourceFolderPath, string destinationFolderPath, List<Item> childItems = null)
+        {
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            if (string.IsNullOrWhiteSpace(destinationFolderPath))
+                throw new ArgumentException("Destination folder path is required", nameof(destinationFolderPath));
+
+            _logger.LogInformation("Starting move operation for item {ItemId} of type {ItemType} to parent {ParentId}",
+                item.Id, item.Type, newParentId);
+
+            var itemsToUpdate = new List<Item>();
+            var basePath = _itemStorageService.GetUserStoragePath(item.UserId);
+
+            if (item.Type == "file")
+            {
+                _logger.LogInformation("Moving file {FileName} (ID: {ItemId}) to parent {ParentId}",
+                    item.Name, item.Id, newParentId);
+
+                var oldFilePath = item.FilePath;
+
+                // Physically move the file
+                var newRelativePath = _itemStorageService.MoveItemPhysically(item, destinationFolderPath);
+
+                _logger.LogInformation("File physically moved: {OldPath} -> {NewPath}", oldFilePath, newRelativePath);
+
+                // Update metadata
+                item.ParentId = newParentId;
+                item.FilePath = newRelativePath;
+                item.UpdatedAt = DateTime.UtcNow;
+
+                itemsToUpdate.Add(item);
+
+                _logger.LogInformation("File move completed. New parent: {ParentId}, New path: {NewPath}",
+                    newParentId, newRelativePath);
+            }
+            else if (item.Type == "folder")
+            {
+                if (string.IsNullOrWhiteSpace(sourceFolderPath))
+                {
+                    throw new ArgumentException("Source folder path is required for folder items", nameof(sourceFolderPath));
+                }
+
+                _logger.LogInformation("Moving folder {FolderName} (ID: {ItemId}) with {ChildCount} child items",
+                    item.Name, item.Id, childItems?.Count ?? 0);
+
+                // Get the new absolute path for the folder
+                var newFolderPath = Path.Combine(destinationFolderPath, item.Name);
+
+                _logger.LogInformation("Folder paths - Old: {OldPath}, New: {NewPath}",
+                    sourceFolderPath, newFolderPath);
+
+                // Update paths for all child items before physical move
+                if (childItems != null && childItems.Any())
+                {
+                    foreach (var childItem in childItems)
+                    {
+                        if (childItem.Type == "file")
+                        {
+                            var oldChildAbsolutePath = Path.Combine(basePath, childItem.FilePath);
+
+                            // Get the relative path of the child item within the source folder
+                            var relativePathInFolder = Path.GetRelativePath(sourceFolderPath, oldChildAbsolutePath);
+
+                            // Build the new absolute path for the child item
+                            var newChildAbsolutePath = Path.Combine(newFolderPath, relativePathInFolder);
+
+                            // Convert to relative path for storage
+                            childItem.FilePath = Path.GetRelativePath(basePath, newChildAbsolutePath)
+                                .Replace("\\", "/");
+
+                            _logger.LogDebug("Updated child file path: {FileName} -> {NewPath}",
+                                childItem.Name, childItem.FilePath);
+                        }
+                    }
+
+                    itemsToUpdate.AddRange(childItems);
+                }
+
+                // Physically move the folder
+                _itemStorageService.MoveItemPhysically(item, destinationFolderPath, sourceFolderPath);
+
+                // Update metadata for the folder itself
+                item.ParentId = newParentId;
+                itemsToUpdate.Add(item);
+
+                _logger.LogInformation("Folder move completed. Updated {TotalCount} items (1 folder + {ChildCount} children)",
+                    itemsToUpdate.Count, childItems?.Count ?? 0);
+            }
+            else
+            {
+                _logger.LogError("Unsupported item type {ItemType} for moving", item.Type);
+                throw new NotSupportedException($"Item type '{item.Type}' is not supported for moving.");
+            }
+
+            _logger.LogInformation("Move preparation completed. Total items to update: {Count}", itemsToUpdate.Count);
+            return itemsToUpdate;
         }
 
         public List<Item> PrepareItemsForSoftDelete(Item item, List<Item> childItems = null)

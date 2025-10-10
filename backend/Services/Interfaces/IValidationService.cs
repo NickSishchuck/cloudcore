@@ -60,7 +60,16 @@ namespace CloudCore.Services.Interfaces
         /// </example>
         string FormatFileSize(long size);
 
-
+        /// <summary>
+        /// Validates that a folder is not being moved into itself or into one of its own subfolders,
+        /// which would create a circular reference in the folder hierarchy.
+        /// </summary>
+        /// <param name="userId">The ID of the user who owns the folders.</param>
+        /// <param name="folderId">The ID of the folder being moved.</param>
+        /// <param name="targetFolderId">The ID of the destination folder.</param>
+        /// <returns>
+        /// A ValidationResult indicating whether the move operation is valid.
+        Task<ValidationResult> ValidateIsFolderSubFolder(int userId, int folderId, int targetFolderId);
 
 
         /// <summary>

@@ -13,7 +13,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user ID to filter items by</param>
         /// <param name="maxDepth">The maximal depth to search by</param>
         /// <returns>A list of all child items found recursively under the parent folder</returns>
-        Task<List<Item>> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
+        IAsyncEnumerable<Item> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
 
         /// <summary>
         /// Asynchronously retrieves a paginated IEnumerable of items for a specific user, with options for filtering and sorting.
@@ -64,6 +64,7 @@ namespace CloudCore.Services.Interfaces
         Task<IEnumerable<Item>> GetDeletedItemsByIdsAsync(List<int> itemsIds);
 
         /// <summary>
+        /// WITHOUT USER PART!!!
         /// Asynchronously constructs the full, relative path of a folder by traversing its parent hierarchy.
         /// </summary>
         /// <param name="folder">The folder item for which to build the path.</param>
@@ -155,5 +156,7 @@ namespace CloudCore.Services.Interfaces
         /// The task result contains the breadcrumb path as a string, constructed from the root folder to the specified folder.
         /// </returns>
         Task<string> GetBreadcrumbPathAsync(Item folder);
+
+        Task<bool> IsFolderSubFolderAsync(int userId, int parentFolderId, int childFolderId);
     }
 }

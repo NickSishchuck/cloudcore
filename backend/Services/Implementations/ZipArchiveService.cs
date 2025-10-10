@@ -13,7 +13,7 @@ namespace CloudCore.Services.Implementations
 
         private readonly IItemStorageService _fileStorageService;
         private readonly IValidationService _validationService;
-        private readonly IItemRepository _itemDataService;
+        private readonly IItemRepository _itemRepository;
         private readonly ILogger<ZipArchiveService> _logger;
         private readonly IStorageCalculationService _storageCalculationService;
 
@@ -22,7 +22,7 @@ namespace CloudCore.Services.Implementations
         {
             _fileStorageService = fileStorage;
             _validationService = validationService;
-            _itemDataService = itemDataService;
+            _itemRepository = itemDataService;
             _logger = logger;
             _storageCalculationService = storageCalculationService;
         }
@@ -36,7 +36,11 @@ namespace CloudCore.Services.Implementations
             var tempFilePath = Path.GetTempFileName() + ".zip";
             _logger.LogInformation("Creating temporary archive at: {TempPath}", tempFilePath);
 
-            var allDescendants = await _itemDataService.GetAllChildItemsAsync(userId, folderId);
+            List<Item> allDescendants = new();
+            await foreach(var desc in _itemRepository.GetAllChildItemsAsync(userId, folderId))
+            {
+                allDescendants.Add(desc);
+            }
             var allNotDeletedDescendants = allDescendants.Where(i => i.IsDeleted == false);
             var itemsByParent = allNotDeletedDescendants.ToLookup(item => item.ParentId);
 
@@ -123,7 +127,12 @@ namespace CloudCore.Services.Implementations
                     if (item.Type == "folder") // If item is folder
                     {
                         _logger.LogInformation("Processing folder '{ItemName}' (ID: {ItemId}) for multi-item archive.", item.Name, item.Id);
-                        var descendants = await _itemDataService.GetAllChildItemsAsync(userId, item.Id);
+                        var descendants = new List<Item>();
+                        await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, item.Id))
+                        {
+                            descendants.Add(child);
+                        }
+
                         var itemsByParent = descendants.ToLookup(i => i.ParentId);
                         AddChildrenToZip(zipArchive, itemsByParent, item.Id, item.Name);
                     }

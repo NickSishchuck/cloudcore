@@ -8,6 +8,7 @@ using CloudCore.Contracts.Responses;
 using CloudCore.Contracts.Requests;
 using CloudCore.Mappers;
 using CloudCore.Common.QueryParameters;
+using CloudCore.Common.Errors;
 
 namespace CloudCore.Controllers
 {
@@ -291,7 +292,7 @@ namespace CloudCore.Controllers
 
         [HttpPut("{itemId}/restore")]
         public async Task<IActionResult> RestoreItemAsync(int userId, int itemId)
-        { 
+        {
 
             _logger.LogInformation("User {UserId} attempting to restore Item ID: {ItemId}.", userId, itemId);
             var result = await _itemApplication.RestoreItemAsync(userId, itemId);
@@ -300,6 +301,32 @@ namespace CloudCore.Controllers
                 _logger.LogWarning("Failed to restore Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
             else
                 _logger.LogInformation("Item ID: {ItemId} successfully restored for User ID: {UserId}.", itemId, userId);
+
+            return Ok(result);
+        }
+
+        [HttpPost("{itemId}/move/{targetId}")]
+        public async Task<IActionResult> MoveItemAsync(int userId, int itemId, int targetId)
+        {
+            _logger.LogInformation("User {UserId} attempting to move Item ID: {ItemID} to Target ID: {TargetId}", userId, itemId, targetId);
+            var result = await _itemApplication.MoveItemAsync(userId, itemId, targetId);
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Failed to move Item ID: {ItemId} for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", itemId, userId, result.Message, result.ErrorCode);
+                return result.ErrorCode switch
+                {
+                    ErrorCodes.ITEM_NOT_FOUND => NotFound(result),
+                    ErrorCodes.FOLDER_NOT_FOUND => NotFound(result),
+                    ErrorCodes.FILE_NOT_FOUND => NotFound(result),
+                    ErrorCodes.INVALID_TARGET => BadRequest(result),
+                    ErrorCodes.CIRCULAR_REFERENCE => BadRequest(result),
+                    ErrorCodes.NAME_ALREADY_EXISTS => Conflict(result),
+                    ErrorCodes.ACCESS_DENIED => StatusCode(StatusCodes.Status403Forbidden, result),
+                    ErrorCodes.IO_ERROR => StatusCode(StatusCodes.Status409Conflict, result),
+                    ErrorCodes.UNEXPECTED_ERROR => StatusCode(StatusCodes.Status500InternalServerError, result),
+                    _ => BadRequest(result)
+                };
+            }
 
             return Ok(result);
         }

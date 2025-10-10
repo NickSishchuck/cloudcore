@@ -23,10 +23,11 @@ namespace CloudCore.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<List<Item>> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000)
+        public async IAsyncEnumerable<Item> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000)
         {
-            _logger.LogInformation("Fetching all child items. UserId={UserId}, ParentId={ParentId}, MaxDepth={MaxDepth}", userId, parentId, maxDepth);
-            using var context = _dbContextFactory.CreateDbContext();
+            var context = _dbContextFactory.CreateDbContext();
+            try
+            {
             var userIdParam = new MySqlParameter("@UserId", userId);
             var parentIdParam = new MySqlParameter("@ParentId", parentId);
             var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
@@ -46,13 +47,17 @@ namespace CloudCore.Services.Implementations
                 ORDER BY Level, Type DESC, Name;"
             ;
 
-            var result = await context.Items
-                .FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
+                await foreach (var item in context.Items.FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
                 .AsNoTracking()
-                .ToListAsync();
-
-            _logger.LogInformation("Fetched {Count} child items for ParentId={ParentId}, UserId={UserId}", result.Count, parentId, userId);
-            return result;
+                                                        .AsAsyncEnumerable())
+                {
+                    yield return item;
+        }
+            }
+            finally
+            {
+                await context.DisposeAsync();
+            }
         }
 
         public async Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null)
@@ -385,10 +390,18 @@ namespace CloudCore.Services.Implementations
 
             if (folderId.HasValue)
             {
-                var allChildItems = await GetAllChildItemsAsync(folderId.Value, userId);
-                var files = allChildItems.Where(item => item.Type == "file" && item.IsDeleted == false);
-                long totalSize = files.Sum(f => f.FileSize ?? 0);
-                int fileCount = files.Count();
+                long totalSize = 0;
+                int fileCount = 0;
+
+                await foreach (var item in GetAllChildItemsAsync(userId, folderId.Value))
+                {
+                    if (item.Type == "file")
+                    {
+                        totalSize += item.FileSize ?? 0;
+                        fileCount++;
+                    }
+                }
+                
                 return (totalSize, fileCount);
             }
             else
@@ -499,6 +512,39 @@ namespace CloudCore.Services.Implementations
             return await context.Items
                 .Where(i => itemIds.Contains(i.Id))
                 .ExecuteDeleteAsync();
+        }
+
+
+        public async Task<bool> IsFolderSubFolderAsync(int userId, int parentFolderId, int childFolderId)
+        {
+            _logger.LogInformation("Checking if folder {ChildFolderId} is subfolder of {ParentFolderId}", childFolderId, parentFolderId);
+
+            using var context = _dbContextFactory.CreateDbContext();
+
+            var userIdParam = new MySqlParameter("@UserId", userId);
+            var parentIdParam = new MySqlParameter("@ParentFolderId", parentFolderId);
+            var childIdParam = new MySqlParameter("@ChildFolderId", childFolderId);
+
+            var sql = @"
+        WITH RECURSIVE ItemsHierarchy AS (
+            SELECT id
+            FROM items
+            WHERE user_id = @UserId AND parent_id = @ParentFolderId AND type = 'folder'
+            
+            UNION ALL
+            
+            SELECT i.id
+            FROM items i
+            INNER JOIN ItemsHierarchy ih ON i.parent_id = ih.id
+            WHERE i.user_id = @UserId AND i.type = 'folder'
+        )
+        SELECT EXISTS(SELECT 1 FROM ItemsHierarchy WHERE id = @ChildFolderId) AS Value";
+
+            var result = await context.Database
+                .SqlQueryRaw<int>(sql, userIdParam, parentIdParam, childIdParam)
+                .FirstOrDefaultAsync();
+
+            return result == 1;
         }
 
         // public async Task<TeamspaceLimits> GetPrivateLimits(int userId)

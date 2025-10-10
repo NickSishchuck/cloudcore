@@ -26,8 +26,11 @@ namespace CloudCore.Services.Implementations
 
             var resolvedPath = Path.GetFullPath(fullPath);
 
-            if (!resolvedPath.StartsWith(fullPath))
-                throw new UnauthorizedAccessException("Invalid file path");
+            if (!resolvedPath.StartsWith(GetUserStoragePath(userId), StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError("Path traversal attempt detected: UserId={UserId}, Path={Path}", userId, relativePath);
+                throw new UnauthorizedAccessException("Access denied: Invalid file path");
+            }
 
             return resolvedPath;
         }
@@ -79,6 +82,14 @@ namespace CloudCore.Services.Implementations
             var fileName = Path.GetFileName(file.FileName);
             var filePath = Path.Combine(userStorageRoot, targetDirectory, fileName);
 
+            var resolvedPath = Path.GetFullPath(filePath);
+            if (!resolvedPath.StartsWith(userStorageRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError("Path traversal attempt in SaveFileAsync: UserId={UserId}, Target={Target}",
+                    userId, targetDirectory);
+                throw new UnauthorizedAccessException("Invalid target directory");
+            }
+
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
@@ -116,7 +127,7 @@ namespace CloudCore.Services.Implementations
             return MimeTypeMappings.TryGetValue(extension ?? "", out var mimeType) ? mimeType : "application/octet-stream";
         }
 
-        public string? RenameItemPhysicaly(Item item, string newName, IEnumerable<Item>? childItems = null, string? folderPath = null)
+        public string? RenameItemPhysically(Item item, string newName, IEnumerable<Item>? childItems = null, string? folderPath = null)
         {
             if (item.Type == "file")
             {
@@ -158,7 +169,7 @@ namespace CloudCore.Services.Implementations
         }
 
 
-        public void DeleteItemPhysicaly(Item item, string folderPath)
+        public void DeleteItemPhysically(Item item, string? folderPath = null)
         {
             var basePath = GetUserStoragePath(item.UserId);
 
@@ -188,6 +199,87 @@ namespace CloudCore.Services.Implementations
             }
             else
                 _logger.LogWarning("Unknown item type: {Type}", item.Type);
+        }
+
+        public string MoveItemPhysically(Item item, string destinationPath, string? folderPath = null)
+        {
+            var basePath = GetUserStoragePath(item.UserId);
+
+            if (string.IsNullOrWhiteSpace(destinationPath))
+            {
+                _logger.LogError("Destination path is null or empty");
+                throw new ArgumentException("Destination path cannot be null or empty", nameof(destinationPath));
+            }
+
+            string relativePath;
+            if (item.Type == "file")
+            {
+                relativePath = MoveFile(item, basePath, destinationPath);
+            }
+            else if (item.Type == "folder")
+            {
+                relativePath = MoveFolder(item, basePath, destinationPath, folderPath);
+            }
+            else
+            {
+                _logger.LogError("Unknown item type: {Type}", item.Type);
+                throw new NotSupportedException($"Item type '{item.Type}' is not supported for moving");
+            }
+            return relativePath;
+        }
+
+        private string MoveFile(Item item, string basePath, string destinationPath)
+        {
+            var sourceFilePath = Path.Combine(basePath, item.FilePath);
+
+            if (!File.Exists(sourceFilePath))
+            {
+                _logger.LogError("Source file not found: {Path}", sourceFilePath);
+                throw new FileNotFoundException($"Source file not found: {sourceFilePath}", sourceFilePath);
+            }
+
+            var fileName = Path.GetFileName(sourceFilePath);
+            var destinationFilePath = Path.Combine(destinationPath, fileName);
+
+            if (File.Exists(destinationFilePath))
+            {
+                _logger.LogError("Destination file already exists: {Path}", destinationFilePath);
+                throw new IOException($"Destination file already exists: {destinationFilePath}");
+            }
+            File.Move(sourceFilePath, destinationFilePath);
+
+            var relativePath = Path.GetRelativePath(basePath, destinationFilePath);
+
+            return relativePath;
+            
+        }
+
+        private string MoveFolder(Item item, string basePath, string destinationPath, string folderPath)
+        {
+            var fullFolderPath = Path.Combine(basePath, folderPath);
+
+            if (!Directory.Exists(fullFolderPath))
+            {
+                _logger.LogError("Source folder not found: {Path}", fullFolderPath);
+                throw new DirectoryNotFoundException($"Source folder not found: {fullFolderPath}");
+            }
+
+            var fullDestinationPath = Path.Combine(destinationPath, item.Name);
+
+            if (Directory.Exists(fullDestinationPath))
+            {
+                _logger.LogError("Destination folder already exists: {Path}", fullDestinationPath);
+                throw new IOException($"Destination folder already exists: {fullDestinationPath}");
+            }
+
+            Directory.Move(fullFolderPath, fullDestinationPath);
+
+            _logger.LogInformation("Folder physically moved: {Source} -> {Destination}",
+                fullFolderPath, fullDestinationPath);
+
+            var relativePath = Path.GetRelativePath(basePath, fullDestinationPath);
+
+            return relativePath;
         }
 
         private static readonly Dictionary<string, string> MimeTypeMappings = new Dictionary<string, string>

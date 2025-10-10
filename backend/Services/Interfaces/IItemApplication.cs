@@ -134,6 +134,17 @@ namespace CloudCore.Services.Interfaces
         /// <returns>A <see cref="RestoreResult"/> indicating the outcome of the operation.</returns>
         Task<RestoreResult> RestoreItemAsync(int userId, int itemId);
 
+
+        /// <summary>
+        /// Moves a file or folder to a new parent folder.
+        /// Validates permissions and performs all necessary updates.
+        /// </summary>
+        /// <param name="userId">The ID of the user performing the move.</param>
+        /// <param name="itemId">ID of the item being moved.</param>
+        /// <param name="targetId">ID of the target destination folder.</param>
+        /// <returns>A result indicating success or failure with user-friendly messages.</returns>
+        Task<MoveResult> MoveItemAsync(int userId, int itemId, int targetId);
+
         #endregion
     }
 

@@ -86,7 +86,7 @@ namespace CloudCore.Services.Implementations
                         itemPath = await _itemDataService.GetFolderPathAsync(item);
                     }
 
-                    _itemStorageService.DeleteItemPhysicaly(item, itemPath);
+                    _itemStorageService.DeleteItemPhysically(item, itemPath);
                 }
                 catch (Exception ex)
                 {

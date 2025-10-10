@@ -272,5 +272,25 @@ namespace CloudCore.Services.Implementations
             return ValidationResult.Success();
 
         }
+
+        public async Task<ValidationResult> ValidateIsFolderSubFolder(int userId, int folderId, int targetFolderId)
+        {
+            if (folderId == targetFolderId)
+            {
+                _logger.LogWarning("Validation failed: folder cannot be moved into itself.");
+                return ValidationResult.Failure("Folder cannot be moved into itself", ErrorCodes.INVALID_OPERATION);
+            }
+
+            var isSubFolder = await _itemRepository.IsFolderSubFolderAsync(userId, folderId, targetFolderId);
+
+            if (isSubFolder)
+            {
+                _logger.LogWarning("Validation failed: folder {TargetFolderId} is a subfolder of {FolderId}", targetFolderId, folderId);
+                return ValidationResult.Failure("Folder cannot be moved into its own subfolder", ErrorCodes.CIRCULAR_REFERENCE);
+            }
+
+            _logger.LogInformation("Validation successful: no circular reference detected");
+            return ValidationResult.Success();
+        }
     }
 }

@@ -269,7 +269,7 @@ namespace CloudCore.Services.Implementations
                 // Cleanup orphaned file
                 if (createdItem != null && !string.IsNullOrEmpty(createdItem.FilePath))
                 {
-                    _itemStorageService.DeleteItemPhysicaly(createdItem);
+                    _itemStorageService.DeleteItemPhysically(createdItem);
                 }
                 throw;
             }
@@ -441,7 +441,10 @@ namespace CloudCore.Services.Implementations
 
             if (item.Type == "folder")
             {
-                childItems = await _itemRepository.GetAllChildItemsAsync(userId, item.Id);
+                await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                {
+                    childItems.Add(child);
+                }
                 folderPath = await _itemRepository.GetFolderPathAsync(item);
                 folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
             }
@@ -499,10 +502,13 @@ namespace CloudCore.Services.Implementations
             }
 
             List<Item> childItems = new();
-
+            
             if (item.Type == "folder")
             {
-                childItems = await _itemRepository.GetAllChildItemsAsync(userId, itemId);
+                await foreach(var child in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                {
+                    childItems.Add(child);
+                }
             }
 
             var itemsToDelete = _itemManagerService.PrepareItemsForSoftDelete(item, childItems);
@@ -535,6 +541,7 @@ namespace CloudCore.Services.Implementations
                 };
             }
         }
+
         public async Task<RestoreResult> RestoreTeamspaceItemAsync(
                 int userId,
                 int teamspaceId,
@@ -573,10 +580,13 @@ namespace CloudCore.Services.Implementations
             }
 
             List<Item> itemsToRestore = new() { item };
-
+            List<Item> descendants = new();
             if (item.Type == "folder")
             {
-                var descendants = await _itemRepository.GetAllChildItemsAsync(userId, itemId);
+                await foreach (var desc in _itemRepository.GetAllChildItemsAsync(userId, itemId))
+                {
+                    descendants.Add(desc);
+                }
                 itemsToRestore.AddRange(descendants);
             }
 
