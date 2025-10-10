@@ -35,8 +35,10 @@ class CloudCoreDrive {
         this.contextMenu = null;
 
         this.initializeTheme();
+        
 
         this.initializeAuth();
+        this.initializeDeselectOnClick();
     }
 
     initializeTheme() {
@@ -245,7 +247,14 @@ class CloudCoreDrive {
     renderFiles() {
         console.log('Rendering files:', this.allLoadedItems.length);
 
-
+    const newSelectedItems = new Set();
+        for (const selectedItem of this.selectedItems) {
+            const updatedItem = this.allLoadedItems.find(i => i.id === selectedItem.id);
+            if (updatedItem) {
+                newSelectedItems.add(updatedItem);
+            }
+        }
+    this.selectedItems = newSelectedItems;
         this.fileList.style.display = 'table';
         this.fileListBody.innerHTML = '';
 
@@ -253,7 +262,7 @@ class CloudCoreDrive {
             const emptyRow = document.createElement('tr');
             if (this.currentSearchQuery) {
                 emptyRow.innerHTML = `
-                    <td colspan="4" style="padding: 0; border: none;">
+                    <td colspan="5" style="padding: 0; border: none;">
                         <div class="empty-state">
                             <span class="material-symbols-outlined empty-icon">
                                 search_off
@@ -265,7 +274,7 @@ class CloudCoreDrive {
                 `;
             } else if (this.isTrashView) {
                 emptyRow.innerHTML = `
-                    <td colspan="4" style="padding: 0; border: none;">
+                    <td colspan="5" style="padding: 0; border: none;">
                         <div class="empty-state">
                             <span class="material-symbols-outlined empty-icon">
                                 delete_outline
@@ -277,7 +286,7 @@ class CloudCoreDrive {
                 `;
             } else {
                 emptyRow.innerHTML = `
-                    <td colspan="4" style="padding: 0; border: none;">
+                    <td colspan="5" style="padding: 0; border: none;">
                         <div class="empty-state">
                             <span class="material-symbols-outlined empty-icon">
                                 folder_open
@@ -297,34 +306,52 @@ class CloudCoreDrive {
             });
         }
 
+        
         this.updateSortIndicators();
         console.log('Files rendered');
     }
 
     createFileRow(item) {
         const row = document.createElement('tr');
-        row.className = `file-list-row ${this.isTrashView ? 'trash-mode' : ''}`;
+        row.className = this.isTrashView ? 'file-list-row trash-mode' : 'file-list-row';
         row.dataset.itemId = item.id;
         row.dataset.itemType = item.type;
 
         const iconInfo = getFileIcon(item);
-        const sizeDisplay = item.type === 'file'
-            ? (item.fileSize ? formatFileSize(item.fileSize) : '-')
+        const sizeDisplay = item.type === 'file' 
+            ? (item.fileSize ? formatFileSize(item.fileSize) : '-') 
             : '-';
 
-        row.innerHTML = `
-            <td>
-                <span class="material-symbols-outlined file-list-icon ${iconInfo.class}">
-                    ${iconInfo.icon}
-                </span>
-                ${item.name}
-            </td>
-            <td>${formatDateTime(item.createdAt)}</td>
-            <td>${formatDateTime(item.updatedAt)}</td>
-            <td>${sizeDisplay}</td>
-        `;
+        // 1. Indicator cell
+        const indicatorCell = document.createElement('td');
+        indicatorCell.className = 'col-indicator';
+        row.appendChild(indicatorCell);
 
-        // Attach event handlers
+        // 2. file/folder name cell
+        const nameCell = document.createElement('td');
+        nameCell.innerHTML = `<span class="material-symbols-outlined file-list-icon ${iconInfo.class}">${iconInfo.icon}</span>${item.name}`;
+        row.appendChild(nameCell);
+
+        // 3. Created date cell
+        const createdCell = document.createElement('td');
+        createdCell.textContent = formatDateTime(item.createdAt);
+        row.appendChild(createdCell);
+
+        // 4. Modified date cell
+        const modifiedCell = document.createElement('td');
+        modifiedCell.textContent = formatDateTime(item.updatedAt);
+        row.appendChild(modifiedCell);
+
+        // 5. Size cell
+        const sizeCell = document.createElement('td');
+        sizeCell.textContent = sizeDisplay;
+        row.appendChild(sizeCell);
+
+        if (this.selectedItems.has(item)) {
+        row.classList.add('selected');
+    }
+
+        // Event handlers
         row.addEventListener('click', (e) => this.handleFileClick(e, item, row));
         row.addEventListener('dblclick', (e) => this.handleFileDoubleClick(e, item));
         row.addEventListener('contextmenu', (e) => this.showContextMenu(e, item));
@@ -332,16 +359,82 @@ class CloudCoreDrive {
         return row;
     }
 
+
+    initializeDeselectOnClick() {
+        // Clear selection when clicking outside file rows
+        document.addEventListener('click', (e) => {
+            // Check if the click target is outside any .file-list-row
+            if (!e.target.closest('.file-list-row')) {
+                this.clearSelection();
+            }
+        });
+    }
+
+    // Method to clear all selections
+    clearSelection() {
+        // Deactivate visual selection
+        document.querySelectorAll('.file-list-row.selected').forEach(row => {
+            row.classList.remove('selected');
+        });
+        
+        // Clear the selection set
+        this.selectedItems.clear();
+        
+        console.log('Selection cleared');
+    }
+
     handleFileClick(e, item, row) {
+        if (this.isTrashView) {
+            e.preventDefault();
+            return;
+        }
+
         e.stopPropagation();
         console.log('File clicked:', item.name);
 
-        document.querySelectorAll('.file-list-row.selected').forEach(el => {
-            el.classList.remove('selected');
-        });
-        row.classList.add('selected');
+        const isAlreadySelected = this.selectedItems.has(item);
+
+        if (e.ctrlKey || e.metaKey) {
+            // Ctrl/Cmd: Toggle selection
+            if (isAlreadySelected) {
+                this.selectedItems.delete(item);
+                row.classList.remove('selected');
+            } else {
+                this.selectedItems.add(item);
+                row.classList.add('selected');
+            }
+
+            this.lastSelectedItem = item;
+        } else if (e.shiftKey && this.lastSelectedItem) {
+
+            this.selectRange(this.lastSelectedItem, item);
+        } else {
+            // Regular click: Clear and select
+            document.querySelectorAll('.file-list-row.selected').forEach(el => el.classList.remove('selected'));
+            this.selectedItems.clear();
+            this.selectedItems.add(item);
+            row.classList.add('selected');
+            this.lastSelectedItem = item;
+        }
+    }
+
+    selectRange(startItem, endItem) {
+        const rows = Array.from(this.fileListBody.querySelectorAll('.file-list-row'));
+        const startIndex = this.allLoadedItems.findIndex(i => i.id === startItem.id);
+        const endIndex = this.allLoadedItems.findIndex(i => i.id === endItem.id);
+
+        if (startIndex === -1 || endIndex === -1) return;
+
+        const [minIndex, maxIndex] = [Math.min(startIndex, endIndex), Math.max(startIndex, endIndex)];
+
+        document.querySelectorAll('.file-list-row.selected').forEach(el => el.classList.remove('selected'));
         this.selectedItems.clear();
-        this.selectedItems.add(item);
+
+        for (let i = minIndex; i <= maxIndex; i++) {
+            const item = this.allLoadedItems[i];
+            this.selectedItems.add(item);
+            rows[i]?.classList.add('selected');
+        }
     }
 
     handleFileDoubleClick(e, item) {
