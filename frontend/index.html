@@ -100,9 +100,75 @@
 
             <!-- Toolbar -->
             <div class="toolbar">
-                <div></div>
-                <div></div>
+                <div class="toolbar-left">
+                    <!-- New Folder button - always visible, always in the same position -->
+                    <button class="toolbar-btn" id="newFolderBtn" title="New Folder">
+                        <span class="material-symbols-outlined">create_new_folder</span>
+                        <span data-i18n="newFolder">New Folder</span>
+                    </button>
+                    
+                    <!-- Empty Trash button - shown only in trash -->
+                    <button class="toolbar-btn toolbar-btn-danger" id="emptyTrashBtn" title="Empty Trash" style="display: none;">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        <span data-i18n="deleteAllForever">Empty Trash</span>
+                    </button>
+                    
+                    <!-- Action buttons - slide in from left when items selected -->
+                    <div class="toolbar-actions" id="toolbarActions">
+                        <button class="toolbar-btn icon-btn toolbar-close-btn" id="clearSelectionBtn" title="Clear selection">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                        <button class="toolbar-btn" id="downloadBtn" title="Download">
+                            <span class="material-symbols-outlined">download</span>
+                            <span data-i18n="download">Download</span>
+                        </button>
+                        <button class="toolbar-btn" id="moveBtn" title="Move">
+                            <span class="material-symbols-outlined">drive_file_move</span>
+                            <span data-i18n="move">Move</span>
+                        </button>
+                        <button class="toolbar-btn" id="renameToolbarBtn" title="Rename">
+                            <span class="material-symbols-outlined">edit</span>
+                            <span data-i18n="rename">Rename</span>
+                        </button>
+                        <button class="toolbar-btn toolbar-btn-danger" id="deleteToolbarBtn" title="Delete">
+                            <span class="material-symbols-outlined">delete</span>
+                            <span data-i18n="delete">Delete</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <span class="toolbar-selection-count" id="selectionCount" data-i18n="selectionCount">0 selected</span>
+                    </div>
+                    
+                    <!-- Trash action buttons - slide in from left when items selected -->
+                    <div class="toolbar-actions-trash" id="toolbarActionsTrash">
+                        <button class="toolbar-btn icon-btn toolbar-close-btn" id="clearSelectionBtnTrash" title="Clear selection">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                        <button class="toolbar-btn" id="restoreBtn" title="Restore">
+                            <span class="material-symbols-outlined">restore_from_trash</span>
+                            <span data-i18n="restore">Restore</span>
+                        </button>
+                        <button class="toolbar-btn toolbar-btn-danger" id="deletePermanentlyBtn" title="Delete Permanently">
+                            <span class="material-symbols-outlined">delete_forever</span>
+                            <span data-i18n="deletePermanently">Delete Permanently</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <span class="toolbar-selection-count" id="selectionCountTrash">0 selected</span>
+                    </div>
+                </div>
+                
+                <div class="toolbar-right">
+                    <button class="toolbar-btn icon-btn" id="viewGridBtn" title="Grid View">
+                        <span class="material-symbols-outlined">grid_view</span>
+                    </button>
+                    <button class="toolbar-btn icon-btn active" id="viewListBtn" title="List View">
+                        <span class="material-symbols-outlined">view_list</span>
+                    </button>
+                    <button class="toolbar-btn icon-btn" id="sortBtn" title="Sort">
+                        <span class="material-symbols-outlined">sort</span>
+                    </button>
+                </div>
             </div>
+
 
             <!-- File Container -->
             <div class="file-container" id="fileContainer">

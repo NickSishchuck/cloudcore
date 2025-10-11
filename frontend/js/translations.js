@@ -15,6 +15,10 @@ export const translations = {
         emptyTrashMessage: 'Deleted items will be stored here for 30 days',
         noSearchResults: 'No results found',
         noSearchResultsMessage: 'Try a different search term',
+        newFolder: 'New folder',
+        deleteAllForever: 'Empty the trash',
+        download: 'Download',
+        move: 'Move',
 
         // --- File List & Items ---
         name: 'Name',
@@ -81,6 +85,26 @@ export const translations = {
         confirmDeletePermanent: 'Permanently delete "{filename}"? This action cannot be undone.',
         renamePrompt: 'Enter new name for "{filename}":',
         signOutMessage: 'Are you sure you want to sign out?',
+
+        // Batch operations
+        confirmDeleteMultiple: 'Delete {count} items?',
+        deletedMultiple: 'Deleted {count} items',
+        restoredMultiple: 'Restored {count} items',
+        deletedPermanentlyMultiple: 'Permanently deleted {count} items',
+        confirmDeletePermanentlyMultiple: 'Permanently delete {count} items? This action cannot be undone.',
+        failedDeleteMultiple: 'Failed to delete items',
+        failedRestoreMultiple: 'Failed to restore items',
+        moveDialogNotImplemented: 'Move dialog not implemented yet. Use drag & drop instead.',
+        creatingArchive: 'Creating archive...',
+        downloadingMultiple: 'Downloading {count} items...',
+        downloadedMultiple: 'Downloaded {count} items',
+        failedDownloadMultiple: 'Failed to download items',
+
+        // Context menu
+        open: 'Open',
+        
+        // Toolbar selection count
+        selectionCount: '{count} selected',
         
         // --- API & Client-side Error Codes ---
         invalidCredentials: 'Invalid username or password',
@@ -149,6 +173,11 @@ export const translations = {
         emptyTrashMessage: 'Видалені файли зберігатимуться тут 30 днів',
         noSearchResults: 'Нічого не знайдено',
         noSearchResultsMessage: 'Спробуйте інший запит',
+        newFolder:'Нова папка',
+        deleteAllForever: 'Очистити кошик',
+        download: 'Завантажити',
+        move: 'Перемістити',
+        selectionCount: '{count} вибрано',
 
         // --- File List & Items ---
         name: 'Назва',
@@ -215,6 +244,26 @@ export const translations = {
         confirmDeletePermanent: 'Назавжди видалити "{filename}"? Цю дію неможливо скасувати.',
         renamePrompt: 'Введіть нову назву для "{filename}":',
         signOutMessage: 'Ви впевнені, що хочете вийти?',
+
+        // Batch operations
+        confirmDeleteMultiple: 'Видалити {count} елементів?',
+        deletedMultiple: 'Видалено {count} елементів',
+        restoredMultiple: 'Відновлено {count} елементів',
+        deletedPermanentlyMultiple: 'Остаточно видалено {count} елементів',
+        confirmDeletePermanentlyMultiple: 'Остаточно видалити {count} елементів? Цю дію не можна скасувати.',
+        failedDeleteMultiple: 'Не вдалося видалити елементи',
+        failedRestoreMultiple: 'Не вдалося відновити елементи',
+        moveDialogNotImplemented: 'Діалог переміщення ще не реалізовано. Використовуйте перетягування.',
+        creatingArchive: 'Створення архіву...',
+        downloadingMultiple: 'Завантаження {count} елементів...',
+        downloadedMultiple: 'Завантажено {count} елементів',
+        failedDownloadMultiple: 'Не вдалося завантажити елементи',
+        
+        // Context menu
+        open: 'Відкрити',
+        
+        // Toolbar selection count
+        selectionCount: '{count} вибрано',
 
         // --- API & Client-side Error Codes ---
         invalidCredentials: 'Неправильне ім\'я користувача або пароль.',

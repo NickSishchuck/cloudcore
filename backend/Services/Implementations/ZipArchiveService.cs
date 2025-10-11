@@ -105,9 +105,9 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task<FileStream> CreateMultipleItemArchiveAsync(int userId, IAsyncEnumerable<Item> itemsIds)
+        public async Task<FileStream> CreateMultipleItemArchiveAsync(int userId, IAsyncEnumerable<Item> items)
         {
-            await ValidateMultipleItemsArchive(userId, itemsIds); // Checks if archive will be valid
+            await ValidateMultipleItemsArchive(userId, items);
 
             var tempFilePath = Path.GetTempFileName() + ".zip";
             _logger.LogInformation("Creating temporary archive for multiple items at {TempPath}", tempFilePath);
@@ -115,16 +115,17 @@ namespace CloudCore.Services.Implementations
             using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
             using (var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Create, true))
             {
-                await foreach (var item in itemsIds) // For each item in list
+                await foreach (var item in items)
                 {
-                    if (item.Type == "folder") // If item is folder
+                    if (item.Type == "folder")
                     {
                         _logger.LogInformation("Processing folder '{ItemName}' (ID: {ItemId}) for multi-item archive.", item.Name, item.Id);
 
-                        await foreach (var child in _itemRepository.GetAllChildItemsAsync(userId, item.Id))
-                        {
-                            await AddItemToZipLazily(zipArchive, child, item.Name);
-                        }
+                        // Create folder entry at root level
+                        zipArchive.CreateEntry($"{item.Name}/");
+
+                        // Add folder contents recursively using the SAME method as single folder download
+                        await AddChildrenToZipAsync(zipArchive, userId, item.Id, item.Name);
                     }
                     else if (item.Type == "file")
                     {
@@ -132,29 +133,12 @@ namespace CloudCore.Services.Implementations
                         await AddFileToZipAsync(zipArchive, item, item.Name);
                     }
                 }
-                _logger.LogInformation("Multi-item archive created successfully. Returning stream.");
-                return new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
             }
+
+            _logger.LogInformation("Multi-item archive created successfully. Returning stream.");
+            return new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
         }
 
-
-        private async Task AddItemToZipLazily(ZipArchive zip, Item item, string basePath)
-        {
-            var entryPath = Path.Combine(basePath, item.Name).Replace('\\', '/');
-
-            if (item.Type == "folder")
-            {
-                zip.CreateEntry(entryPath + "/");
-                await foreach (var child in _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id))
-                {
-                    await AddItemToZipLazily(zip, child, entryPath);
-                }
-            }
-            else if (item.Type == "file")
-            {
-                await AddFileToZipAsync(zip, item, entryPath);
-            }
-        }
         public async Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, IAsyncEnumerable<Item> items)
         {
             return await _storageCalculationService.CalculateMultipleItemsSizeAsync(userId, items);

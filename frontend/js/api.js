@@ -141,6 +141,21 @@ export class ApiClient {
         return response.blob();
     }
 
+    async downloadMultipleItems(userId, itemIds) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/mydrive/download/multiple`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify(itemIds) // Send array directly
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to download items');
+        }
+
+        return await response.blob();
+    }
+
     async renameItem(userId, itemId, newName) {
         const response = await fetch(`${this.baseUrl}/user/${userId}/mydrive/${itemId}/rename`, {
             method: 'PUT',
@@ -157,6 +172,16 @@ export class ApiClient {
         });
         return this.handleResponse(response);
     }
+
+    async bulkDeleteItems(userId, itemIds) {
+
+    const response = await fetch(`${this.baseUrl}/user/${userId}/mydrive/delete/batch`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
+        body: JSON.stringify(itemIds)
+    });
+    return this.handleResponse(response);
+}
 
     async restoreItem(userId, itemId) {
         const response = await fetch(`${this.baseUrl}/user/${userId}/mydrive/${itemId}/restore`, {

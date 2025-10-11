@@ -229,6 +229,274 @@ body {
     filter: brightness(1.2) drop-shadow(0 0 6px rgba(138, 180, 248, 0.5));
 }
 
+/* ==================== Toolbar ==================== */
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    min-height: 48px;
+    height: 48px;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Action buttons containers */
+.toolbar-actions,
+.toolbar-actions-trash {
+    display: none; /* Simple show/hide */
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    height: 32px;
+}
+
+/* Toolbar Buttons */
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    height: 32px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--bg-hover);
+    color: var(--color-blue);
+}
+
+.toolbar-btn:hover .material-symbols-outlined {
+    color: var(--color-blue);
+}
+
+/* Icon-only buttons */
+.toolbar-btn.icon-btn {
+    padding: 6px;
+    min-width: 32px;
+    border-radius: 50%;
+}
+
+.toolbar-btn.icon-btn .material-symbols-outlined {
+    font-size: 18px;
+    transition: color 0.2s ease;
+}
+
+/* Active state */
+.toolbar-btn.active {
+    background: var(--bg-active);
+    color: var(--color-blue);
+}
+
+.toolbar-btn.active .material-symbols-outlined {
+    color: var(--color-blue);
+}
+
+/* Danger button */
+.toolbar-btn-danger {
+    color: var(--color-red);
+}
+
+.toolbar-btn-danger:hover {
+    background: rgba(234, 67, 53, 0.08);
+    color: var(--color-red);
+}
+
+.toolbar-btn-danger:hover .material-symbols-outlined {
+    color: var(--color-red);
+}
+
+/* New Folder Button */
+#newFolderBtn {
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+#newFolderBtn:hover {
+    background: var(--bg-hover);
+    border-color: var(--color-blue);
+}
+
+/* Empty Trash Button */
+#emptyTrashBtn {
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+#emptyTrashBtn:hover {
+    background: rgba(234, 67, 53, 0.08);
+    border-color: var(--color-red);
+}
+
+
+#viewGridBtn,
+#viewListBtn,
+#sortBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+#viewGridBtn .material-symbols-outlined,
+#viewListBtn .material-symbols-outlined,
+#sortBtn .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* Active state */
+.toolbar-btn.active {
+    background: var(--bg-active);
+    color: var(--color-blue);
+}
+
+.toolbar-btn.active .material-symbols-outlined {
+    color: var(--color-blue);
+}
+
+/* Close button */
+.toolbar-close-btn {
+    margin-right: 4px;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+}
+
+.toolbar-close-btn:hover {
+    opacity: 1;
+    background: var(--bg-hover);
+}
+
+.toolbar-close-btn .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+    line-height: 1;
+}
+
+.toolbar-close-btn:hover .material-symbols-outlined {
+    color: var(--color-blue);
+}
+
+/* Divider */
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 6px;
+}
+
+/* Selection count */
+.toolbar-selection-count {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Disabled state */
+.toolbar-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.toolbar-btn:disabled:hover {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.toolbar-btn:disabled:hover .material-symbols-outlined {
+    color: var(--text-primary);
+}
+
+/* Dark theme */
+[data-theme="dark"] .toolbar {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .toolbar-actions,
+[data-theme="dark"] .toolbar-actions-trash {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .toolbar-btn-danger:hover {
+    background: rgba(242, 139, 130, 0.12);
+}
+
+[data-theme="dark"] #newFolderBtn {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] #newFolderBtn:hover {
+    background: var(--bg-hover);
+    border-color: var(--color-blue);
+}
+
+[data-theme="dark"] #emptyTrashBtn {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] #emptyTrashBtn:hover {
+    background: rgba(242, 139, 130, 0.12);
+    border-color: var(--color-red);
+}
+
+[data-theme="dark"] #viewGridBtn,
+[data-theme="dark"] #viewListBtn,
+[data-theme="dark"] #sortBtn {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] #viewGridBtn:hover,
+[data-theme="dark"] #viewListBtn:hover,
+[data-theme="dark"] #sortBtn:hover {
+    background: var(--bg-hover);
+}
+
+[data-theme="dark"] .toolbar-btn.active {
+    background: var(--bg-active);
+}
+
+
+
 /* ==================== Header Buttons ==================== */
 /* Theme Switcher */
 .theme-switcher {
@@ -505,10 +773,12 @@ body {
 
 .dropdown-item:hover {
     background: var(--bg-hover);
+    color: var(--color-blue);
 }
 
 .dropdown-item:active {
     background: var(--bg-active);
+    color: var(--color-blue);
 }
 
 .dropdown-item .material-symbols-outlined {
@@ -518,8 +788,18 @@ body {
 }
 
 .dropdown-item:hover .material-symbols-outlined {
-    color: var(--text-link);
+    color: var(--color-blue);
     transform: scale(1.1);
+}
+
+/* Dark theme */
+[data-theme="dark"] .dropdown-item:hover {
+    color: var(--color-blue);
+}
+
+[data-theme="dark"] .dropdown-item:hover .material-symbols-outlined {
+    color: var(--color-blue);
+    filter: brightness(1.2) drop-shadow(0 0 4px rgba(138, 180, 248, 0.3));
 }
 
 /* Dropdown Arrow */
@@ -1023,7 +1303,6 @@ body {
 .drag-ghost {
     position: fixed;
     background: var(--bg-primary);
-    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 10px 16px;
     box-shadow: 0 4px 12px var(--shadow-md);
@@ -1032,7 +1311,16 @@ body {
     gap: 12px;
     z-index: 10000;
     pointer-events: none;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    will-change: transform, opacity;
+}
+
+/* Активное состояние с анимацией */
+.drag-ghost.active {
     opacity: 1;
+    transform: scale(1);
 }
 
 .drag-ghost .material-symbols-outlined {
@@ -1047,20 +1335,85 @@ body {
     white-space: nowrap;
 }
 
-.drag-ghost-count {
-    background: var(--color-blue) !important;
-    color: white !important;
-    border-radius: 12px;
-    padding: 2px 8px;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    margin-left: 4px;
+/* Контейнер для позиционирования бейджа */
+.drag-ghost-wrapper {
+    position: relative;
+    display: inline-flex;
 }
 
+/* Кружок с количеством в правом верхнем углу */
+.drag-ghost-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--color-blue) !important;
+    color: var(--text-primary) !important;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 0 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: badgePop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Анимация появления бейджа */
+@keyframes badgePop {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Тёмная тема */
 [data-theme="dark"] .drag-ghost {
     background: var(--bg-secondary);
-    border-color: var(--border-color);
     box-shadow: 0 4px 16px var(--shadow-lg);
+}
+
+[data-theme="dark"] .drag-ghost-count{
+    color: black !important;
+}
+
+
+/* Затемнение для выделенных строк во время drag */
+.file-list-row.selected.dragging-selected {
+    opacity: 0.4;
+    transform: scale(0.98);
+    background: var(--bg-hover);
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+/* Основная перетаскиваемая строка (немного больше затемнена) */
+.file-list-row.dragging {
+    opacity: 0.3;
+    transform: scale(0.98);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Тёмная тема */
+[data-theme="dark"] .drag-ghost {
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 16px var(--shadow-lg);
+}
+
+[data-theme="dark"] .file-list-row.drag-lifting {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .file-list-row.selected.dragging-selected {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 /* ==================== File Icons ==================== */
@@ -1188,6 +1541,7 @@ body {
 
 .context-menu-item:hover {
     background: var(--bg-hover);
+    color: var(--color-blue);
 }
 
 .context-menu-item.danger {
@@ -1206,6 +1560,24 @@ body {
     height: 1px;
     background: var(--border-color);
     margin: 4px 0;
+}
+
+[data-theme="dark"] .context-menu {
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .context-menu-item:hover {
+    color: var(--color-blue);
+}
+
+[data-theme="dark"] .context-menu-item:hover .material-symbols-outlined {
+    color: var(--color-blue);
+    filter: brightness(1.2) drop-shadow(0 0 4px rgba(138, 180, 248, 0.3));
+}
+
+[data-theme="dark"] .context-menu-item.danger:hover {
+    background: rgba(242, 139, 130, 0.1);
 }
 
 /* ==================== Notifications ==================== */
