@@ -193,6 +193,21 @@ namespace CloudCore.Services.Implementations
             return item;
         }
 
+        public async Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null)
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+            var query = context.Items
+                .AsNoTracking()
+                .Where(i => i.UserId == userId && i.Name.ToLower() == name.ToLower());
+
+            if (parentId.HasValue)
+                query = query.Where(i => i.ParentId == parentId.Value);
+            else
+                query = query.Where(i => i.ParentId == null);
+
+            return await query.FirstOrDefaultAsync();
+        }
+
         public async Task<Item?> GetDeletedItemAsync(int userId, int itemId)
         {
             _logger.LogInformation("Fetching deleted item. UserId={UserId}, ItemId={ItemId}", userId, itemId);

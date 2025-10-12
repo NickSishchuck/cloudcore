@@ -1,61 +1,145 @@
-export class NotificationManager {
-    constructor() {
-        this.notificationElement = document.getElementById('notification');
-        this.autoHideTimeout = null;
+// notifications.js
+
+class NotificationManager {
+    constructor(i18n = null) {
+        this.i18n = i18n;
+        this.container = document.getElementById('notificationContainer');
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'notificationContainer';
+            this.container.className = 'notification-container';
+            document.body.appendChild(this.container);
+        }
+        this.notifications = new Map();
     }
 
-    show(message, type = 'info', duration = 3000) {
-        if (!this.notificationElement) {
-            console.warn('Notification element not found');
-            return;
-        }
 
-        // Clear any existing timeout
-        if (this.autoHideTimeout) {
-            clearTimeout(this.autoHideTimeout);
-        }
+    setI18n(i18n) {
+        this.i18n = i18n;
+    }
 
-        this.notificationElement.textContent = message;
-        this.notificationElement.className = `notification ${type}`;
-        this.notificationElement.style.display = 'block';
 
-        // Auto-hide after duration
+    show(message, type = 'info', duration = 5000, title = null, params = {}) {
+        const id = `notification-${Date.now()}-${Math.random()}`;
+        
+
+        const translatedMessage = this.i18n ? this.i18n.t(message, params) : message;
+        
+
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.id = id;
+        notification.setAttribute('role', 'alert');
+        notification.setAttribute('aria-live', 'polite');
+
+        const config = this._getTypeConfig(type, title);
+        
+        const translatedTitle = config.title && this.i18n 
+            ? this.i18n.t(config.title) 
+            : config.title;
+
+        notification.innerHTML = `
+            <div class="notification-icon-wrapper">
+                <span class="notification-icon material-symbols-outlined">${config.icon}</span>
+            </div>
+            <div class="notification-content">
+                ${translatedTitle ? `<div class="notification-title">${translatedTitle}</div>` : ''}
+                <div class="notification-message">${translatedMessage}</div>
+            </div>
+            <button class="notification-close" aria-label="${this.i18n ? this.i18n.t('close') : 'Close'}">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            ${duration > 0 ? '<div class="notification-progress"></div>' : ''}
+        `;
+
+
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => this.hide(id));
+
+
+        this.container.appendChild(notification);
+        this.notifications.set(id, notification);
+
+
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
         if (duration > 0) {
-            this.autoHideTimeout = setTimeout(() => {
-                this.hide();
-            }, duration);
+            setTimeout(() => this.hide(id), duration);
         }
+
+        return id;
     }
 
-    hide() {
-        if (this.notificationElement) {
-            this.notificationElement.style.display = 'none';
-        }
+
+    hide(id) {
+        const notification = this.notifications.get(id);
+        if (!notification) return;
+
+        notification.classList.remove('show');
+        notification.classList.add('hide');
+
+        setTimeout(() => {
+            notification.remove();
+            this.notifications.delete(id);
+        }, 300);
     }
 
-    success(message, duration = 3000) {
-        this.show(`✅ ${message}`, 'success', duration);
+
+    hideAll() {
+        this.notifications.forEach((_, id) => this.hide(id));
     }
 
-    error(message, duration = 5000) {
-        this.show(`❌ ${message}`, 'error', duration);
+
+    _getTypeConfig(type, customTitle) {
+        const configs = {
+            success: {
+                icon: 'check_circle',
+                title: customTitle || 'notificationSuccess'
+            },
+            error: {
+                icon: 'error',
+                title: customTitle || 'notificationError'
+            },
+            warning: {
+                icon: 'warning',
+                title: customTitle || 'notificationWarning'
+            },
+            info: {
+                icon: 'info',
+                title: customTitle || 'notificationInfo'
+            }
+        };
+
+        return configs[type] || configs.info;
     }
 
-    info(message, duration = 3000) {
-        this.show(message, 'info', duration);
+    success(message, duration = 5000, title = null, params = {}) {
+        return this.show(message, 'success', duration, title, params);
     }
 
-    warning(message, duration = 4000) {
-        this.show(`⚠️ ${message}`, 'warning', duration);
+    error(message, duration = 7000, title = null, params = {}) {
+        return this.show(message, 'error', duration, title, params);
+    }
+
+    warning(message, duration = 6000, title = null, params = {}) {
+        return this.show(message, 'warning', duration, title, params);
+    }
+
+    info(message, duration = 5000, title = null, params = {}) {
+        return this.show(message, 'info', duration, title, params);
     }
 }
 
 // Singleton instance
-let notificationManager = null;
+let notificationManagerInstance = null;
 
-export function getNotificationManager() {
-    if (!notificationManager) {
-        notificationManager = new NotificationManager();
+export function getNotificationManager(i18n = null) {
+    if (!notificationManagerInstance) {
+        notificationManagerInstance = new NotificationManager(i18n);
+    } else if (i18n && !notificationManagerInstance.i18n) {
+        notificationManagerInstance.setI18n(i18n);
     }
-    return notificationManager;
+    return notificationManagerInstance;
 }

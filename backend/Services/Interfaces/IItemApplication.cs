@@ -46,6 +46,9 @@ namespace CloudCore.Services.Interfaces
         /// </returns>
         Task<Item?> GetItemAsync(int userId, int itemId, string type, int? teamspaceId = null);
 
+
+        Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null);
+
         /// <summary>
         /// Asynchronously builds and retrieves the breadcrumb path string for a given item specified by user ID, item ID, and type.
         /// </summary>

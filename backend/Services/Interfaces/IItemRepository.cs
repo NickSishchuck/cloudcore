@@ -37,7 +37,10 @@ namespace CloudCore.Services.Interfaces
         /// <param name="itemtId">The ID of the item to retrieve.</param>
         /// <param name="itemType">The Type of the item to retrieve.</param>
         /// <returns>A Task that resolves to the Item object if found; otherwise, null.</returns>
-        Task<Item> GetItemAsync(int userId, int itemtId, string? itemType);
+        Task<Item?> GetItemAsync(int userId, int itemtId, string? itemType);
+
+
+        Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null);
 
 
         /// <summary>

@@ -13,7 +13,7 @@ using CloudCore.Common.Errors;
 namespace CloudCore.Controllers
 {
     [ApiController]
-    [Route("user/{userid}/mydrive")]
+    [Route("user/{userId}/mydrive")]
     [Authorize] // Require authentication for all endpoints
     public class ItemController : ControllerBase
     {
@@ -56,6 +56,17 @@ namespace CloudCore.Controllers
 
 
             return Ok(folderPath);
+        }
+
+        [HttpGet("get/name")]
+        public async Task<IActionResult> GetItemByName(int userId, [FromQuery] string name, [FromQuery]int? parentId)
+        {
+            var item = await _itemApplication.GetItemByNameAsync(userId, name, parentId);
+
+            if (item == null)
+                return NotFound(new { message = "Item not found." });
+
+            return Ok(item.ToResponseDto());
         }
 
 
@@ -198,7 +209,6 @@ namespace CloudCore.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)
         {
-
 
             _logger.LogInformation("User {UserId} attempting to upload file '{FileName}' to Parent ID: {ParentId}.", userId, file.FileName, parentId);
 

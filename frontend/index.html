@@ -204,7 +204,7 @@
     <div class="context-menu" id="contextMenu"></div>
 
     <!-- Notification -->
-    <div class="notification" id="notification"></div>
+    <div class="notification-container" id="notificationContainer"></div>
 
 
     <div class="modal-overlay" id="deleteModalOverlay"></div>
@@ -212,34 +212,35 @@
     <!-- Delete Modal -->
     <div class="modal" id="deleteModal">
         <div class="modal-header">
-            <h3 id="deleteModalTitle" data-i18n="deleteItem">Удалить элемент?</h3>
+            <h3 id="deleteModalTitle" data-i18n="deleteItem">Delete element?</h3>
             <button class="modal-close" id="deleteModalClose">✕</button>
         </div>
         <div class="modal-body">
             <p id="deleteModalMessage"></p>
         </div>
         <div class="modal-footer">
-            <button class="modal-btn modal-btn-secondary" id="deleteCancelBtn" data-i18n="cancel">Отмена</button>
-            <button class="modal-btn modal-btn-danger" id="deleteConfirmBtn" data-i18n="delete">Удалить</button>
+            <button class="modal-btn modal-btn-secondary" id="deleteCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-danger" id="deleteConfirmBtn" data-i18n="delete">Delete</button>
         </div>
     </div>
-
+    <!-- Rename Modal -->
     <div class="modal" id="renameModal">
         <div class="modal-header">
-            <h3 id="renameModalTitle" data-i18n="renameItem">Переименовать</h3>
+            <h3 id="renameModalTitle" data-i18n="renameItem">Rename</h3>
             <button class="modal-close" id="renameModalClose">✕</button>
         </div>
         <div class="modal-body">
-            <label for="renameInput" data-i18n="newName">Новое имя:</label>
+            <label for="renameInput" data-i18n="newName">New name:</label>
             <input type="text" id="renameInput" class="rename-input" autocomplete="off" spellcheck="false">
             <p class="rename-hint" id="renameHint"></p>
         </div>
         <div class="modal-footer">
-            <button class="modal-btn modal-btn-secondary" id="renameCancelBtn" data-i18n="cancel">Отмена</button>
-            <button class="modal-btn modal-btn-primary" id="renameConfirmBtn" data-i18n="rename">Переименовать</button>
+            <button class="modal-btn modal-btn-secondary" id="renameCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="renameConfirmBtn" data-i18n="rename">Rename</button>
         </div>
     </div>
 
+    <!-- Logout Modal -->
     <div class="modal" id="logoutModal">
         <div class="modal-header">
             <h3 id="logoutModalTitle" data-i18n="signOut">Sign Out</h3>
@@ -254,10 +255,69 @@
         </div>
     </div>
 
+    <!-- Create Folder Modal -->
+    <div class="modal" id="createFolderModal">
+        <div class="modal-header">
+            <h3 id="createFolderModalTitle" data-i18n="newFolder">New Folder</h3>
+            <button class="modal-close" id="createFolderModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <label for="folderNameInput" data-i18n="folderName">Folder name:</label>
+            <input type="text" id="folderNameInput" class="folder-name-input" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder" data-i18n="untitledFolder" placeholder="Untitled folder">
+            <p class="folder-hint" id="folderNameHint"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="createFolderCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="createFolderConfirmBtn" data-i18n="create">Create</button>
+        </div>
+    </div>
+
+    <!-- Empty Trash Modal with Progress -->
+    <div class="modal" id="emptyTrashModal">
+        <div class="modal-header">
+            <h3 id="emptyTrashModalTitle" data-i18n="emptyTheTrash">Empty Trash</h3>
+            <button class="modal-close" id="emptyTrashModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <p id="emptyTrashModalMessage" data-i18n="confirmEmptyTrash">
+                Delete all items in trash permanently? This action cannot be undone.
+            </p>
+            
+            <!-- Progress section (hidden by default) -->
+            <div class="bulk-operation-progress" id="emptyTrashProgress" style="display: none;">
+                <div class="progress-info">
+                    <span id="emptyTrashProgressText">Deleting items...</span>
+                    <span id="emptyTrashProgressCount">0 / 0</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="emptyTrashProgressBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="emptyTrashCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-danger" id="emptyTrashConfirmBtn" data-i18n="emptyTheTrash">Empty Trash</button>
+        </div>
+    </div>
+
+
 
     <!-- Hidden file inputs -->
     <input type="file" id="fileInput" multiple style="display: none;">
     <input type="file" id="folderInput" webkitdirectory style="display: none">
+
+    <!-- Upload Progress Container -->
+    <div class="upload-progress-container" id="uploadProgressContainer">
+        <div class="upload-progress-header">
+            <h3 data-i18n="uploadingFiles">Uploading files</h3>
+            <button class="upload-minimize-btn" id="uploadMinimizeBtn">
+                <span class="material-symbols-outlined">expand_more</span>
+            </button>
+        </div>
+        <div class="upload-progress-list" id="uploadProgressList">
+            <!-- Upload items will be added here dynamically -->
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script type="module" src="js/main.js"></script>
