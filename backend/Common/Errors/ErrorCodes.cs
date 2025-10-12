@@ -18,6 +18,9 @@
         public const string PARENT_FOLDER_DELETED = "PARENT_FOLDER_DELETED";
         public const string NULL_OR_EMPTY = "NULL_OR_EMPTY";
         public const string NOT_ALLOWED_SYMBOL = "NOT_ALLOWED_SYMBOL";
+        public const string PARENT_NOT_FOUND = "PARENT_NOT_FOUND";
+        public const string NAME_CONFLICT = "NAME_CONFLICT";
+
 
 
 

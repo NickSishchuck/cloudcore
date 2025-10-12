@@ -48,9 +48,9 @@ namespace CloudCore.Services.Implementations
             var streamForDb = CreateItemStream(userId, rootItem);
             var preparedForDb = prepare(streamForDb);
 
-            var streamForStorage = CreateItemStream(userId, rootItem);
-
             await _itemRepository.UpdateItemsInTransactionAsync(preparedForDb);
+
+            var streamForStorage = CreateItemStream(userId, rootItem);
             await storageAction(userId, streamForStorage, isAdding);
         }
 
@@ -224,12 +224,7 @@ namespace CloudCore.Services.Implementations
 
             try
             {
-                await ProcessItemStreamsAsync(
-    userId,
-    itemToRestore,
-    _itemManagerService.PrepareItemsForRestoreAsync,
-    _storageTrackingService.UpdateStorageForItemsAsync,
-    isAdding: true);
+                await ProcessItemStreamsAsync(userId, itemToRestore, _itemManagerService.PrepareItemsForRestoreAsync, _storageTrackingService.UpdateStorageForItemsAsync, isAdding: true);
 
                 _logger.LogInformation("Item {ItemId} and its children restored successfully.", itemId);
                 return new RestoreResult
@@ -252,8 +247,6 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-
-        // Refactored
         public async Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId)
         {
             _logger.LogInformation("Delete request received. UserId={UserId}, ItemId={ItemId}", userId, itemId);
@@ -274,12 +267,7 @@ namespace CloudCore.Services.Implementations
 
             try
             {
-                await ProcessItemStreamsAsync(
-    userId,
-    item,
-    _itemManagerService.PrepareItemsForSoftDeleteAsync,
-    _storageTrackingService.UpdateStorageForItemsAsync,
-    isAdding: false);
+                await ProcessItemStreamsAsync(userId, item, _itemManagerService.PrepareItemsForSoftDeleteAsync, _storageTrackingService.UpdateStorageForItemsAsync, isAdding: false);
 
                 _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}",
                     item.Id, item.Type, item.Name);
@@ -303,79 +291,6 @@ namespace CloudCore.Services.Implementations
                 throw;
             }
         }
-
-
-        public async Task<BatchDeleteResult> SoftDeleteItemsAsync(int userId, List<int> itemIds)
-        {
-            _logger.LogInformation("Batch soft delete started for user {UserId}, items: {ItemIds}", userId, string.Join(", ", itemIds));
-
-            var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemIds).ToListAsync();
-
-            if (items.Count == 0)
-            {
-                _logger.LogWarning("Batch delete failed: no items found for user {UserId}", userId);
-                return new BatchDeleteResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "No items found for deletion."
-                };
-            }
-
-            long totalBytes = 0;
-            var allStreams = new List<IAsyncEnumerable<Item>>();
-
-            foreach (var item in items)
-            {
-                var stream = CreateItemStream(userId, item);
-                await foreach (var i in stream)
-                {
-                    if (i.Type == "file" && i.FileSize.HasValue)
-                        totalBytes += i.FileSize.Value;
-                }
-            }
-
-            async IAsyncEnumerable<Item> CombineStreams()
-            {
-                foreach (var item in items)
-                {
-                    var stream = CreateItemStream(userId, item);
-                    await foreach (var i in stream)
-                        yield return i;
-                }
-            }
-
-            try
-            {
-                var combinedStream = CombineStreams();
-
-                var preparedItems = _itemManagerService.PrepareItemsForSoftDeleteAsync(combinedStream);
-
-                await _itemRepository.UpdateItemsInTransactionAsync(preparedItems);
-                _logger.LogInformation("All items updated in DB successfully for user {UserId}", userId);
-
-                await _storageTrackingService.RemoveFromPersonalStorageAsync(userId, totalBytes);
-                _logger.LogInformation("Storage updated successfully for user {UserId}", userId);
-
-                return new BatchDeleteResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
-                    Message = $"Successfully deleted {items.Count} items."
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Batch delete failed for user {UserId}", userId);
-                return new BatchDeleteResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
-                    Message = "An unexpected error occurred during batch delete."
-                };
-            }
-        }
-
 
         public async Task<RenameResult> RenameItemAsync(int userId, int itemId, string newName)
         {
@@ -609,9 +524,7 @@ namespace CloudCore.Services.Implementations
             try
             {
 
-
                 await _itemRepository.AddItemInTranscationAsync(folder);
-
 
                 string relativeFolderPath = await _itemRepository.GetFolderPathAsync(folder);
                 bool result = _itemStorageService.TryCreateFolder(userId, relativeFolderPath);
@@ -768,6 +681,7 @@ namespace CloudCore.Services.Implementations
                 };
             }
         }
+
 
     }
 }

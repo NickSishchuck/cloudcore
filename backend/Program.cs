@@ -76,12 +76,12 @@ namespace CloudCore
 
                 builder.Services.Configure<FormOptions>(options =>
                 {
-                    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+                    options.MultipartBodyLengthLimit = 1610612736; // 1.5 GB
                 });
 
                 builder.WebHost.ConfigureKestrel(options =>
                 {
-                    options.Limits.MaxRequestBodySize = 104857600; // 100 MB
+                    options.Limits.MaxRequestBodySize = 1610612736; // 1.5 GB
                 });
 
                 // Add services

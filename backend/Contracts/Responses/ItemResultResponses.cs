@@ -37,12 +37,6 @@
             public int TargetId { get; set; }
         }
 
-        public class BatchDeleteResult : ServiceResult
-        {
-            public int DeletedItemsCount { get; set; }
-            public List<int> FailedItemIds { get; set; } = new List<int>();
-        }
-
         public class RestoreResult : ServiceResult
         { 
         }

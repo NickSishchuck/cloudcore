@@ -58,6 +58,9 @@ namespace CloudCore.Controllers
             return Ok(folderPath);
         }
 
+
+
+
         /// <summary>
         /// Downloads a folder as a ZIP archive for the specified user.
         /// </summary>
@@ -192,24 +195,6 @@ namespace CloudCore.Controllers
 
         }
 
-        [HttpDelete("delete/batch")]
-        public async Task<IActionResult> DeleteItemsBatchAsync(int userId, [FromBody] List<int> itemIds)
-        {
-            _logger.LogInformation("User {UserId} attempting to delete {ItemCount} items.", userId, itemIds.Count);
-            var result = await _itemApplication.SoftDeleteItemsAsync(userId, itemIds);
-
-            if (!result.IsSuccess)
-            {
-                return result.ErrorCode switch
-                {
-                    ErrorCodes.ITEM_NOT_FOUND => NotFound(result),
-                    _ => StatusCode(500, result)
-                };
-            }
-
-            return Ok(result);
-        }
-
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFileAsync([Required] int userId, IFormFile file, [FromForm] int? parentId = null)
         {
@@ -241,7 +226,6 @@ namespace CloudCore.Controllers
 
         }
 
-
         // <summary>
         /// Creates a new folder for the specified user.
         /// </summary>
@@ -268,8 +252,8 @@ namespace CloudCore.Controllers
                 _logger.LogWarning("Failed to create folder '{FolderName}' for User ID: {UserId}. Reason: {ErrorMessage} (Code: {ErrorCode}).", request.Name, userId, result.Message, result.ErrorCode);
                 return result.ErrorCode switch
                 {
-                    "PARENT_NOT_FOUND" => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
-                    "NAME_CONFLICT" => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    ErrorCodes.PARENT_NOT_FOUND => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode)),
+                    ErrorCodes.NAME_CONFLICT => Conflict(ApiResponse.Error(result.Message, result.ErrorCode)),
                     _ => BadRequest(ApiResponse.Error(result.Message, result.ErrorCode))
                 };
             }
@@ -345,6 +329,13 @@ namespace CloudCore.Controllers
             }
 
             return Ok(result);
+        }
+
+
+        [HttpDelete("delete/permanently")]
+        public async Task<IActionResult> DeletePermanently(int userId, int itemId)
+        {
+            return Ok(); //TODO
         }
 
 

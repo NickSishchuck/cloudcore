@@ -33,6 +33,7 @@ namespace CloudCore.Services.Implementations
 
             await ValidateArchive(userId, folderId); // Checks if archive will be valid
 
+            // Create a temporary file path with .zip extension
             var tempFilePath = Path.GetTempFileName() + ".zip";
             _logger.LogInformation("Creating temporary archive at: {TempPath}", tempFilePath);
 
@@ -40,6 +41,7 @@ namespace CloudCore.Services.Implementations
             using (var fileSteam = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
             using (var zipArchive = new ZipArchive(fileSteam, ZipArchiveMode.Create, true))
             {
+                // Recursively add all children starting from empty path (root of archive)
                 _logger.LogInformation("Starting to build zip archive recursively.");
                 await AddChildrenToZipAsync(zipArchive, userId, folderId, string.Empty);
             }
@@ -51,15 +53,16 @@ namespace CloudCore.Services.Implementations
         {
             _logger.LogDebug("Processing children for ParentId: {ParentId}, Path: '{Path}'", parentId, currentPath);
 
-            // Get all child items of the current parent
+            // Iterate through all direct children of the current parent folder
             await foreach (var item in _itemRepository.GetDirectChildrenAsync(userId, parentId))
             {
-
+                // Build the entry path by combining current path with item name
                 var entryPath = Path.Combine(currentPath, item.Name).Replace('\\', '/');
 
                 if (item.Type == "folder")
                 {
                     _logger.LogDebug("Creating directory entry in archive: '{EntryPath}'", entryPath);
+                    // Create a directory entry (ends with /)
                     archive.CreateEntry(entryPath + "/");
 
                     // Recurse into the folder to add its children
@@ -89,9 +92,11 @@ namespace CloudCore.Services.Implementations
             {
                 try
                 {
+                    // Create a new entry in the archive with optimal compression
                     var entry = zipArchive.CreateEntry(entryPath, CompressionLevel.Optimal);
                     using var entryStream = entry.Open();
                     using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    // Copy the file content to the archive entry
                     await fileStream.CopyToAsync(entryStream);
                 }
                 catch (Exception ex)
