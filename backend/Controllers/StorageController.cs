@@ -29,26 +29,6 @@ namespace CloudCore.Controllers
             _logger = logger;
         }
 
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.Parse(userIdClaim ?? "0");
-        }
-
-        private ActionResult? VerifyUser(int userId)
-        {
-            var currentUserId = GetCurrentUserId();
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-
-            if (!authValidation.IsValid)
-            {
-                _logger.LogWarning("User authorization failed for UserId={UserId}", userId);
-                return StatusCode(403, ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode));
-            }
-
-            return null;
-        }
-
         /// <summary>
         /// Gets the user's personal storage usage and limit
         /// </summary>
@@ -59,8 +39,6 @@ namespace CloudCore.Controllers
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetPersonalStorageInfo([Required] int userId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("Fetching personal storage info for user {UserId}", userId);
 
@@ -93,8 +71,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [Required] int teamspaceId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("Fetching teamspace storage info. UserId={UserId}, TeamspaceId={TeamspaceId}",
                 userId, teamspaceId);
@@ -127,8 +103,6 @@ namespace CloudCore.Controllers
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> RecalculatePersonalStorage([Required] int userId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("Recalculating personal storage for user {UserId}", userId);
 
@@ -160,8 +134,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [Required] int teamspaceId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("Recalculating teamspace storage. UserId={UserId}, TeamspaceId={TeamspaceId}",
                 userId, teamspaceId);

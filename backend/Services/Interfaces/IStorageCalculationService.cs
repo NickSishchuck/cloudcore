@@ -28,6 +28,6 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user ID who owns the items</param>
         /// <param name="items">Collection of items to calculate size for</param>
         /// <returns>Tuple of (total size in bytes, file count)</returns>
-        Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, List<Item> items);
+        Task<(long totalSize, int fileCount)> CalculateMultipleItemsSizeAsync(int userId, IAsyncEnumerable<Item> items);
     }
 }

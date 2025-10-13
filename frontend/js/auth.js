@@ -88,11 +88,13 @@ class AuthManager {
             let errorMessage = this.i18n.t('signInFailed');
             if (error.message.toLowerCase().includes('invalid')) {
                 errorMessage = this.i18n.t('invalidCredentials');
+            } else if (error.message.toLowerCase().includes('unauthorized')) {
+                errorMessage = this.i18n.t('invalidCredentials');
             } else if (error.message) {
                 errorMessage = error.message;
             }
-            
-            this.showError(errorMessage);
+        
+        this.showError(errorMessage);
         } finally {
             button.disabled = false;
             button.textContent = this.i18n.t('signIn');
@@ -147,6 +149,35 @@ class AuthManager {
         }
     }
 
+    setupThemeSwitcher() {
+        const themeBtn = document.getElementById('themeBtn');
+        const themeIcon = document.querySelector('.theme-icon');
+        
+        if (themeBtn) {
+            // Set initial icon based on current theme
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (themeIcon) {
+                themeIcon.textContent = currentTheme === 'dark' ? 'light_mode' : 'dark_mode';
+            }
+
+            themeBtn.addEventListener('click', () => {
+                console.log('Theme switch clicked');
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('cloudcore-theme', newTheme);
+                
+                // Update icon
+                if (themeIcon) {
+                    themeIcon.textContent = newTheme === 'dark' ? 'light_mode' : 'dark_mode';
+                }
+                
+                console.log('Theme switched to:', newTheme);
+            });
+        }
+    }
+
     setupLanguageSwitcher() {
         const languageBtn = document.getElementById('languageBtn');
         if (languageBtn) {
@@ -158,9 +189,51 @@ class AuthManager {
         }
     }
 
+    setupPasswordVisibilityToggles() {
+        document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', function() {
+                // Find the input field (previous sibling)
+                const wrapper = this.parentElement;
+                const input = wrapper.querySelector('input');
+                const icon = this.querySelector('.material-symbols-outlined');
+                
+                // Add animation class
+                this.classList.add('changing');
+                
+                // Toggle password visibility
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility';
+                    this.setAttribute('aria-label', 'Hide password');
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility_off';
+                    this.setAttribute('aria-label', 'Show password');
+                }
+                
+                // Remove animation class after transition
+                setTimeout(() => {
+                    this.classList.remove('changing');
+                }, 150);
+                
+                // Keep focus on input
+                input.focus();
+            });
+        });
+    }
+
     initializeLoginPage() {
+        this.setupPasswordVisibilityToggles();
+        this.setupThemeSwitcher();
         this.i18n.updateUI();
         this.setupLanguageSwitcher();
+
+        const form = document.getElementById('loginForm');
+        if (form) {
+            setTimeout(() => {
+                form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
 
         document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -174,8 +247,18 @@ class AuthManager {
     }
 
     initializeRegisterPage() {
+        
+        this.setupPasswordVisibilityToggles();
+        this.setupThemeSwitcher();
         this.i18n.updateUI();
         this.setupLanguageSwitcher();
+
+        const form = document.getElementById('registerForm');
+        if (form) {
+            setTimeout(() => {
+                form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
 
         // Real-time password confirmation validation
         document.getElementById('confirmPassword')?.addEventListener('input', function() {

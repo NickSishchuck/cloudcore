@@ -32,24 +32,25 @@ export function formatDateTime(dateString) {
 
 export function getFileIcon(item) {
     if (item.type === 'folder') {
-        return { emoji: '📁', class: 'folder' };
+        return { icon: 'folder', class: 'folder' };
     }
 
     const ext = item.name.split('.').pop().toLowerCase();
     const mimeType = item.mimeType || '';
 
     if (mimeType.startsWith('image/')) {
-        return { emoji: '🖼️', class: 'image' };
+        return { icon: 'image', class: 'image' };
     } else if (ext === 'pdf' || mimeType === 'application/pdf') {
-        return { emoji: '📄', class: 'pdf' };
+        return { icon: 'picture_as_pdf', class: 'pdf' };
     } else if (ext === 'html' || mimeType === 'text/html') {
-        return { emoji: '🌐', class: 'html' };
+        return { icon: 'code', class: 'html' };
     } else if (mimeType.startsWith('text/')) {
-        return { emoji: '📝', class: 'file' };
+        return { icon: 'description', class: 'file' };
     } else {
-        return { emoji: '📄', class: 'file' };
+        return { icon: 'description', class: 'file' };
     }
 }
+
 
 export function downloadBlob(blob, filename) {
     const url = window.URL.createObjectURL(blob);

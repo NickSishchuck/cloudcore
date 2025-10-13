@@ -31,29 +31,6 @@ namespace CloudCore.Controllers
         /// <summary>
         /// Gets the current user ID from JWT token
         /// </summary>
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.Parse(userIdClaim ?? "0");
-        }
-
-        /// <summary>
-        /// Verifies that the requesting user matches the userId in the route
-        /// </summary>
-        private ActionResult? VerifyUser(int userId)
-        {
-            var currentUserId = GetCurrentUserId();
-
-            _logger.LogInformation($"Verifying user authorization. Target User ID: {userId}, Requester User ID: {currentUserId}.");
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-            if (!authValidation.IsValid)
-            {
-                _logger.LogWarning($"User authorization failed. Error: {authValidation.ErrorMessage}, Code: {authValidation.ErrorCode}, Target User ID: {userId}, Requester User ID: {currentUserId}.");
-                return StatusCode(403, ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode));
-            }
-            _logger.LogInformation($"User authorization successful for Target User ID: {userId}.");
-            return null;
-        }
 
         #region Teamspace Management
 
@@ -77,8 +54,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [FromBody] CreateTeamspaceRequest request)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} attempting to create teamspace '{TeamspaceName}'",
                 userId, request.Name);
@@ -114,8 +89,6 @@ namespace CloudCore.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<IEnumerable<TeamspaceResponse>>> GetUserTeamspaces([Required] int userId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("Fetching all teamspaces for User ID: {UserId}", userId);
 
@@ -145,8 +118,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [Required] int teamspaceId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} fetching teamspace {TeamspaceId}", userId, teamspaceId);
 
@@ -190,8 +161,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [FromBody] UpdateTeamspaceRequest request)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             _logger.LogInformation("User {UserId} attempting to update teamspace {TeamspaceId}",
                 userId, teamspaceId);
@@ -236,8 +206,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [Required] int teamspaceId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} attempting to delete teamspace {TeamspaceId}",
                 userId, teamspaceId);
@@ -291,8 +259,6 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [FromBody] AddTeamspaceMemberRequest request)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} attempting to add member '{Email}' to teamspace {TeamspaceId}",
                 userId, request.Email, teamspaceId);
@@ -339,8 +305,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [Required] int teamspaceId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} fetching members for teamspace {TeamspaceId}",
                 userId, teamspaceId);
@@ -385,8 +349,6 @@ namespace CloudCore.Controllers
             [Required] int memberUserId,
             [FromBody] UpdateMemberPermissionRequest request)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} attempting to update member {MemberUserId} permission to '{Permission}' in teamspace {TeamspaceId}",
                 userId, memberUserId, request.PermissionLevel, teamspaceId);
@@ -436,8 +398,6 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [Required] int memberUserId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} attempting to remove member {MemberUserId} from teamspace {TeamspaceId}",
                 userId, memberUserId, teamspaceId);
@@ -483,8 +443,6 @@ namespace CloudCore.Controllers
             [Required] int userId,
             [Required] int teamspaceId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             _logger.LogInformation("User {UserId} attempting to leave teamspace {TeamspaceId}",
                 userId, teamspaceId);

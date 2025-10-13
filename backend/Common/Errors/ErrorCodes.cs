@@ -18,6 +18,9 @@
         public const string PARENT_FOLDER_DELETED = "PARENT_FOLDER_DELETED";
         public const string NULL_OR_EMPTY = "NULL_OR_EMPTY";
         public const string NOT_ALLOWED_SYMBOL = "NOT_ALLOWED_SYMBOL";
+        public const string PARENT_NOT_FOUND = "PARENT_NOT_FOUND";
+        public const string NAME_CONFLICT = "NAME_CONFLICT";
+
 
 
 
@@ -27,13 +30,19 @@
         public const string FILE_TOO_LARGE = "FILE_TOO_LARGE";
         public const string INVALID_FILE_TYPE = "INVALID_FILE_TYPE";
         public const string FILE_REQUIRED = "FILE_REQUIRED";
+        public const string INVALID_TARGET = "INVALID_TARGET";
+        public const string INVALID_OPERATION = "INVALID_OPERATION";
+        public const string CIRCULAR_REFERENCE = "CIRCULAR_REFERENCE";
+
 
         public const string UPLOADED_SUCCESSFULLY = "UPLOADED_SUCCESSFULLY";
         public const string CREATED_SUCCESSFULLY = "CREATED_SUCCESSFULLY";
         public const string DELETED_SUCCESSFULLY = "DELETED_SUCCESSFULLY";
         public const string RESTORED_SUCCESSFULLY = "RESTORED_SUCCESSFULLY";
+        public const string MOVED_SUCCESSFULLY = "MOVED_SUCCESSFULLY";
 
         public const string ACCESS_DENIED = "ACCESS_DENIED";
+        public const string BAD_REQUEST = "BAD_REQUEST";
         public const string OPERATION_FAILED = "OPERATION_FAILED";
         public const string UNEXPECTED_ERROR = "UNEXPECTED_ERROR";
         public const string IO_ERROR = "IO_ERROR";

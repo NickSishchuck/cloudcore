@@ -31,6 +31,29 @@ namespace CloudCore.Services.Implementations
             _storageTrackingService = storageTrackingService;
         }
 
+        private IAsyncEnumerable<Item> CreateItemStream(int userId, Item item)
+        {
+            if (item.Type == "folder")
+            {
+                return _itemRepository.GetAllChildItemsAsync(userId, item.Id).Prepend(item);
+            }
+            else
+            {
+                return AsyncEnumerable.Repeat(item, 1);
+            }
+        }
+
+        private async Task ProcessItemStreamsAsync(int userId, Item rootItem, Func<IAsyncEnumerable<Item>, IAsyncEnumerable<Item>> prepare, Func<int, IAsyncEnumerable<Item>, bool, Task> storageAction, bool isAdding)
+        {
+            var streamForDb = CreateItemStream(userId, rootItem);
+            var preparedForDb = prepare(streamForDb);
+
+            await _itemRepository.UpdateItemsInTransactionAsync(preparedForDb);
+
+            var streamForStorage = CreateItemStream(userId, rootItem);
+            await storageAction(userId, streamForStorage, isAdding);
+        }
+
         public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null)
         {
             var (items, totalCount) = await _itemRepository.GetItemsAsync(userId, parentId, page, pageSize, sortBy, sortDir, isTrashFolder, searchQuery);
@@ -54,6 +77,11 @@ namespace CloudCore.Services.Implementations
         public async Task<Item?> GetItemAsync(int userId, int itemId, string type, int? teamspaceId = null)
         {
             return await _itemRepository.GetItemAsync(userId, itemId, type);
+        }
+
+        public async Task<Item?> GetItemByNameAsync(int userId, string  name, int? parentId, int? teamspaceId = null)
+        {
+            return await _itemRepository.GetItemByNameAsync(userId, name, parentId, teamspaceId);
         }
 
         public async Task<string> GetBreadcrumbPathAsync(int userId, int folderId, string type)
@@ -114,25 +142,30 @@ namespace CloudCore.Services.Implementations
 
         }
 
-        public async Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync(int userId, List<int> itemsId)
+        public async Task<(Stream archiveStream, string fileName)> DownloadMultipleItemsAsZipAsync(int userId, List<int> itemsIds)
         {
 
-            var itemsValidation = await _validationService.ValidateItemIdsAsync(itemsId, userId);
+            var itemsValidation = await _validationService.ValidateItemIdsAsync(itemsIds, userId);
             if (!itemsValidation.IsValid)
                 throw new InvalidOperationException(itemsValidation.ErrorMessage);
 
-            var items = await _itemRepository.GetItemsByIdsForUserAsync(userId, itemsId);
-            int itemCount = items.Count();
-            if (itemCount == 0)
-                throw new FileNotFoundException(ErrorCodes.FILE_NOT_FOUND);
+            var itemsAsync = _itemRepository.GetItemsByIdsForUserAsync(userId, itemsIds);
 
-
-            var totalSize = items.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
+            long totalSize = 0;
+            int itemCount = 0;
+            await foreach (var item in itemsAsync)
+            {
+                if (item.Type == "file")
+                {
+                    totalSize += item.FileSize ?? 0;
+                    itemCount++;
+                }
+            }
             var sizeValidation = _validationService.ValidateArchiveSize(totalSize, itemCount);
             if (!sizeValidation.IsValid)
                 throw new InvalidOperationException(sizeValidation.ErrorMessage);
 
-            var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, items.ToList());
+            var archiveStream = await _zipArchiveService.CreateMultipleItemArchiveAsync(userId, _itemRepository.GetItemsByIdsForUserAsync(userId, itemsIds));
             var fileName = $"selected_items_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
 
             return (archiveStream, fileName);
@@ -173,20 +206,30 @@ namespace CloudCore.Services.Implementations
                     };
             }
 
-            var descendants = (itemToRestore.Type == "folder") ? await _itemRepository.GetAllChildItemsAsync(userId, itemId) : new List<Item>();
+            var streamForSize = CreateItemStream(userId, itemToRestore);
+            long totalBytes = 0;
+            await foreach (var item in streamForSize)
+            {
+                if (item.Type == "file")
+                    totalBytes += item.FileSize ?? 0;
+            }
 
-            var allItems = new List<Item>(descendants) { itemToRestore };
-
-            long totalBytes = allItems.Where(i => i.Type == "file").Sum(i => i.FileSize ?? 0);
             var canRestore = await _storageTrackingService.CanAddToPersonalStorageAsync(userId, totalBytes);
+            if (!canRestore)
+            {
+                _logger.LogWarning("Storage limit exceeded for restore. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new RestoreResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.STORAGE_LIMIT_EXCEEDED,
+                    Message = "Cannot restore item, not enough storage."
+                };
+            }
 
-            _itemManagerService.PrepareItemsForRestore(allItems);
 
             try
             {
-                await _itemRepository.UpdateItemsInTransactionAsync(allItems);
-
-                await _storageTrackingService.UpdateStorageForItemsAsync(userId, allItems, isAdding: true);
+                await ProcessItemStreamsAsync(userId, itemToRestore, _itemManagerService.PrepareItemsForRestoreAsync, _storageTrackingService.UpdateStorageForItemsAsync, isAdding: true);
 
                 _logger.LogInformation("Item {ItemId} and its children restored successfully.", itemId);
                 return new RestoreResult
@@ -209,7 +252,6 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        // Refactored
         public async Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId)
         {
             _logger.LogInformation("Delete request received. UserId={UserId}, ItemId={ItemId}", userId, itemId);
@@ -228,26 +270,12 @@ namespace CloudCore.Services.Implementations
 
             _logger.LogInformation("Item retrieved for deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
 
-            var childItems = new List<Item>();
-
-            if (item.Type == "folder")
-            {
-                childItems = await _itemRepository.GetAllChildItemsAsync(userId, itemId);
-                _logger.LogInformation("Folder detected. Found {ChildCount} child items for ItemId={ItemId}", childItems.Count, item.Id);
-            }
-            _logger.LogInformation("Performing soft delete for ItemId={ItemId} (and {ChildCount} children)", item.Id, childItems.Count);
-
-            var itemsToSoftDelete = _itemManagerService.PrepareItemsForSoftDelete(item, childItems);
-
             try
             {
-                await _itemRepository.UpdateItemsInTransactionAsync(itemsToSoftDelete);
+                await ProcessItemStreamsAsync(userId, item, _itemManagerService.PrepareItemsForSoftDeleteAsync, _storageTrackingService.UpdateStorageForItemsAsync, isAdding: false);
 
-                var allItems = new List<Item>(itemsToSoftDelete) { item };
-
-                await _storageTrackingService.UpdateStorageForItemsAsync(userId, allItems, isAdding: false);
-
-                _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
+                _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}",
+                    item.Id, item.Type, item.Name);
 
                 return new DeleteResult
                 {
@@ -269,7 +297,6 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        // Refactored
         public async Task<RenameResult> RenameItemAsync(int userId, int itemId, string newName)
         {
             _logger.LogInformation("Rename request received. UserId={UserId}, ItemId={ItemId}, NewName={NewName}",
@@ -286,8 +313,6 @@ namespace CloudCore.Services.Implementations
                     Message = itemNameValidation.ErrorMessage
                 };
             }
-
-
 
             var itemExistsValidation = await _validationService.ValidateItemExistsAsync(itemId, userId);
             if (!itemExistsValidation.IsValid)
@@ -316,25 +341,27 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            var childItems = new List<Item> { };
+            IAsyncEnumerable<Item> itemsToSoftDelete;
             var folderPath = String.Empty;
-
-
             if (item.Type == "folder")
             {
-                _logger.LogInformation("Fetching child items for ItemId={ItemId}", item.Id);
-                childItems = await _itemRepository.GetAllChildItemsAsync(item.UserId, item.Id);
+                itemsToSoftDelete = _itemRepository.GetAllChildItemsAsync(userId, itemId)
+                                                  .Prepend(item);
+
                 folderPath = await _itemRepository.GetFolderPathAsync(item);
                 folderPath = Path.Combine(_itemStorageService.GetUserStoragePath(userId), folderPath);
                 _logger.LogInformation("Folder Path is {FolderPath}", folderPath);
             }
+            else
+            {
+                itemsToSoftDelete = AsyncEnumerable.Repeat(item, 1);
+            }
 
-            _logger.LogInformation("Renaming item physically. ItemId={ItemId}, NewName={NewName}, ChildCount={ChildCount}", item.Id, newName, childItems.Count);
-            var itemsToRename = _itemManagerService.PrepareItemsForRenaming(item, newName, childItems, folderPath);
+            var preparedItemsAsync = _itemManagerService.PrepareItemsForRenaming(item, newName, itemsToSoftDelete, folderPath);
 
             try
             {
-                await _itemRepository.UpdateItemsInTransactionAsync(itemsToRename);
+                await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
                 _logger.LogInformation("Item renamed successfully in DB. ItemId={ItemId}, NewName={NewName}", item.Id, newName);
 
                 return new RenameResult
@@ -448,7 +475,7 @@ namespace CloudCore.Services.Implementations
                 if (createdItem != null && !string.IsNullOrEmpty(createdItem.FilePath))
                 {
                     _logger.LogInformation("Attempting to delete orphaned file at {FilePath}", createdItem.FilePath);
-                    _itemStorageService.DeleteItemPhysicaly(createdItem);
+                    _itemStorageService.DeleteItemPhysically(createdItem);
                 }
                 throw;
             }
@@ -502,9 +529,7 @@ namespace CloudCore.Services.Implementations
             try
             {
 
-
                 await _itemRepository.AddItemInTranscationAsync(folder);
-
 
                 string relativeFolderPath = await _itemRepository.GetFolderPathAsync(folder);
                 bool result = _itemStorageService.TryCreateFolder(userId, relativeFolderPath);
@@ -536,6 +561,128 @@ namespace CloudCore.Services.Implementations
                     IsSuccess = false,
                     ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
                     Message = "An unexpected error occurred."
+                };
+            }
+        }
+
+        public async Task<MoveResult> MoveItemAsync(int userId, int itemId, int? targetId)
+        {
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+            if (item == null)
+            {
+                _logger.LogWarning("MoveItem failed: Item with ID {ItemId} not found for user {UserId}", itemId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "Item to move not found."
+                };
+            }
+
+            Item targetItem = null;
+            bool isMovingToRoot = targetId == null || targetId == 0;
+
+            if (!isMovingToRoot)
+            {
+                targetItem = await _itemRepository.GetItemAsync(userId, (int)targetId, null);
+                if (targetItem == null)
+                {
+                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                        Message = "Target folder not found."
+                    };
+                }
+                if (targetItem.Type != "folder")
+                {
+                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} is not a folder for user {UserId}", targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.INVALID_TARGET,
+                        Message = "Target item is not a folder."
+                    };
+                }
+            }
+
+            if (item.Type == "folder" && !isMovingToRoot)
+            {
+                var circularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, (int)targetId);
+                if (!circularValidation.IsValid)
+                {
+                    _logger.LogWarning("MoveItem failed: Circular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = circularValidation.ErrorCode,
+                        Message = circularValidation.ErrorMessage
+                    };
+                }
+            }
+
+            int? actualTargetId = isMovingToRoot ? null : targetId;
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(item.Name, item.Type, userId, actualTargetId, itemId, true);
+            if (!uniquenessValidation.IsValid)
+            {
+                _logger.LogWarning("MoveItem failed: Uniqueness validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
+                };
+            }
+
+            try
+            {
+                IAsyncEnumerable<Item> childItemsAsync = CreateItemStream(userId, item);
+                var basePath = _itemStorageService.GetUserStoragePath(userId);
+
+                string sourceFolderPath = null;
+                if (item.Type == "folder")
+                {
+                    var sourceFolderPathRelative = await _itemRepository.GetFolderPathAsync(item);
+                    sourceFolderPath = Path.Combine(basePath, sourceFolderPathRelative);
+                    _logger.LogInformation("Source folder path: {Path}", sourceFolderPath);
+                }
+
+                string destinationFolderPath;
+                if (isMovingToRoot)
+                {
+                    destinationFolderPath = basePath;
+                }
+                else
+                {
+                    var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem);
+                    destinationFolderPath = Path.Combine(basePath, targetRelativePath);
+                }
+                _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
+
+                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, actualTargetId, sourceFolderPath, destinationFolderPath, childItemsAsync);
+                await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
+
+                var itemsForCount = _itemRepository.GetAllChildItemsAsync(userId, itemId).Prepend(item);
+                var count = await itemsForCount.CountAsync() - 1;
+
+                return new MoveResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.MOVED_SUCCESSFULLY,
+                    Message = $"Item '{item.Name}' moved successfully",
+                    ItemId = item.Id,
+                    UpdatedItemsCount = count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during move. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = "An unexpected error occurred. Please try again later."
                 };
             }
         }

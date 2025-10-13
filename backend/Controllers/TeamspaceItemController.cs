@@ -35,25 +35,6 @@ namespace CloudCore.Controllers
             _logger = logger;
         }
 
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.Parse(userIdClaim ?? "0");
-        }
-
-        private ActionResult? VerifyUser(int userId)
-        {
-            var currentUserId = GetCurrentUserId();
-            var authValidation = _validationService.ValidateUserAuthorization(currentUserId, userId);
-
-            if (!authValidation.IsValid)
-            {
-                _logger.LogWarning("User authorization failed for UserId={UserId}", userId);
-                return StatusCode(403, ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode));
-            }
-
-            return null;
-        }
 
         private async Task<ActionResult?> VerifyTeamspacePermission(int userId, int teamspaceId, string requiredPermission)
         {
@@ -87,8 +68,6 @@ namespace CloudCore.Controllers
             int? parentId,
             [FromQuery] QueryParameters queryParams)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "read");
             if (permissionResult != null) return permissionResult;
@@ -124,8 +103,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [FromQuery] QueryParameters queryParams)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "read");
             if (permissionResult != null) return permissionResult;
@@ -158,8 +136,6 @@ namespace CloudCore.Controllers
             IFormFile file,
             [FromForm] int? parentId = null)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "write");
             if (permissionResult != null) return permissionResult;
@@ -207,8 +183,6 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [FromBody] FolderCreateRequest request)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "write");
             if (permissionResult != null) return permissionResult;
@@ -253,8 +227,6 @@ namespace CloudCore.Controllers
             [Required] int itemId,
             [FromBody] string newName)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "write");
             if (permissionResult != null) return permissionResult;
@@ -296,8 +268,6 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [Required] int itemId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "write");
             if (permissionResult != null) return permissionResult;
@@ -331,8 +301,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [Required] int itemId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "write");
             if (permissionResult != null) return permissionResult;
@@ -366,8 +335,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [Required] int fileId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "read");
             if (permissionResult != null) return permissionResult;
@@ -392,8 +360,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [Required] int folderId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "read");
             if (permissionResult != null) return permissionResult;
@@ -417,8 +384,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [FromBody] List<int> itemIds)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "read");
             if (permissionResult != null) return permissionResult;
@@ -442,8 +408,7 @@ namespace CloudCore.Controllers
             [Required] int teamspaceId,
             [Required] int folderId)
         {
-            var authResult = VerifyUser(userId);
-            if (authResult != null) return authResult;
+
 
             var permissionResult = await VerifyTeamspacePermission(userId, teamspaceId, "read");
             if (permissionResult != null) return permissionResult;

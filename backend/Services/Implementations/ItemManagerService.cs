@@ -20,23 +20,22 @@ namespace CloudCore.Services.Implementations
             throw new NotImplementedException();
         }
 
-        public List<Item> PrepareItemsForRenaming(Item item, string newName, List<Item> childItems, string folderPath = null)
+        public async IAsyncEnumerable<Item> PrepareItemsForRenaming(Item item, string newName, IAsyncEnumerable<Item> childItems = null, string folderPath = null)
         {
             if (item.Type == "file")
             {
                 _logger.LogInformation("Starting rename operation for item {ItemId} of type {ItemType} to new name '{NewName}'.",
                 item.Id, item.Type, newName);
 
-                var newRelativePath = _itemStorageService.RenameItemPhysicaly(item, newName);
+                var newRelativePath = _itemStorageService.RenameItemPhysically(item, newName);
 
                 _logger.LogInformation("Renaming file physically: {OldName} -> {NewName}", item.Name, newName);
 
                 item.Name = Path.GetFileNameWithoutExtension(newName);
                 item.FilePath = newRelativePath;
 
-                _logger.LogInformation("File rename completed. New path: {NewPath}", newRelativePath);
-                List<Item> itemsToUpdate = new List<Item> { item };
-                return itemsToUpdate;
+                yield return item;
+                yield break;
             }
             if (item.Type == "folder")
             {
@@ -46,53 +45,111 @@ namespace CloudCore.Services.Implementations
                 _logger.LogInformation($"New folder path is {newFolderPath}");
                 var basePath = _itemStorageService.GetUserStoragePath(item.UserId);
                 _logger.LogInformation($"Base path is {basePath}");
-                foreach (var childItem in childItems)
+
+                if (childItems != null)
                 {
-                    if (childItem.Type == "file")
+                    await foreach (var childItem in childItems)
                     {
-                        childItem.FilePath = _itemStorageService.GetNewFilePath(childItem.FilePath, newFolderPath, basePath);
+                        if (childItem.Type == "file")
+                        {
+                            childItem.FilePath = _itemStorageService.GetNewFilePath(childItem.FilePath, newFolderPath, basePath);
+                        }
+                        yield return childItem;
                     }
                 }
+                
 
-                _itemStorageService.RenameItemPhysicaly(item, newName, childItems, folderPath);
-
-                _logger.LogInformation("Folder rename completed. Updated {ChildCount} child items.", childItems?.Count ?? 0);
+                _itemStorageService.RenameItemPhysically(item, newName, folderPath);
 
                 item.Name = newName;
+                yield return item;
 
-                var itemsToUpdate = new List<Item>(childItems) { item };
-
-                return itemsToUpdate;
+                _logger.LogInformation("Folder rename completed. Updated folder {ItemId} and its children.", item.Id);
+                yield break;
             }
             _logger.LogError("Unsupported item type {ItemType} for renaming.", item.Type);
             throw new NotSupportedException($"Item type '{item.Type}' is not supported for renaming.");
         }
 
-        public List<Item> PrepareItemsForSoftDelete(Item item, List<Item> childItems = null)
+        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null)
         {
-            var deletionTime = DateTime.UtcNow;
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            if (string.IsNullOrWhiteSpace(destinationFolderPath))
+                throw new ArgumentException("Destination folder path is required", nameof(destinationFolderPath));
+
+            _logger.LogInformation("Starting move operation for item {ItemId} of type {ItemType} to parent {ParentId}",
+                item.Id, item.Type, newParentId);
+
+            var itemsToUpdate = new List<Item>();
+            var basePath = _itemStorageService.GetUserStoragePath(item.UserId);
 
             if (item.Type == "file")
             {
-                item.IsDeleted = true;
-                item.DeletedAt = deletionTime;
-                return new List<Item> { item };
+                _logger.LogInformation("Moving file {FileName} (ID: {ItemId}) to parent {ParentId}",
+                    item.Name, item.Id, newParentId);
+
+                var oldFilePath = item.FilePath;
+                var newRelativePath = _itemStorageService.MoveItemPhysically(item, destinationFolderPath);
+
+                item.ParentId = newParentId;
+                item.FilePath = newRelativePath;
+                item.UpdatedAt = DateTime.UtcNow;
+
+                _logger.LogInformation("File move completed. OldPath={OldPath}, NewPath={NewPath}", oldFilePath, newRelativePath);
+
+                yield return item;
+                yield break;
             }
-            else if (item.Type == "folder")
+
+            if (item.Type == "folder")
+            {
+                if (string.IsNullOrWhiteSpace(sourceFolderPath))
+                    throw new ArgumentException("Source folder path is required for folder items", nameof(sourceFolderPath));
+
+                var newFolderPath = Path.Combine(destinationFolderPath, item.Name);
+
+                if (childItems != null)
+                {
+                    await foreach (var childItem in childItems)
+                    {
+                        if (childItem.Type == "file")
+                        {
+                            var oldChildAbsolutePath = Path.Combine(basePath, childItem.FilePath);
+                            var relativePathInFolder = Path.GetRelativePath(sourceFolderPath, oldChildAbsolutePath);
+                            var newChildAbsolutePath = Path.Combine(newFolderPath, relativePathInFolder);
+                            childItem.FilePath = Path.GetRelativePath(basePath, newChildAbsolutePath).Replace("\\", "/");
+                        }
+                        yield return childItem;
+                    }
+                }
+
+                _itemStorageService.MoveItemPhysically(item, destinationFolderPath, sourceFolderPath);
+
+                item.ParentId = newParentId;
+                yield return item;
+
+                _logger.LogInformation("Folder move completed. FolderId={ItemId}", item.Id);
+                yield break;
+            }
+            else
+            {
+                _logger.LogError("Unsupported item type {ItemType} for moving", item.Type);
+                throw new NotSupportedException($"Item type '{item.Type}' is not supported for moving.");
+            }
+        }
+
+        public async IAsyncEnumerable<Item> PrepareItemsForSoftDeleteAsync(IAsyncEnumerable<Item> items)
+        {
+            var deletionTime = DateTime.UtcNow;
+
+            await foreach (var item in items)
             {
                 item.IsDeleted = true;
                 item.DeletedAt = deletionTime;
-
-                foreach (var childItem in childItems)
-                {
-                    childItem.IsDeleted = true;
-                    childItem.DeletedAt = deletionTime;
-                }
-                childItems.Add(item);
-                return childItems;
+                yield return item;
             }
-            _logger.LogError("Unsupported item type {ItemType} for soft deleting.", item.Type);
-            throw new NotSupportedException($"Item type '{item.Type}' is not supported soft deleting.");
         }
 
         public async Task<Item> ProcessUploadAsync(int userId, int? parentId, IFormFile file, string targetDirectory)
@@ -117,12 +174,13 @@ namespace CloudCore.Services.Implementations
             return item;
         }
 
-        public void PrepareItemsForRestore(List<Item> items)
+        public async IAsyncEnumerable<Item> PrepareItemsForRestoreAsync(IAsyncEnumerable<Item> items)
         {
-            foreach (var item in items)
+            await foreach (var item in items)
             {
                 item.IsDeleted = false;
                 item.DeletedAt = null;
+                yield return item;
             }
         }
 

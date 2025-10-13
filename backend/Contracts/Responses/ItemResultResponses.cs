@@ -33,10 +33,18 @@
 
         public class DeleteResult : ServiceResult
         {
+            public int ItemId { get; set; }
+            public int TargetId { get; set; }
         }
 
         public class RestoreResult : ServiceResult
         { 
+        }
+
+        public class MoveResult : ServiceResult
+        {
+            public int ItemId { get; set; }
+            public int UpdatedItemsCount { get; set; }
         }
 
         public class UploadResult : ServiceResult

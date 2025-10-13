@@ -46,6 +46,9 @@ namespace CloudCore.Services.Interfaces
         /// </returns>
         Task<Item?> GetItemAsync(int userId, int itemId, string type, int? teamspaceId = null);
 
+
+        Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null);
+
         /// <summary>
         /// Asynchronously builds and retrieves the breadcrumb path string for a given item specified by user ID, item ID, and type.
         /// </summary>
@@ -87,7 +90,7 @@ namespace CloudCore.Services.Interfaces
 
         #endregion
 
-        #region Another
+        #region Other
         /// <summary>
         /// Orchestrates the renaming of an existing item.
         /// </summary>
@@ -133,6 +136,17 @@ namespace CloudCore.Services.Interfaces
         /// <param name="itemId">The ID of the item to restore.</param>
         /// <returns>A <see cref="RestoreResult"/> indicating the outcome of the operation.</returns>
         Task<RestoreResult> RestoreItemAsync(int userId, int itemId);
+
+
+        /// <summary>
+        /// Moves a file or folder to a new parent folder.
+        /// Validates permissions and performs all necessary updates.
+        /// </summary>
+        /// <param name="userId">The ID of the user performing the move.</param>
+        /// <param name="itemId">ID of the item being moved.</param>
+        /// <param name="targetId">ID of the target destination folder.</param>
+        /// <returns>A result indicating success or failure with user-friendly messages.</returns>
+        Task<MoveResult> MoveItemAsync(int userId, int itemId, int? targetId);
 
         #endregion
     }

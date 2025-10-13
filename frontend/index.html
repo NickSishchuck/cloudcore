@@ -2,7 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('cloudcore-theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+
     <link rel="icon" href="data:,">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CloudCore Drive</title>
     <link rel="stylesheet" href="css/main.css">
@@ -14,15 +24,25 @@
             <div class="logo">CloudCore Drive</div>
         </div>
         <div class="search-container">
-            <input type="text" class="search-box" placeholder="Search in Drive" id="searchBox">
-            <div class="search-icon">🔍</div>
+            <input type="text" class="search-box" data-i18n="searchPlaceholder" data-i18n-attr="placeholder" id="searchBox">
+            <div class="search-icon">
+                <span class="material-symbols-outlined">search</span>
+            </div>
         </div>
         <div class="header-right">
+            <div class="theme-switcher">
+                    <button class="theme-btn" id="themeBtn" title="Toggle theme">
+                        <span class="material-symbols-outlined theme-icon">dark_mode</span>
+                    </button>
+                </div>
+
             <div class="language-switcher">
-                <button class="language-btn" id="languageBtn" title="Switch language">
-                    <span class="language-flag">🇺🇦</span>
-                    <span class="language-code">UA</span>
-                </button>
+                <div class="language-switcher">
+                    <button class="language-btn" id="languageBtn" title="Switch language">
+                        <span class="material-symbols-outlined">language</span>
+                        <span class="language-code">UA</span>
+                    </button>
+                </div>
             </div>
             <div class="user-info" id="userInfo">Loading...</div>
             <button class="logout-btn" id="logoutBtn" data-i18n="signOut">Sign Out</button>
@@ -33,34 +53,44 @@
     <div class="main">
         <!-- Sidebar -->
         <div class="sidebar">
+            <!-- New dropdown container -->
             <div class="new-dropdown">
                 <button class="new-button" id="newButton">
-                    <span>➕</span> <span data-i18n="new">New</span>
-                    <span class="dropdown-arrow">▼</span>
+                    <span class="material-symbols-outlined">add</span>
+                    <span data-i18n="new">New</span>
+                    <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
                 </button>
+                
                 <div class="dropdown-content" id="newDropdown">
                     <div class="dropdown-item" id="uploadFiles">
-                        <span>📄</span> <span data-i18n="uploadFiles">Upload Files</span>
+                        <span class="material-symbols-outlined">upload_file</span>
+                        <span data-i18n="uploadFiles">Upload Files</span>
                     </div>
                     <div class="dropdown-item" id="uploadFolder">
-                        <span>📁</span> <span data-i18n="uploadFolder">Upload Folder</span>
+                        <span class="material-symbols-outlined">drive_folder_upload</span>
+                        <span data-i18n="uploadFolder">Upload Folder</span>
                     </div>
                 </div>
             </div>
+            <!-- Sidebar items -->
             <div class="sidebar-item active" data-section="mydrive">
-                <span>💾</span> <span data-i18n="myDrive">My Drive</span>
+                <span class="material-symbols-outlined">storage</span>
+                <span data-i18n="myDrive">My Drive</span>
             </div>
             <div class="sidebar-item" data-section="recent">
-                <span>🕒</span> <span data-i18n="recent">Recent</span>
+                <span class="material-symbols-outlined">schedule</span>
+                <span data-i18n="recent">Recent</span>
             </div>
             <div class="sidebar-item" data-section="shared">
-                <span>👥</span> <span data-i18n="shared">Shared with me</span>
+                <span class="material-symbols-outlined">people</span>
+                <span data-i18n="shared">Shared with me</span>
             </div>
+            <div class="sidebar-divider"></div>
             <div class="sidebar-item" data-section="trash">
-                <span>🗑️</span> <span data-i18n="trash">Trash</span>
+                <span class="material-symbols-outlined">delete</span>
+                <span data-i18n="trash">Trash</span>
             </div>
         </div>
-
         <!-- Content Area -->
         <div class="content">
             <!-- Breadcrumbs -->
@@ -70,9 +100,75 @@
 
             <!-- Toolbar -->
             <div class="toolbar">
-                <div></div>
-                <div></div>
+                <div class="toolbar-left">
+                    <!-- New Folder button - always visible, always in the same position -->
+                    <button class="toolbar-btn" id="newFolderBtn" title="New Folder">
+                        <span class="material-symbols-outlined">create_new_folder</span>
+                        <span data-i18n="newFolder">New Folder</span>
+                    </button>
+                    
+                    <!-- Empty Trash button - shown only in trash -->
+                    <button class="toolbar-btn toolbar-btn-danger" id="emptyTrashBtn" title="Empty Trash" style="display: none;">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        <span data-i18n="deleteAllForever">Empty Trash</span>
+                    </button>
+                    
+                    <!-- Action buttons - slide in from left when items selected -->
+                    <div class="toolbar-actions" id="toolbarActions">
+                        <button class="toolbar-btn icon-btn toolbar-close-btn" id="clearSelectionBtn" title="Clear selection">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                        <button class="toolbar-btn" id="downloadBtn" title="Download">
+                            <span class="material-symbols-outlined">download</span>
+                            <span data-i18n="download">Download</span>
+                        </button>
+                        <button class="toolbar-btn" id="moveBtn" title="Move">
+                            <span class="material-symbols-outlined">drive_file_move</span>
+                            <span data-i18n="move">Move</span>
+                        </button>
+                        <button class="toolbar-btn" id="renameToolbarBtn" title="Rename">
+                            <span class="material-symbols-outlined">edit</span>
+                            <span data-i18n="rename">Rename</span>
+                        </button>
+                        <button class="toolbar-btn toolbar-btn-danger" id="deleteToolbarBtn" title="Delete">
+                            <span class="material-symbols-outlined">delete</span>
+                            <span data-i18n="delete">Delete</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <span class="toolbar-selection-count" id="selectionCount" data-i18n="selectionCount">0 selected</span>
+                    </div>
+                    
+                    <!-- Trash action buttons - slide in from left when items selected -->
+                    <div class="toolbar-actions-trash" id="toolbarActionsTrash">
+                        <button class="toolbar-btn icon-btn toolbar-close-btn" id="clearSelectionBtnTrash" title="Clear selection">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                        <button class="toolbar-btn" id="restoreBtn" title="Restore">
+                            <span class="material-symbols-outlined">restore_from_trash</span>
+                            <span data-i18n="restore">Restore</span>
+                        </button>
+                        <button class="toolbar-btn toolbar-btn-danger" id="deletePermanentlyBtn" title="Delete Permanently">
+                            <span class="material-symbols-outlined">delete_forever</span>
+                            <span data-i18n="deletePermanently">Delete Permanently</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <span class="toolbar-selection-count" id="selectionCountTrash">0 selected</span>
+                    </div>
+                </div>
+                
+                <div class="toolbar-right">
+                    <button class="toolbar-btn icon-btn" id="viewGridBtn" title="Grid View">
+                        <span class="material-symbols-outlined">grid_view</span>
+                    </button>
+                    <button class="toolbar-btn icon-btn active" id="viewListBtn" title="List View">
+                        <span class="material-symbols-outlined">view_list</span>
+                    </button>
+                    <button class="toolbar-btn icon-btn" id="sortBtn" title="Sort">
+                        <span class="material-symbols-outlined">sort</span>
+                    </button>
+                </div>
             </div>
+
 
             <!-- File Container -->
             <div class="file-container" id="fileContainer">
@@ -82,6 +178,7 @@
                 <table class="file-list" id="fileList">
                     <thead class="file-list-header">
                         <tr>
+                            <th class="col-indicator"></th>
                             <th data-i18n="name" class="sortable">Name</th>
                             <th data-i18n="created" class="sortable">Created</th>
                             <th data-i18n="modified" class="sortable">Modified</th>
@@ -93,7 +190,9 @@
 
                 <!-- Empty State -->
                 <div class="empty-state" id="emptyState" style="display: none;">
-                    <div class="empty-icon">📁</div>
+                    <span class="material-symbols-outlined empty-icon">
+                        folder_open
+                    </span>
                     <h3 data-i18n="emptyFolder">This folder is empty</h3>
                     <p data-i18n="uploadGetStarted">Upload files or folders to get started</p>
                 </div>
@@ -105,11 +204,120 @@
     <div class="context-menu" id="contextMenu"></div>
 
     <!-- Notification -->
-    <div class="notification" id="notification"></div>
+    <div class="notification-container" id="notificationContainer"></div>
+
+
+    <div class="modal-overlay" id="deleteModalOverlay"></div>
+
+    <!-- Delete Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-header">
+            <h3 id="deleteModalTitle" data-i18n="deleteItem">Delete element?</h3>
+            <button class="modal-close" id="deleteModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <p id="deleteModalMessage"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="deleteCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-danger" id="deleteConfirmBtn" data-i18n="delete">Delete</button>
+        </div>
+    </div>
+    <!-- Rename Modal -->
+    <div class="modal" id="renameModal">
+        <div class="modal-header">
+            <h3 id="renameModalTitle" data-i18n="renameItem">Rename</h3>
+            <button class="modal-close" id="renameModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <label for="renameInput" data-i18n="newName">New name:</label>
+            <input type="text" id="renameInput" class="rename-input" autocomplete="off" spellcheck="false">
+            <p class="rename-hint" id="renameHint"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="renameCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="renameConfirmBtn" data-i18n="rename">Rename</button>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-header">
+            <h3 id="logoutModalTitle" data-i18n="signOut">Sign Out</h3>
+            <button class="modal-close" id="logoutModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <p id="logoutModalMessage" data-i18n="signOutMessage">Are you sure you want to sign out?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="logoutCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-danger" id="logoutConfirmBtn" data-i18n="signOut">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Create Folder Modal -->
+    <div class="modal" id="createFolderModal">
+        <div class="modal-header">
+            <h3 id="createFolderModalTitle" data-i18n="newFolder">New Folder</h3>
+            <button class="modal-close" id="createFolderModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <label for="folderNameInput" data-i18n="folderName">Folder name:</label>
+            <input type="text" id="folderNameInput" class="folder-name-input" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder" data-i18n="untitledFolder" placeholder="Untitled folder">
+            <p class="folder-hint" id="folderNameHint"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="createFolderCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="createFolderConfirmBtn" data-i18n="create">Create</button>
+        </div>
+    </div>
+
+    <!-- Empty Trash Modal with Progress -->
+    <div class="modal" id="emptyTrashModal">
+        <div class="modal-header">
+            <h3 id="emptyTrashModalTitle" data-i18n="emptyTheTrash">Empty Trash</h3>
+            <button class="modal-close" id="emptyTrashModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <p id="emptyTrashModalMessage" data-i18n="confirmEmptyTrash">
+                Delete all items in trash permanently? This action cannot be undone.
+            </p>
+            
+            <!-- Progress section (hidden by default) -->
+            <div class="bulk-operation-progress" id="emptyTrashProgress" style="display: none;">
+                <div class="progress-info">
+                    <span id="emptyTrashProgressText">Deleting items...</span>
+                    <span id="emptyTrashProgressCount">0 / 0</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="emptyTrashProgressBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="emptyTrashCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-danger" id="emptyTrashConfirmBtn" data-i18n="emptyTheTrash">Empty Trash</button>
+        </div>
+    </div>
+
+
 
     <!-- Hidden file inputs -->
     <input type="file" id="fileInput" multiple style="display: none;">
     <input type="file" id="folderInput" webkitdirectory style="display: none">
+
+    <!-- Upload Progress Container -->
+    <div class="upload-progress-container" id="uploadProgressContainer">
+        <div class="upload-progress-header">
+            <h3 data-i18n="uploadingFiles">Uploading files</h3>
+            <button class="upload-minimize-btn" id="uploadMinimizeBtn">
+                <span class="material-symbols-outlined">expand_more</span>
+            </button>
+        </div>
+        <div class="upload-progress-list" id="uploadProgressList">
+            <!-- Upload items will be added here dynamically -->
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script type="module" src="js/main.js"></script>

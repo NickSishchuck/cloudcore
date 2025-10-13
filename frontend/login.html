@@ -2,16 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('cloudcore-theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CloudCore - Sign In</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <link rel="stylesheet" href="css/auth.css">
     <link rel="icon" href="data:,">
 </head>
 <body>
 <div class="login-container">
+    <div class="theme-switcher">
+        <button class="theme-btn" id="themeBtn" title="Toggle theme">
+            <span class="material-symbols-outlined theme-icon">dark_mode</span>
+        </button>
+    </div>
+
     <div class="language-switcher">
         <button class="language-btn" id="languageBtn" title="Switch language">
-            <span class="language-flag">🌐</span>
+            <span class="material-symbols-outlined">language</span>
             <span class="language-code">EN</span>
         </button>
     </div>
@@ -29,10 +44,15 @@
 
         <div class="form-group">
             <label for="password" data-i18n="password">Password</label>
-            <input type="password" id="password" name="password" required>
+            <div class="password-wrapper">
+                <input type="password" id="password" name="password" required>
+                <button type="button" class="toggle-password" aria-label="Show password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="loginBtn" data-i18n="signIn">Sign In</button>
+        <button type="submit"  class="btn btn-primary" id="loginBtn" data-i18n="signIn">Sign In</button>
     </form>
 
     <div class="login-link">

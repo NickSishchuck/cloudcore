@@ -10,6 +10,7 @@ using Serilog;
 using Serilog.Events;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace CloudCore
 {
@@ -72,6 +73,17 @@ namespace CloudCore
                 // Add db context (in case of multiple use of context, context factory provided)
                 builder.Services.AddDbContextFactory<CloudCoreDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+
+                builder.Services.Configure<FormOptions>(options =>
+                {
+                    options.MultipartBodyLengthLimit = 1610612736; // 1.5 GB
+                });
+
+                builder.WebHost.ConfigureKestrel(options =>
+                {
+                    options.Limits.MaxRequestBodySize = 1610612736; // 1.5 GB
+                });
+
                 // Add services
                 builder.Services.AddScoped<IItemStorageService, ItemStorageService>();
                 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -86,6 +98,7 @@ namespace CloudCore
                 builder.Services.AddScoped<ITeamspaceService, TeamspaceService>();
                 builder.Services.AddScoped<ITeamspaceApplication, TeamspaceApplication>();
                 builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
+                builder.Services.AddScoped<UserAuthorizationFilter>();
 
 
 
@@ -111,10 +124,12 @@ namespace CloudCore
                 builder.Services.AddAuthorization();
 
                 // Add controllers and endpoints
-                builder.Services.AddControllers();
+                builder.Services.AddControllers(options =>
+                {
+                    options.Filters.Add<UserAuthorizationFilter>();
+                });
                 builder.Services.AddEndpointsApiExplorer();
 
-                //builder.Services.AddSwaggerGen();
 
                 builder.Services.AddSwaggerGen(options =>
                 {

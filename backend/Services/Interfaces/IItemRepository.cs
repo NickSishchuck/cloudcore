@@ -13,7 +13,9 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user ID to filter items by</param>
         /// <param name="maxDepth">The maximal depth to search by</param>
         /// <returns>A list of all child items found recursively under the parent folder</returns>
-        Task<List<Item>> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
+        IAsyncEnumerable<Item> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
+
+        IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, bool includeDeleted = false);
 
         /// <summary>
         /// Asynchronously retrieves a paginated IEnumerable of items for a specific user, with options for filtering and sorting.
@@ -33,9 +35,12 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="userId">The ID of the user who owns the item.</param>
         /// <param name="itemtId">The ID of the item to retrieve.</param>
-        /// <param name="itemtType">The Type of the item to retrieve.</param>
+        /// <param name="itemType">The Type of the item to retrieve.</param>
         /// <returns>A Task that resolves to the Item object if found; otherwise, null.</returns>
         Task<Item?> GetItemAsync(int userId, int itemtId, string? itemType);
+
+
+        Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null);
 
 
         /// <summary>
@@ -45,7 +50,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user who owns the item.</param>
         /// <param name="itemId">The ID of the item to retrieve.</param>
         /// <returns>The deleted <see cref="Item"/>, or null if not found.</returns>
-        Task<Item?> GetDeletedItemAsync(int userId, int itemtId);
+        Task<Item> GetDeletedItemAsync(int userId, int itemId);
 
         /// <summary>
         /// Asynchronously retrieves a IEnumerable of items by its ID, ensuring it belongs to the specified user.
@@ -53,7 +58,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user who owns the item.</param>
         /// <param name="itemsIds">The IDs of the items to retrieve.</param>
         /// <returns>A Task that resolves to the Item object if found; otherwise, null.</returns>
-        Task<IEnumerable<Item>> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds);
+        IAsyncEnumerable<Item> GetItemsByIdsForUserAsync(int userId, List<int> itemsIds);
 
 
         /// <summary>
@@ -64,6 +69,7 @@ namespace CloudCore.Services.Interfaces
         Task<IEnumerable<Item>> GetDeletedItemsByIdsAsync(List<int> itemsIds);
 
         /// <summary>
+        /// WITHOUT USER PART!!!
         /// Asynchronously constructs the full, relative path of a folder by traversing its parent hierarchy.
         /// </summary>
         /// <param name="folder">The folder item for which to build the path.</param>
@@ -118,7 +124,7 @@ namespace CloudCore.Services.Interfaces
         /// Atomically updates multiple items in the database, committing all changes in a single transaction.
         /// </summary>
         /// <param name="items">The collection of items to be updated.</param>
-        Task UpdateItemsInTransactionAsync(List<Item> items);
+        Task UpdateItemsInTransactionAsync(IAsyncEnumerable<Item> items, int batchSize = 500);
 
         /// <summary>
         /// Adds a single item in the database in a dedicated transaction, rolling back if any error occurs.
@@ -155,5 +161,7 @@ namespace CloudCore.Services.Interfaces
         /// The task result contains the breadcrumb path as a string, constructed from the root folder to the specified folder.
         /// </returns>
         Task<string> GetBreadcrumbPathAsync(Item folder);
+
+        Task<bool> IsFolderSubFolderAsync(int userId, int parentFolderId, int childFolderId);
     }
 }
