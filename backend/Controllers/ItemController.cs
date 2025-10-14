@@ -9,6 +9,7 @@ using CloudCore.Contracts.Requests;
 using CloudCore.Mappers;
 using CloudCore.Common.QueryParameters;
 using CloudCore.Common.Errors;
+using NaturalSort.Extension;
 
 namespace CloudCore.Controllers
 {
@@ -58,8 +59,21 @@ namespace CloudCore.Controllers
             return Ok(folderPath);
         }
 
+        [HttpGet("folders")]
+        public async Task<IActionResult> GetСhildFoldersAsync(int userId, int? parentFolderId = null)
+        {
+            _logger.LogInformation("Fetching child folders for User ID: {UserId}, Parent Folder ID: {FolderId}", userId, parentFolderId);
+            
+            var result = await _itemApplication.GetDirectChildrenAsync(userId, parentFolderId, "folder").ToListAsync();
+
+            var sorted = result
+                .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase.WithNaturalSort()).Select(i => i.ToResponseDto());
+            return Ok(sorted);
+
+        }
+
         [HttpGet("get/name")]
-        public async Task<IActionResult> GetItemByName(int userId, [FromQuery] string name, [FromQuery]int? parentId)
+        public async Task<IActionResult> GetItemByNameAsync(int userId, [FromQuery] string name, [FromQuery]int? parentId)
         {
             var item = await _itemApplication.GetItemByNameAsync(userId, name, parentId);
 

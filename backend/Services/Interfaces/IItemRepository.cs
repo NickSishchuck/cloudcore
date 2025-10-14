@@ -15,7 +15,7 @@ namespace CloudCore.Services.Interfaces
         /// <returns>A list of all child items found recursively under the parent folder</returns>
         IAsyncEnumerable<Item> GetAllChildItemsAsync(int userId, int parentId, int maxDepth = 10000);
 
-        IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, bool includeDeleted = false);
+        IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, string? itemType = null, bool includeDeleted = false);
 
         /// <summary>
         /// Asynchronously retrieves a paginated IEnumerable of items for a specific user, with options for filtering and sorting.
@@ -50,7 +50,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The user who owns the item.</param>
         /// <param name="itemId">The ID of the item to retrieve.</param>
         /// <returns>The deleted <see cref="Item"/>, or null if not found.</returns>
-        Task<Item> GetDeletedItemAsync(int userId, int itemId);
+        Task<Item?> GetDeletedItemAsync(int userId, int itemId);
 
         /// <summary>
         /// Asynchronously retrieves a IEnumerable of items by its ID, ensuring it belongs to the specified user.

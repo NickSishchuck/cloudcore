@@ -1007,9 +1007,8 @@ class CloudCoreDrive {
                 this.downloadSelectedItems();
                 break;
             case 'move':
-                this.notifications.info('Not implemented yet');
             case 'move-multiple':
-                this.notifications.info('Not implemented yet');
+                this.showMoveToModal();
                 break;
             case 'rename':
                 this.renameItem(item);
@@ -1577,6 +1576,431 @@ class CloudCoreDrive {
         console.log('Logout modal hidden');
     }
 
+    showMoveToModal() {
+        if (this.selectedItems.size === 0) return;
+
+        const modal = document.getElementById('moveToModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+        const itemIcon = document.getElementById('moveItemIcon');
+
+        if (!modal || !overlay || !itemIcon) {
+            console.error('Move modal elements not found');
+            return;
+        }
+
+        const items = Array.from(this.selectedItems);
+        const count = items.length;
+
+        if (count === 1) {
+            const item = items[0];
+            const iconInfo = getFileIcon(item);
+
+            itemIcon.textContent = iconInfo.icon;
+            itemIcon.className = `material-symbols-outlined file-list-icon ${iconInfo.class}`;
+        } else {
+
+            const folderCount = items.filter((item) => item.type === 'folder').length;
+            const fileCount = count - folderCount;
+
+            if (folderCount > 0 && fileCount === 0) {
+
+                itemIcon.textContent = 'folder_copy';
+                itemIcon.className = 'material-symbols-outlined file-list-icon folder-icon';
+            } else if (fileCount > 0 && folderCount === 0) {
+
+                itemIcon.textContent = 'description';
+                itemIcon.className = 'material-symbols-outlined file-list-icon file-icon';
+            } else {
+
+                itemIcon.textContent = 'content_copy';
+                itemIcon.className = 'material-symbols-outlined file-list-icon file-icon';
+            }
+        }
+
+        // Update modal header
+        const itemName = count === 1 ? items[0].name : `${count} ${this.i18n.t('items')}`;
+        const itemLocation =
+            this.breadcrumbPath.length > 0
+                ? this.breadcrumbPath.map((f) => f.name).join(' / ')
+                : this.i18n.t('myDrive');
+
+        document.getElementById('moveItemName').textContent = itemName;
+        document.getElementById('moveItemLocation').textContent = itemLocation;
+
+        // Show modal FIRST
+        this.showModal(modal, overlay);
+
+        // THEN setup handlers (after modal is visible)
+        setTimeout(() => {
+            this.setupMoveToHandlers(modal, overlay, items);
+        }, 50);
+
+        // Initialize folder tree
+        this.initializeMoveToTree();
+
+        console.log('Move modal shown for', count, 'items');
+    }
+
+    hideMoveToModal() {
+        const modal = document.getElementById('moveToModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+
+        this.hideModal(modal, overlay);
+
+        // Cleanup
+        if (this.moveToSelectedFolder) {
+            this.moveToSelectedFolder = null;
+        }
+
+        console.log('Move modal hidden');
+    }
+
+    async initializeMoveToTree() {
+        const treeContainer = document.getElementById('moveFolderTree');
+        if (!treeContainer) return;
+
+        treeContainer.innerHTML = `<div class="loading-folders">${this.i18n.t('loadingFolders')}</div>`;
+
+        try {
+            // Create "My Drive" root
+            const myDriveWrapper = document.createElement('div');
+            myDriveWrapper.className = 'folder-item-wrapper';
+            myDriveWrapper.dataset.folderId = 'null';
+
+            myDriveWrapper.innerHTML = `
+            <div class="folder-item selected" data-folder-id="null">
+                <span class="material-symbols-outlined folder-toggle expanded">chevron_right</span>
+                <span class="material-symbols-outlined folder-icon">folder</span>
+                <span class="folder-name">${this.i18n.t('myDrive') || 'My Drive'}</span>
+            </div>
+            <div class="folder-children expanded"></div>
+        `;
+
+            treeContainer.innerHTML = '';
+            treeContainer.appendChild(myDriveWrapper);
+
+            // Setup My Drive click handler
+            const myDriveItem = myDriveWrapper.querySelector('.folder-item');
+            myDriveItem.addEventListener('click', (e) => {
+                if (e.target.classList.contains('folder-toggle')) return;
+                this.selectMoveDestination(null, this.i18n.t('myDrive'), myDriveItem);
+            });
+
+            // Setup toggle handler
+            const toggleBtn = myDriveWrapper.querySelector('.folder-toggle');
+            const childrenContainer = myDriveWrapper.querySelector('.folder-children');
+
+            toggleBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+
+                if (toggleBtn.classList.contains('expanded')) {
+                    toggleBtn.classList.remove('expanded');
+                    childrenContainer.classList.remove('expanded');
+                } else {
+                    toggleBtn.classList.add('expanded');
+                    childrenContainer.classList.add('expanded');
+
+                    if (!childrenContainer.hasChildNodes()) {
+                        await this.loadFolderChildren(null, childrenContainer);
+                    }
+                }
+            });
+
+            // Auto-load root folders
+            await this.loadFolderChildren(null, childrenContainer);
+
+            // Set default selection to My Drive
+            this.selectMoveDestination(null, this.i18n.t('myDrive'), myDriveItem);
+        } catch (error) {
+            console.error('Error loading folders:', error);
+            container.innerHTML = `<div class="error-loading">${this.i18n.t('failedToLoadFolders')}</div>`;
+        }
+    }
+
+    createMoveFolderItem(folder) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'folder-item-wrapper';
+        wrapper.dataset.folderId = folder.id;
+        wrapper.innerHTML = `
+        <div class="folder-item" data-folder-id="${folder.id}">
+            <span class="material-symbols-outlined folder-toggle">chevron_right</span>
+            <span class="material-symbols-outlined folder-icon">folder</span>
+            <span class="folder-name">${this.escapeHtml(folder.name)}</span>
+        </div>
+        <div class="folder-children"></div>
+    `;
+
+        const folderEl = wrapper.querySelector('.folder-item');
+        const toggleBtn = wrapper.querySelector('.folder-toggle');
+        const childrenContainer = wrapper.querySelector('.folder-children');
+
+
+        folderEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('folder-toggle')) return;
+
+            const canSelect = this.canMoveToFolder(folder.id);
+            if (!canSelect) {
+                this.notifications.warning(this.i18n.t('cannotMoveHere'));
+                return;
+            }
+
+            console.log('Folder clicked:', folder.id, folder.name);
+            console.log('this.moveToSelectedFolder BEFORE:', this.moveToSelectedFolder);
+
+
+            this.selectMoveDestination(folder.id, folder.name, folderEl);
+
+            console.log('this.moveToSelectedFolder AFTER:', this.moveToSelectedFolder);
+        });
+
+
+        toggleBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+
+            const isExpanded = toggleBtn.classList.contains('expanded');
+
+            if (isExpanded) {
+                // Collapse
+                toggleBtn.classList.remove('expanded');
+                childrenContainer.classList.remove('expanded');
+            } else {
+
+                toggleBtn.classList.add('expanded');
+                childrenContainer.classList.add('expanded');
+
+
+                if (!childrenContainer.hasChildNodes()) {
+                    await this.loadFolderChildren(folder.id, childrenContainer);
+                }
+            }
+        });
+
+        return wrapper;
+    }
+
+    async loadFolderChildren(parentId, container) {
+        // Show loading
+        container.innerHTML = `<div class="loading-children">${this.i18n.t('loadingFolders')}</div>`;
+
+        try {
+            const folders = await this.api.getFolderChildren(this.currentUserId, parentId);
+
+            container.innerHTML = '';
+
+            if (folders.length === 0) {
+                container.innerHTML = `<div class="no-folders">${this.i18n.t('noSubfolders')}</div>`;
+                return;
+            }
+
+            folders.forEach((folder) => {
+                const folderItem = this.createMoveFolderItem(folder);
+                container.appendChild(folderItem);
+            });
+        } catch (error) {
+            console.error('Error loading folder children:', error);
+            container.innerHTML = `<div class="error-loading">${this.i18n.t('failedToLoadFolders')}</div>`;
+        }
+    }
+
+    selectMoveDestination(folderId, folderName, folderEl = null) {
+        console.log('=== selectMoveDestination ===');
+        console.log('folderId:', folderId);
+        console.log('folderName:', folderName);
+        console.log('this:', this);
+
+        // Remove previous selection
+        document.querySelectorAll('#moveFolderTree .folder-item.selected').forEach((el) => {
+            el.classList.remove('selected');
+        });
+
+        // Add selection
+        if (folderEl) {
+            folderEl.classList.add('selected');
+        } else {
+            const el = document.querySelector(`#moveFolderTree .folder-item[data-folder-id="${folderId}"]`);
+            if (el) el.classList.add('selected');
+        }
+
+        // Store selected folder ID
+        this.moveToSelectedFolder = folderId;
+        console.log('this.moveToSelectedFolder SET TO:', this.moveToSelectedFolder);
+        console.log('typeof:', typeof this.moveToSelectedFolder);
+
+        // Update path display
+        document.getElementById('moveSelectedPath').textContent = folderName ?? this.i18n.t('myDrive');
+
+        // Enable button
+        const moveBtn = document.getElementById('moveToConfirmBtn');
+        if (moveBtn) {
+            moveBtn.disabled = false;
+        }
+    }
+
+    canMoveToFolder(targetFolderId) {
+        // Cannot move to My Drive (null) if already in root
+        if (targetFolderId === null) {
+            return this.currentFolderId !== null;
+        }
+
+        // Cannot move into the current folder
+        if (targetFolderId === this.currentFolderId) {
+            return false;
+        }
+
+        // Check if any selected item is the target folder (can't move folder into itself)
+        for (const item of this.selectedItems) {
+            if (item.id === targetFolderId) {
+                return false;
+            }
+
+
+            if (item.type === 'folder') {
+                if (this.isDescendantOf(targetFolderId, item.id)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+
+    isDescendantOf(targetId, parentId) {
+
+        const parentWrapper = document.querySelector(`.folder-item-wrapper[data-folder-id="${parentId}"]`);
+        if (!parentWrapper) return false;
+
+
+        const targetInside = parentWrapper.querySelector(`.folder-item-wrapper[data-folder-id="${targetId}"]`);
+        return targetInside !== null;
+    }
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    setupMoveToHandlers(modal, overlay, items) {
+        const confirmBtn = document.getElementById('moveToConfirmBtn');
+        const cancelBtn = document.getElementById('moveToCancelBtn');
+        const closeBtn = document.getElementById('moveToModalClose');
+
+        console.log(
+            'Found elements:',
+            confirmBtn ? confirmBtn.id : 'none',
+            cancelBtn ? cancelBtn.id : 'none',
+            closeBtn ? closeBtn.id : 'none'
+        );
+
+        // Disable move button initially
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+        }
+
+        // Confirm handler
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                console.log('CONFIRM CLICKED');
+                console.log('moveToSelectedFolder:', this.moveToSelectedFolder);
+
+                if (this.moveToSelectedFolder === undefined) {
+                    console.log('No folder selected');
+                    return;
+                }
+
+                const targetFolderId = this.moveToSelectedFolder;
+                console.log('Saved targetFolderId:', targetFolderId);
+
+                this.hideMoveToModal();
+
+                await this.performMoveToFolder(items, targetFolderId);
+            });
+        }
+
+        // Cancel handler
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                console.log('CANCEL CLICKED');
+                this.hideMoveToModal();
+            });
+        }
+
+        // Close button handler
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                console.log('CLOSE CLICKED');
+                e.preventDefault();
+                e.stopPropagation();
+                this.hideMoveToModal();
+            });
+        }
+
+        // Overlay handler
+        if (overlay) {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    console.log('OVERLAY CLICKED');
+                    this.hideMoveToModal();
+                }
+            });
+        }
+    }
+
+    async performMoveToFolder(items, targetFolderId) {
+        try {
+            console.log(`Moving ${items.length} items to folder`, targetFolderId);
+
+            this.notifications.info(this.i18n.t('movingItems', { count: items.length }));
+
+            const result = await this.api.bulkMoveItems(
+                this.currentUserId,
+                items.map((item) => item.id), 
+                targetFolderId,
+                {
+                    concurrency: 5,
+                    onProgress: (completed, total) => {
+                        console.log(`Move progress: ${completed}/${total}`);
+                    }
+                }
+            );
+
+            if (result.failed.length === 0) {
+                const successText =
+                    result.succeeded.length === 1
+                        ? this.i18n.t('movedItem', { filename: items[0].name })
+                        : this.i18n.t('movedItems', { count: result.succeeded.length });
+                this.notifications.success(successText);
+            } else {
+                this.notifications.warning(
+                    this.i18n.t('movedPartial', {
+                        succeeded: result.succeeded.length,
+                        failed: result.failed.length
+                    })
+                );
+            }
+
+            this.selectedItems.clear();
+            await this.loadFiles(this.currentFolderId, true);
+            this.updateToolbar();
+        } catch (error) {
+            console.error('Move error:', error);
+            this.notifications.error(this.i18n.t('failedToMove'));
+        }
+    }
+
+    hideMoveToModal() {
+        console.log('hideMoveToModal called');
+        const modal = document.getElementById('moveToModal');
+        const overlay = document.getElementById('deleteModalOverlay');
+
+        this.hideModal(modal, overlay);
+
+        // Cleanup
+        this.moveToSelectedFolder = undefined;
+
+        console.log('Move modal hidden');
+    }
+
     logout() {
         console.log('Signing out...');
         this.api.clearAuthToken();
@@ -1695,7 +2119,10 @@ class CloudCoreDrive {
 
         const moveBtn = document.getElementById('moveBtn');
         if (moveBtn) {
-            moveBtn.addEventListener('click', () => this.moveSelectedItems());
+            moveBtn.addEventListener('click', () => {
+                console.log('Move button clicked');
+                this.showMoveToModal();
+            });
         }
 
         const renameToolbarBtn = document.getElementById('renameToolbarBtn');

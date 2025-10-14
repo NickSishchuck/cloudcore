@@ -156,17 +156,11 @@
                     </div>
                 </div>
                 
-                <div class="toolbar-right">
-                    <button class="toolbar-btn icon-btn" id="viewGridBtn" title="Grid View">
-                        <span class="material-symbols-outlined">grid_view</span>
-                    </button>
-                    <button class="toolbar-btn icon-btn active" id="viewListBtn" title="List View">
-                        <span class="material-symbols-outlined">view_list</span>
-                    </button>
+                <!-- <div class="toolbar-right">
                     <button class="toolbar-btn icon-btn" id="sortBtn" title="Sort">
                         <span class="material-symbols-outlined">sort</span>
                     </button>
-                </div>
+                </div> -->
             </div>
 
 
@@ -297,6 +291,40 @@
         <div class="modal-footer">
             <button class="modal-btn modal-btn-secondary" id="emptyTrashCancelBtn" data-i18n="cancel">Cancel</button>
             <button class="modal-btn modal-btn-danger" id="emptyTrashConfirmBtn" data-i18n="emptyTheTrash">Empty Trash</button>
+        </div>
+    </div>
+
+
+    <div class="modal modal-large" id="moveToModal">
+        <div class="modal-header">
+            <h3 id="moveToModalTitle" data-i18n="moveTo">Move to</h3>
+            <button class="modal-close" id="moveToModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- Current item info -->
+            <div class="move-item-info">
+                <span class="material-symbols-outlined file-list-icon" id="moveItemIcon">description</span>
+                <div class="move-item-details">
+                    <span class="move-item-name" id="moveItemName"></span>
+                    <span class="move-item-location" id="moveItemLocation"></span>
+                </div>
+            </div>
+            
+
+            <!-- Folder tree container -->
+            <div class="move-folder-tree" id="moveFolderTree">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+
+            <!-- Selected path display -->
+            <div class="move-selected-path">
+                <span class="path-label" data-i18n="movingTo">Moving to:</span>
+                <span class="path-value" id="moveSelectedPath">My Drive</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="moveToCancelBtn" data-i18n="cancel">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="moveToConfirmBtn" data-i18n="move">Move</button>
         </div>
     </div>
 
