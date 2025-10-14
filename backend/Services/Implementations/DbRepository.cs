@@ -61,7 +61,7 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, bool includeDeleted = false)
+        public async IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, string? itemType = null, bool includeDeleted = false)
         {
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
@@ -69,6 +69,10 @@ namespace CloudCore.Services.Implementations
                 .AsNoTracking()
                 .Where(i => i.UserId == userId && i.ParentId == parentId);
 
+            if(!string.IsNullOrEmpty(itemType))
+            {
+                query = query.Where(i => i.Type == itemType);
+            }
 
             if (includeDeleted == false)
             {
@@ -345,7 +349,7 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task<bool> ItemExistsAsync(int itemId, int userId, string itemType)
+        public async Task<bool> ItemExistsAsync(int itemId, int userId, string? itemType)
         {
             _logger.LogInformation("Checking existence for ItemId: {ItemId}, UserId: {UserId}, Type: {ItemType}", itemId, userId, itemType);
 

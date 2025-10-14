@@ -1,6 +1,8 @@
 # "Я здесь впервые"
 Сначала создай .env в своём локальном проекте. Перенеси содержимое из .envTemplate
 в новосозданный .env. Поменяй пароль.
+
+
 ```dockerfile
 # Полная сборка и запуск
 docker-compose up --build
@@ -85,4 +87,16 @@ docker builder prune -f
 
 # Очистка неиспользуемых образов
 docker image prune -a
+```
+
+# Добавление https
+```https setup
+# Установка mkcert для локального самоподписаного сертификата
+sudo pacman -Syu mkcert nss
+mkcert -install
+
+# Создание локальных сертификатов
+mkcert -cert-file /frontend/certs/localhost.pem -key-file /frontend/certs/localhost-key.pem localhost 127.0.0.1 ::1
+
+# Должны быть в /frontend/certs
 ```

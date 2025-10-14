@@ -87,6 +87,19 @@ export class ApiClient {
         return this.handleResponse(response);
     }
 
+    async getFolderChildren(userId, parentFolderId = null)
+    {
+        let url = `${this.baseUrl}/user/${userId}/mydrive/folders`;
+        if(parentFolderId !== undefined && parentFolderId !==null){
+            url += `?parentFolderId=${parentFolderId}`;
+        }
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
     async getTrash(userId, params = {}) {
         const queryString = new URLSearchParams(params).toString();
         const url = `${this.baseUrl}/user/${userId}/mydrive/trash?${queryString}`;

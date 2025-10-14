@@ -84,6 +84,11 @@ namespace CloudCore.Services.Implementations
             return await _itemRepository.GetItemByNameAsync(userId, name, parentId, teamspaceId);
         }
 
+        public IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, string? itemType = null, bool includeDeleted = false)
+        {
+            return _itemRepository.GetDirectChildrenAsync(userId, parentId, itemType, includeDeleted);
+        }
+
         public async Task<string> GetBreadcrumbPathAsync(int userId, int folderId, string type)
         {
             var folder = await GetItemAsync(userId, folderId, type);

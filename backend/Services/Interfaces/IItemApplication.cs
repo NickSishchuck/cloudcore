@@ -46,6 +46,8 @@ namespace CloudCore.Services.Interfaces
         /// </returns>
         Task<Item?> GetItemAsync(int userId, int itemId, string type, int? teamspaceId = null);
 
+        IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, string? itemType = null, bool includeDeleted = false);
+
 
         Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null);
 

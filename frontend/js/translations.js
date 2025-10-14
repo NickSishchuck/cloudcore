@@ -17,6 +17,34 @@ export const translations = {
         move: 'Move',
         cancel: 'Cancel',
         create: 'Create',
+
+        // ═══════════════════════════════════════════════════════════════
+        // MOVE TO MODAL
+        // ═══════════════════════════════════════════════════════════════
+        moveToModalTitle: 'Move to',
+        moveToModalDescription: 'Select a destination folder',
+        moveItem: 'Move item',
+        moveItems: 'Move {{count}} items',
+        moveTo: 'Move to',
+        movingTo: 'Moving to',
+        selectDestination: 'Select destination',
+        currentLocation: 'Current location',
+        movingItems: 'Moving {{count}} items...',
+        movedSuccessfully: 'Successfully moved {{count}} items',
+        moveConfirm: 'Move here',
+        cannotMoveHere: 'Cannot move items here',
+        cannotMoveIntoItself: 'Cannot move folder into itself',
+        folderSelection: 'Folder selection',
+        items: 'items',
+        folders: 'folders',
+        files: 'files',
+        movedItem: 'Successfully moved "{{filename}}"',
+        movedPartial: 'Moved {{succeeded}} out of {{total}} items',
+        failedToMove: 'Failed to move items',
+        loadingFolders: 'Loading folders...',
+        noSubfolders: 'No subfolders',
+        failedToLoadFolders: 'Failed to load folders',
+        movedItems:' Successfully moved {{count}} items',
         
         // ═══════════════════════════════════════════════════════════════
         // FILE & FOLDER OPERATIONS
@@ -121,9 +149,6 @@ export const translations = {
         uploadingFolder: 'Uploading folder: {count} files',
         folderAlreadyExistsCancelled: 'Folder "{foldername}" already exists. Upload cancelled',
         uploadBlockedFolderExists: 'Blocked: folder already exists',
-        failedCreateFolderPath: 'Failed to create folder: {foldername}',
-        uploadFailedFolderError: 'Error: failed to create folder',
-        uploadSkippedParentFailed: 'Skipped: parent folder failed',
         uploadCancelled: 'Cancelled',
         uploadFolderSuccess: 'Folder uploaded successfully: {count} files',
         uploadFolderPartial: 'Upload partially completed: {successCount} success, {errorCount} failed',
@@ -132,14 +157,9 @@ export const translations = {
         
         uploadingFiles: 'Uploading files',
         uploadComplete: 'Upload complete',
-        uploadFailed: 'Upload failed',
-        uploadCancelled: 'Cancelled',
         cancelUpload: 'Cancel upload',
         uploadingFile: 'Uploading {filename} ({current}/{total})',
         uploadSuccess: '{filename} uploaded successfully',
-        uploadingFolder: 'Uploading folder with {count} files',
-        uploadFolderSuccess: 'Successfully uploaded {count} files',
-        uploadFolderPartial: 'Uploaded {successCount} files, {errorCount} failed',
         failedUpload: 'Upload failed',
         uploadFailedSingle: 'Failed to upload {filename}',
         folderUploadNotSupported: 'Folder upload is not supported by your browser',
@@ -263,7 +283,7 @@ export const translations = {
     
     uk: {
         // ═══════════════════════════════════════════════════════════════
-        // ЗАГАЛЬНИЙ ІНТЕРФЕЙС
+        // GENERAL UI
         // ═══════════════════════════════════════════════════════════════
         signOut: 'Вийти',
         new: 'Створити',
@@ -279,17 +299,45 @@ export const translations = {
         move: 'Перемістити',
         cancel: 'Скасувати',
         create: 'Створити',
+
+        // ═══════════════════════════════════════════════════════════════
+        // MOVE TO MODAL
+        // ═══════════════════════════════════════════════════════════════
+        moveToModalTitle: 'Перемістити до',
+        moveToModalDescription: 'Виберіть папку призначення',
+        moveItem: 'Перемістити елемент',
+        moveItems: 'Перемістити {{count}} елементів',
+        moveTo: 'Перемістити до',
+        movingTo: 'Переміщення до',
+        selectDestination: 'Виберіть місце призначення',
+        currentLocation: 'Поточне розташування',
+        movingItems: 'Переміщення {{count}} елементів...',
+        movedSuccessfully: 'Успішно переміщено {{count}} елементів',
+        moveConfirm: 'Перемістити сюди',
+        cannotMoveHere: 'Неможливо перемістити сюди',
+        cannotMoveIntoItself: 'Неможливо перемістити папку в саму себе',
+        folderSelection: 'Вибір папки',
+        items: 'елементів',
+        folders: 'папок',
+        files: 'файлів',
+        movedItem: 'Елемент "{{filename}}" успішно переміщено',
+        movedPartial: 'Переміщено {{succeeded}} з {{total}} елементів',
+        failedToMove: 'Не вдалося перемістити елементи',
+        loadingFolders: 'Завантаження папок...',
+        noSubfolders: 'Немає підпапок',
+        failedToLoadFolders: 'Не вдалося завантажити папки',
+        movedItems:' Успішно переміщено {{count}} елементів',
         
         // ═══════════════════════════════════════════════════════════════
-        // ОПЕРАЦІЇ З ФАЙЛАМИ ТА ПАПКАМИ
+        // FILE & FOLDER OPERATIONS
         // ═══════════════════════════════════════════════════════════════
-        // Заголовки таблиці
+        // Table Headers
         name: 'Назва',
         modified: 'Змінено',
         created: 'Створено',
         size: 'Розмір',
         
-        // Операції з папками
+        // Folder Operations
         newFolder: 'Нова папка',
         folderName: 'Назва папки:',
         untitledFolder: 'Папка без назви',
@@ -300,7 +348,7 @@ export const translations = {
         folderNameConflict: 'Папка з такою назвою вже існує',
         parentFolderNotFound: 'Батьківська папка не знайдена',
         
-        // Операції з файлами
+        // File Operations
         downloadFile: 'Завантажити',
         downloadFolder: 'Завантажити папку',
         rename: 'Перейменувати',
@@ -311,7 +359,7 @@ export const translations = {
         renamed: 'Перейменовано "{oldName}" на "{newName}"',
         failedRename: 'Не вдалося перейменувати',
         
-        // Операції видалення
+        // Delete Operations
         delete: 'Видалити',
         deleteFile: 'Видалити файл',
         deleteFolder: 'Видалити папку',
@@ -323,7 +371,7 @@ export const translations = {
         failedDelete: 'Не вдалося видалити',
         failedDeleteMultiple: 'Не вдалося видалити елементи',
         
-        // Операції відновлення
+        // Restore Operations
         restore: 'Відновити',
         restoring: 'Відновлення {filename}...',
         restored: '"{filename}" відновлено',
@@ -334,7 +382,7 @@ export const translations = {
         failedRestoreMultiple: 'Не вдалося відновити елементи',
         
         // ═══════════════════════════════════════════════════════════════
-        // ОПЕРАЦІЇ З КОШИКОМ
+        // TRASH OPERATIONS
         // ═══════════════════════════════════════════════════════════════
         deletePermanently: 'Видалити назавжди',
         deletedPermanently: '"{filename}" видалено назавжди',
@@ -352,7 +400,7 @@ export const translations = {
         deletingItems: 'Видалення елементів...',
         
         // ═══════════════════════════════════════════════════════════════
-        // ДІАЛОГИ ПІДТВЕРДЖЕННЯ
+        // CONFIRMATION DIALOGS
         // ═══════════════════════════════════════════════════════════════
         confirmDelete: 'Ви впевнені, що хочете видалити "{filename}"?',
         confirmDeleteMultiple: 'Видалити {count} елементів?',
@@ -362,7 +410,7 @@ export const translations = {
         signOutMessage: 'Ви впевнені, що хочете вийти?',
         
         // ═══════════════════════════════════════════════════════════════
-        // ЗАВАНТАЖЕННЯ ТА ВИВАНТАЖЕННЯ
+        // UPLOAD & DOWNLOAD
         // ═══════════════════════════════════════════════════════════════
         downloading: 'Завантаження {filename}',
         downloaded: 'Завантажено {filename}',
@@ -371,7 +419,7 @@ export const translations = {
         failedDownload: 'Не вдалося завантажити файл',
         failedDownloadMultiple: 'Не вдалося завантажити елементи',
         
-        // Помилки завантаження папок
+        // Folder upload errors
         uploadSkippedParentFailed: 'Пропущено - батьківська папка не створена',
         uploadSkippedFolderExists: 'Пропущено - папка вже існує',
         uploadFailedFolderError: 'Помилка - не вдалося створити папку',
@@ -383,9 +431,6 @@ export const translations = {
         uploadingFolder: 'Завантаження папки: {count} файлів',
         folderAlreadyExistsCancelled: 'Папка "{foldername}" вже існує. Завантаження скасовано',
         uploadBlockedFolderExists: 'Заблоковано: папка вже існує',
-        failedCreateFolderPath: 'Не вдалося створити папку: {foldername}',
-        uploadFailedFolderError: 'Помилка: не вдалося створити папку',
-        uploadSkippedParentFailed: 'Пропущено: помилка батьківської папки',
         uploadCancelled: 'Скасовано',
         uploadFolderSuccess: 'Папка успішно завантажена: {count} файлів',
         uploadFolderPartial: 'Завантаження завершено частково: успішно {successCount}, помилок {errorCount}',
@@ -394,14 +439,9 @@ export const translations = {
         
         uploadingFiles: 'Завантаження файлів',
         uploadComplete: 'Завантаження завершено',
-        uploadFailed: 'Помилка завантаження',
-        uploadCancelled: 'Скасовано',
         cancelUpload: 'Скасувати завантаження',
         uploadingFile: 'Завантаження {filename} ({current}/{total})',
         uploadSuccess: '{filename} завантажено успішно',
-        uploadingFolder: 'Завантаження папки з {count} файлами',
-        uploadFolderSuccess: 'Успішно завантажено {count} файлів',
-        uploadFolderPartial: 'Завантажено {successCount} файлів, помилок: {errorCount}',
         failedUpload: 'Помилка завантаження',
         uploadFailedSingle: 'Не вдалося завантажити {filename}',
         folderUploadNotSupported: 'Ваш браузер не підтримує завантаження папок',
@@ -409,14 +449,14 @@ export const translations = {
         creatingArchive: 'Створення архіву...',
         
         // ═══════════════════════════════════════════════════════════════
-        // ВИДІЛЕННЯ ТА ПАНЕЛЬ ІНСТРУМЕНТІВ
+        // SELECTION & TOOLBAR
         // ═══════════════════════════════════════════════════════════════
         selectionCount: '{count} вибрано',
         selectedAllItems: 'Вибрано {count} елементів',
         moveDialogNotImplemented: 'Діалог переміщення ще не реалізований. Використовуйте перетягування.',
         
         // ═══════════════════════════════════════════════════════════════
-        // ПОРОЖНІ СТАНИ
+        // EMPTY STATES
         // ═══════════════════════════════════════════════════════════════
         emptyFolder: 'Ця папка порожня',
         uploadGetStarted: 'Завантажте файли або створіть папки, щоб почати',
@@ -424,7 +464,7 @@ export const translations = {
         noSearchResultsMessage: 'Спробуйте інший запит',
         
         // ═══════════════════════════════════════════════════════════════
-        // ЗАГАЛЬНІ ПОВІДОМЛЕННЯ
+        // GENERAL MESSAGES
         // ═══════════════════════════════════════════════════════════════
         loading: 'Завантаження...',
         processing: 'Обробка...',
@@ -435,7 +475,7 @@ export const translations = {
         restoredSuccessfully: 'Успішно відновлено',
         
         // ═══════════════════════════════════════════════════════════════
-        // СПОВІЩЕННЯ
+        // NOTIFICATIONS
         // ═══════════════════════════════════════════════════════════════
         notificationSuccess: 'Успішно',
         notificationError: 'Помилка',
@@ -443,7 +483,7 @@ export const translations = {
         notificationInfo: 'Інформація',
         
         // ═══════════════════════════════════════════════════════════════
-        // АВТЕНТИФІКАЦІЯ
+        // AUTHENTICATION
         // ═══════════════════════════════════════════════════════════════
         username: 'Ім\'я користувача',
         password: 'Пароль',
@@ -461,7 +501,7 @@ export const translations = {
         passwordHint: 'Щонайменше 6 символів. Використовуйте надійний унікальний пароль',
         
         // ═══════════════════════════════════════════════════════════════
-        // ПОМИЛКИ ВАЛІДАЦІЇ
+        // VALIDATION ERRORS
         // ═══════════════════════════════════════════════════════════════
         invalidCharacters: 'Недопустимі символи: < > : " / \\ | ? *',
         nameTooLong: 'Назва занадто довга (максимум 250 символів)',
@@ -473,15 +513,15 @@ export const translations = {
         notAllowedSymbol: 'Назва містить заборонений символ',
         
         // ═══════════════════════════════════════════════════════════════
-        // КОДИ ПОМИЛОК API
+        // API ERROR CODES
         // ═══════════════════════════════════════════════════════════════
-        // Помилки автентифікації
+        // Authentication Errors
         invalidCredentials: 'Неправильне ім\'я користувача або пароль',
         signInFailed: 'Не вдалося увійти',
         registrationFailed: 'Помилка реєстрації. Спробуйте ще раз',
         passwordsNoMatch: 'Паролі не збігаються',
         
-        // Помилки елементів
+        // Item Errors
         itemNotFound: 'Запитаний елемент не знайдено',
         fileNotFound: 'Запитаний файл не знайдено',
         folderNotFound: 'Запитану папку не знайдено',
@@ -490,19 +530,19 @@ export const translations = {
         parentFolderDeleted: 'Батьківська папка була видалена',
         nullOrEmpty: 'Не було надано обов\'язкове значення',
         
-        // Помилки розміру та типу файлів
+        // File Size & Type Errors
         fileTooLarge: 'Файл занадто великий',
         archiveTooLarge: 'Папка занадто велика для завантаження у вигляді архіву',
         tooManyFiles: 'Папка містить занадто багато файлів для одночасної обробки',
         invalidFileType: 'Цей тип файлу не дозволений',
         fileRequired: 'Для цієї операції потрібен файл',
         
-        // Помилки дозволів
+        // Permission Errors
         accessDenied: 'Доступ заборонено. У вас немає дозволу на виконання цієї дії',
         insufficientPermission: 'У вас недостатньо прав',
         invalidPermission: 'Вказано недійсний дозвіл',
         
-        // Помилки робочих просторів
+        // Teamspace Errors
         teamspaceNotFound: 'Робочий простір не знайдено',
         teamspaceAccessDenied: 'У вас немає доступу до цього робочого простору',
         teamspaceLimitReached: 'Досягнуто ліміту на кількість робочих просторів',
@@ -514,7 +554,7 @@ export const translations = {
         cannotLeaveAsAdmin: 'Ви не можете покинути простір, оскільки є єдиним адміністратором',
         userNotFound: 'Користувача не знайдено',
         
-        // Помилки сховища та системи
+        // Storage & System Errors
         storageLimitExceeded: 'Перевищено ліміт сховища. Неможливо завантажити файл',
         badRequest: 'Неправильний запит',
         operationFailed: 'Операція не вдалася. Спробуйте ще раз',
@@ -523,6 +563,7 @@ export const translations = {
         networkError: 'Помилка мережі. Перевірте з\'єднання'
     }
 };
+
 
 
 export class I18n {
