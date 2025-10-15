@@ -1019,7 +1019,7 @@ class CloudCoreDrive {
                 this.deleteSelectedItems();
                 break;
             case 'delete-permanently':
-                this.notifications.info('Not implemented yet');
+                this.deletePermanentlySelectedItems();
                 break;
             case 'restore':
                 this.restoreSelectedItems();
@@ -1439,7 +1439,7 @@ class CloudCoreDrive {
         }
 
         const message = this.isTrashView
-            ? this.i18n.t('confirmDeletePermanent', { filename: item.name })
+            ? this.i18n.t('confirmDeletePermanentFinal', { filename: item.name })
             : this.i18n.t('confirmDelete', { filename: item.name });
 
         messageEl.textContent = message;
@@ -1598,20 +1598,16 @@ class CloudCoreDrive {
             itemIcon.textContent = iconInfo.icon;
             itemIcon.className = `material-symbols-outlined file-list-icon ${iconInfo.class}`;
         } else {
-
             const folderCount = items.filter((item) => item.type === 'folder').length;
             const fileCount = count - folderCount;
 
             if (folderCount > 0 && fileCount === 0) {
-
                 itemIcon.textContent = 'folder_copy';
                 itemIcon.className = 'material-symbols-outlined file-list-icon folder-icon';
             } else if (fileCount > 0 && folderCount === 0) {
-
                 itemIcon.textContent = 'description';
                 itemIcon.className = 'material-symbols-outlined file-list-icon file-icon';
             } else {
-
                 itemIcon.textContent = 'content_copy';
                 itemIcon.className = 'material-symbols-outlined file-list-icon file-icon';
             }
@@ -1734,7 +1730,6 @@ class CloudCoreDrive {
         const toggleBtn = wrapper.querySelector('.folder-toggle');
         const childrenContainer = wrapper.querySelector('.folder-children');
 
-
         folderEl.addEventListener('click', (e) => {
             if (e.target.classList.contains('folder-toggle')) return;
 
@@ -1747,12 +1742,10 @@ class CloudCoreDrive {
             console.log('Folder clicked:', folder.id, folder.name);
             console.log('this.moveToSelectedFolder BEFORE:', this.moveToSelectedFolder);
 
-
             this.selectMoveDestination(folder.id, folder.name, folderEl);
 
             console.log('this.moveToSelectedFolder AFTER:', this.moveToSelectedFolder);
         });
-
 
         toggleBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1764,10 +1757,8 @@ class CloudCoreDrive {
                 toggleBtn.classList.remove('expanded');
                 childrenContainer.classList.remove('expanded');
             } else {
-
                 toggleBtn.classList.add('expanded');
                 childrenContainer.classList.add('expanded');
-
 
                 if (!childrenContainer.hasChildNodes()) {
                     await this.loadFolderChildren(folder.id, childrenContainer);
@@ -1853,7 +1844,6 @@ class CloudCoreDrive {
                 return false;
             }
 
-
             if (item.type === 'folder') {
                 if (this.isDescendantOf(targetFolderId, item.id)) {
                     return false;
@@ -1864,12 +1854,9 @@ class CloudCoreDrive {
         return true;
     }
 
-
     isDescendantOf(targetId, parentId) {
-
         const parentWrapper = document.querySelector(`.folder-item-wrapper[data-folder-id="${parentId}"]`);
         if (!parentWrapper) return false;
-
 
         const targetInside = parentWrapper.querySelector(`.folder-item-wrapper[data-folder-id="${targetId}"]`);
         return targetInside !== null;
@@ -1954,7 +1941,7 @@ class CloudCoreDrive {
 
             const result = await this.api.bulkMoveItems(
                 this.currentUserId,
-                items.map((item) => item.id), 
+                items.map((item) => item.id),
                 targetFolderId,
                 {
                     concurrency: 5,
@@ -2151,7 +2138,10 @@ class CloudCoreDrive {
 
         const emptyTrashBtn = document.getElementById('emptyTrashBtn');
         if (emptyTrashBtn) {
-            emptyTrashBtn.addEventListener('click', () => this.emptyTrash());
+            emptyTrashBtn.addEventListener('click', () => this.showEmptyTrashModal());
+            console.log('Empty trash button initialized');
+        } else {
+            console.warn('Empty trash button not found');
         }
 
         // View toggle buttons
@@ -2361,15 +2351,14 @@ class CloudCoreDrive {
         const items = Array.from(this.selectedItems);
         const count = items.length;
 
-        // Build confirmation message
-        const message =
+        // FIRST CONFIRMATION - Initial warning
+        const firstMessage =
             count === 1
                 ? this.i18n.t('confirmDeletePermanent', { filename: items[0].name }) ||
                   `Delete "${items[0].name}" permanently? This action cannot be undone.`
                 : this.i18n.t('confirmDeletePermanentMultiple', { count }) ||
                   `Delete ${count} items permanently? This action cannot be undone.`;
 
-        // Show confirmation modal
         const modal = document.getElementById('deleteModal');
         const overlay = document.getElementById('deleteModalOverlay');
         const messageEl = document.getElementById('deleteModalMessage');
@@ -2377,11 +2366,11 @@ class CloudCoreDrive {
 
         if (!modal || !overlay || !messageEl) return;
 
-        // Update modal content
+        // Update modal content for first confirmation
         if (titleEl) titleEl.textContent = this.i18n.t('deletePermanently') || 'Delete Permanently';
-        messageEl.textContent = message;
+        messageEl.textContent = firstMessage;
 
-        const confirmed = await new Promise((resolve) => {
+        const firstConfirmed = await new Promise((resolve) => {
             const confirmBtn = document.getElementById('deleteConfirmBtn');
             const cancelBtn = document.getElementById('deleteCancelBtn');
             const closeBtn = document.getElementById('deleteModalClose');
@@ -2413,22 +2402,104 @@ class CloudCoreDrive {
             this.showModal(modal, overlay);
         });
 
-        if (!confirmed) return;
+        if (!firstConfirmed) return;
 
+        // SECOND CONFIRMATION - "Are you absolutely sure?"
+        const secondMessage =
+            count === 1
+                ? this.i18n.t('confirmDeletePermanentFinal', { filename: items[0].name }) ||
+                  `Are you absolutely sure? "${items[0].name}" will be permanently deleted and cannot be recovered.`
+                : this.i18n.t('confirmDeletePermanentFinalMultiple', { count }) ||
+                  `Are you absolutely sure? ${count} items will be permanently deleted and cannot be recovered.`;
+
+        if (titleEl) titleEl.textContent = this.i18n.t('finalConfirmation') || 'Final Confirmation';
+        messageEl.textContent = secondMessage;
+
+        const finalConfirmed = await new Promise((resolve) => {
+            const confirmBtn = document.getElementById('deleteConfirmBtn');
+            const cancelBtn = document.getElementById('deleteCancelBtn');
+            const closeBtn = document.getElementById('deleteModalClose');
+
+            const handleConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.remove('show');
+                overlay.classList.remove('show');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('click', handleCancel);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('click', handleCancel);
+
+            this.showModal(modal, overlay);
+        });
+
+        if (!finalConfirmed) return;
+
+        // Proceed with deletion - show notification for progress
         try {
             console.log(`Permanently deleting ${count} items`);
 
-            for (const item of items) {
-                await this.api.deletePermanently(this.currentUserId, item.id);
+            const itemIds = items.map((item) => item.id);
+
+            // Show simple "Deleting..." notification (no progress updates)
+            const deletingMessage =
+                count === 1
+                    ? this.i18n.t('deletingItem', { filename: items[0].name }) || `Deleting "${items[0].name}"...`
+                    : this.i18n.t('deletingItems', { count }) || `Deleting ${count} items...`;
+
+            this.notifications.info(deletingMessage, { duration: 0 });
+
+            const result = await this.api.bulkDeletePermanentlyItems(this.currentUserId, itemIds, {
+                concurrency: 5,
+                onItemComplete: (itemId, result, error) => {
+                    if (error) {
+                        console.error(`Failed to delete item ${itemId}:`, error);
+                    }
+                }
+            });
+
+            // Handle results
+            const succeededCount = result.succeeded.length;
+            const failedCount = result.failed.length;
+
+            if (succeededCount > 0) {
+                const successText =
+                    succeededCount === 1 && count === 1
+                        ? this.i18n.t('deletedPermanently', { filename: items[0].name }) ||
+                          `"${items[0].name}" deleted permanently`
+                        : succeededCount === count
+                        ? this.i18n.t('deletedPermanentlyMultiple', { count: succeededCount }) ||
+                          `${succeededCount} items deleted permanently`
+                        : this.i18n.t('deletedPermanentlyPartial', { succeeded: succeededCount, total: count }) ||
+                          `${succeededCount} of ${count} items deleted permanently`;
+
+                this.notifications.success(successText);
             }
 
-            const successText =
-                count === 1
-                    ? this.i18n.t('deletedPermanently', { filename: items[0].name }) ||
-                      `"${items[0].name}" deleted permanently`
-                    : this.i18n.t('deletedPermanentlyMultiple', { count }) || `${count} items deleted permanently`;
+            if (failedCount > 0) {
+                const errorText =
+                    failedCount === 1
+                        ? this.i18n.t('failedDeletePermanentlySingle') || 'Failed to delete 1 item'
+                        : this.i18n.t('failedDeletePermanentlyMultiple', { count: failedCount }) ||
+                          `Failed to delete ${failedCount} items`;
 
-            this.notifications.success(successText);
+                this.notifications.error(errorText);
+                console.error('Failed to delete items:', result.failed);
+            }
 
             this.selectedItems.clear();
             await this.loadFiles(null, true, true);
@@ -2443,76 +2514,166 @@ class CloudCoreDrive {
         const modal = document.getElementById('emptyTrashModal');
         const overlay = document.getElementById('deleteModalOverlay');
         const messageEl = document.getElementById('emptyTrashModalMessage');
-        const progressSection = document.getElementById('emptyTrashProgress');
-        const progressText = document.getElementById('emptyTrashProgressText');
-        const progressCount = document.getElementById('emptyTrashProgressCount');
-        const progressBar = document.getElementById('emptyTrashProgressBar');
+        const titleEl = document.getElementById('emptyTrashModalTitle');
+
+        if (!modal || !overlay) return;
+
+        // FIRST CONFIRMATION - Initial warning
+        const firstMessage = this.i18n.t('confirmEmptyTrash') || 'Empty trash? All items will be permanently deleted.';
+
+        if (titleEl) titleEl.textContent = this.i18n.t('emptyTheTrash') || 'Empty Trash';
+        if (messageEl) messageEl.textContent = firstMessage;
+
         const confirmBtn = document.getElementById('emptyTrashConfirmBtn');
         const cancelBtn = document.getElementById('emptyTrashCancelBtn');
         const closeBtn = document.getElementById('emptyTrashModalClose');
 
-        if (!modal || !overlay) return;
+        if (!confirmBtn || !cancelBtn || !closeBtn) return;
 
-        // Reset modal state
-        if (messageEl) messageEl.style.display = 'block';
-        if (progressSection) progressSection.style.display = 'none';
-        if (progressBar) progressBar.style.width = '0%';
+        // Reset button states
         confirmBtn.disabled = false;
         cancelBtn.disabled = false;
+        confirmBtn.textContent = this.i18n.t('continue') || 'Continue';
 
-        let isOperationInProgress = false;
-
-        const handleConfirm = async () => {
-            if (isOperationInProgress) return;
-
-            isOperationInProgress = true;
-            confirmBtn.disabled = true;
-            cancelBtn.disabled = true;
-            confirmBtn.textContent = this.i18n.t('processing') || 'Processing...';
-
-            // Hide message, show progress
-            if (messageEl) messageEl.style.display = 'none';
-            if (progressSection) progressSection.style.display = 'block';
-
-            try {
-                await this.performEmptyTrash(progressText, progressCount, progressBar);
+        const firstConfirmed = await new Promise((resolve) => {
+            const handleConfirm = () => {
                 cleanup();
-                this.hideModal(modal, overlay);
-            } catch (error) {
-                console.error('Empty trash error:', error);
-                isOperationInProgress = false;
-                confirmBtn.disabled = false;
-                cancelBtn.disabled = false;
-                confirmBtn.textContent = this.i18n.t('emptyTrash') || 'Empty Trash';
-            }
-        };
+                resolve(true);
+            };
 
-        const handleCancel = () => {
-            if (!isOperationInProgress) {
+            const handleCancel = () => {
                 cleanup();
-                this.hideModal(modal, overlay);
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.remove('show');
+                overlay.classList.remove('show');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('click', handleCancel);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('click', handleCancel);
+
+            this.showModal(modal, overlay);
+        });
+
+        if (!firstConfirmed) return;
+
+        // SECOND CONFIRMATION - "Are you absolutely sure?"
+        const secondMessage =
+            this.i18n.t('confirmEmptyTrashFinal') ||
+            'Are you absolutely sure? This will permanently delete ALL items in trash and cannot be undone.';
+
+        if (titleEl) titleEl.textContent = this.i18n.t('finalConfirmation') || 'Final Confirmation';
+        if (messageEl) messageEl.textContent = secondMessage;
+
+        confirmBtn.textContent = this.i18n.t('emptyTheTrash') || 'Empty Trash';
+
+        const finalConfirmed = await new Promise((resolve) => {
+            const handleConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.remove('show');
+                overlay.classList.remove('show');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('click', handleCancel);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('click', handleCancel);
+
+            this.showModal(modal, overlay);
+        });
+
+        if (!finalConfirmed) return;
+
+        // Proceed with emptying trash
+        try {
+            console.log('Starting empty trash operation...');
+
+            // Show simple notification
+            this.notifications.info(this.i18n.t('emptyingTrash') || 'Emptying trash...', { duration: 0 });
+
+            // Get trash items with proper validation
+            const response = await this.api.getTrash(this.currentUserId, {
+                page: '1',
+                pageSize: '9999' // Get all items
+            });
+
+            console.log('Trash response:', response);
+
+            let trashItems = [];
+            if (response) {
+                if (Array.isArray(response)) {
+                    trashItems = response;
+                } else if (response.data && Array.isArray(response.data)) {
+                    trashItems = response.data;
+                } else if (response.items && Array.isArray(response.items)) {
+                    trashItems = response.items;
+                }
             }
-        };
 
-        const cleanup = () => {
-            confirmBtn.removeEventListener('click', handleConfirm);
-            cancelBtn.removeEventListener('click', handleCancel);
-            closeBtn.removeEventListener('click', handleCancel);
-            overlay.removeEventListener('click', handleOverlayClick);
-        };
+            console.log('Trash items:', trashItems);
 
-        const handleOverlayClick = (e) => {
-            if (e.target === overlay && !isOperationInProgress) {
-                handleCancel();
+            if (!trashItems || trashItems.length === 0) {
+                this.notifications.info(this.i18n.t('trashAlreadyEmpty') || 'Trash is already empty');
+                return;
             }
-        };
 
-        confirmBtn.addEventListener('click', handleConfirm);
-        cancelBtn.addEventListener('click', handleCancel);
-        closeBtn.addEventListener('click', handleCancel);
-        overlay.addEventListener('click', handleOverlayClick);
+            const itemIds = trashItems.map((item) => item.id);
 
-        this.showModal(modal, overlay);
+            const result = await this.api.bulkDeletePermanentlyItems(this.currentUserId, itemIds, {
+                concurrency: 5,
+                onItemComplete: (itemId, result, error) => {
+                    if (error) {
+                        console.error(`Failed to delete item ${itemId}:`, error);
+                    }
+                }
+            });
+
+            // Handle results
+            const succeededCount = result.succeeded.length;
+            const failedCount = result.failed.length;
+
+            if (succeededCount > 0) {
+                const successText =
+                    this.i18n.t('trashEmptiedCount', { count: succeededCount }) ||
+                    `${succeededCount} items deleted permanently`;
+                this.notifications.success(successText);
+            }
+
+            if (failedCount > 0) {
+                const errorText =
+                    this.i18n.t('failedEmptyTrashPartial', { count: failedCount }) ||
+                    `Failed to delete ${failedCount} items`;
+                this.notifications.error(errorText);
+                console.error('Failed to delete items:', result.failed);
+            }
+
+            await this.loadFiles(null, true, true);
+            console.log('Empty trash completed successfully');
+        } catch (error) {
+            console.error('Empty trash error:', error);
+            this.notifications.error(this.i18n.t('failedEmptyTrash') || 'Failed to empty trash');
+        }
     }
 
     async performEmptyTrash(progressText, progressCount, progressBar) {

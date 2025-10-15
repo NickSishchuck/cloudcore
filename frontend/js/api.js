@@ -73,11 +73,10 @@ export class ApiClient {
         return this.handleResponse(response);
     }
 
-    async getItemByName(userId, name, parentId)
-    {
+    async getItemByName(userId, name, parentId) {
         let url = `${this.baseUrl}/user/${userId}/mydrive/get/name?name=${name}`;
 
-         if (parentId !== undefined && parentId !== null) {
+        if (parentId !== undefined && parentId !== null) {
             url += `&parentId=${parentId}`;
         }
         const response = await fetch(url, {
@@ -87,10 +86,9 @@ export class ApiClient {
         return this.handleResponse(response);
     }
 
-    async getFolderChildren(userId, parentFolderId = null)
-    {
+    async getFolderChildren(userId, parentFolderId = null) {
         let url = `${this.baseUrl}/user/${userId}/mydrive/folders`;
-        if(parentFolderId !== undefined && parentFolderId !==null){
+        if (parentFolderId !== undefined && parentFolderId !== null) {
             url += `?parentFolderId=${parentFolderId}`;
         }
         const response = await fetch(url, {
@@ -201,11 +199,7 @@ export class ApiClient {
     }
 
     async bulkDeleteItems(userId, itemIds, options = {}) {
-        const {
-            concurrency = 5,
-            onProgress = null,
-            onItemComplete = null
-        } = options;
+        const { concurrency = 5, onProgress = null, onItemComplete = null } = options;
 
         const results = {
             succeeded: [],
@@ -216,36 +210,36 @@ export class ApiClient {
 
         for (let i = 0; i < itemIds.length; i += concurrency) {
             const batch = itemIds.slice(i, i + concurrency);
-            
+
             const batchPromises = batch.map(async (itemId) => {
                 try {
                     const result = await this.deleteItem(userId, itemId);
                     results.succeeded.push({ itemId, result });
-                    
+
                     if (onItemComplete) {
                         onItemComplete(itemId, result, null);
                     }
-                    
+
                     return { itemId, status: 'fulfilled', result };
                 } catch (error) {
-                    results.failed.push({ 
-                        itemId, 
+                    results.failed.push({
+                        itemId,
                         error: error.message,
-                        errorCode: error.code 
+                        errorCode: error.code
                     });
-                    
+
                     if (onItemComplete) {
                         onItemComplete(itemId, null, error);
                     }
-                    
+
                     return { itemId, status: 'rejected', error: error.message };
                 }
             });
 
             await Promise.allSettled(batchPromises);
-            
+
             results.completedCount = results.succeeded.length + results.failed.length;
-            
+
             if (onProgress) {
                 onProgress(results.completedCount, results.total, batch);
             }
@@ -263,11 +257,7 @@ export class ApiClient {
     }
 
     async bulkRestoreItems(userId, itemIds, options = {}) {
-        const {
-            concurrency = 5,
-            onProgress = null,
-            onItemComplete = null
-        } = options;
+        const { concurrency = 5, onProgress = null, onItemComplete = null } = options;
 
         const results = {
             succeeded: [],
@@ -278,36 +268,94 @@ export class ApiClient {
 
         for (let i = 0; i < itemIds.length; i += concurrency) {
             const batch = itemIds.slice(i, i + concurrency);
-            
+
             const batchPromises = batch.map(async (itemId) => {
                 try {
                     const result = await this.restoreItem(userId, itemId);
                     results.succeeded.push({ itemId, result });
-                    
+
                     if (onItemComplete) {
                         onItemComplete(itemId, result, null);
                     }
-                    
+
                     return { itemId, status: 'fulfilled', result };
                 } catch (error) {
-                    results.failed.push({ 
-                        itemId, 
+                    results.failed.push({
+                        itemId,
                         error: error.message,
-                        errorCode: error.code 
+                        errorCode: error.code
                     });
-                    
+
                     if (onItemComplete) {
                         onItemComplete(itemId, null, error);
                     }
-                    
+
                     return { itemId, status: 'rejected', error: error.message };
                 }
             });
 
             await Promise.allSettled(batchPromises);
-            
+
             results.completedCount = results.succeeded.length + results.failed.length;
-            
+
+            if (onProgress) {
+                onProgress(results.completedCount, results.total, batch);
+            }
+        }
+
+        return results;
+    }
+
+    async deletePermanently(userId, itemId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/mydrive/${itemId}/delete/permanently`, {
+            method: 'DELETE',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async bulkDeletePermanentlyItems(userId, itemIds, options = {}) {
+        const { concurrency = 5, onProgress = null, onItemComplete = null } = options;
+
+        const results = {
+            succeeded: [],
+            failed: [],
+            total: itemIds.length,
+            completedCount: 0
+        };
+
+        for (let i = 0; i < itemIds.length; i += concurrency) {
+            const batch = itemIds.slice(i, i + concurrency);
+
+            const batchPromises = batch.map(async (itemId) => {
+                try {
+                    const result = await this.deletePermanently(userId, itemId);
+                    results.succeeded.push({ itemId, result });
+
+                    if (onItemComplete) {
+                        onItemComplete(itemId, result, null);
+                    }
+
+                    return { itemId, status: 'fulfilled', result };
+                } catch (error) {
+                    results.failed.push({
+                        itemId,
+                        error: error.message,
+                        errorCode: error.code
+                    });
+
+                    if (onItemComplete) {
+                        onItemComplete(itemId, null, error);
+                    }
+
+                    return { itemId, status: 'rejected', error: error.message };
+                }
+            });
+
+            await Promise.allSettled(batchPromises);
+
+            results.completedCount = results.succeeded.length + results.failed.length;
+
             if (onProgress) {
                 onProgress(results.completedCount, results.total, batch);
             }
@@ -346,11 +394,7 @@ export class ApiClient {
     }
 
     async bulkMoveItems(userId, itemIds, targetFolderId, options = {}) {
-        const {
-            concurrency = 5,
-            onProgress = null,
-            onItemComplete = null
-        } = options;
+        const { concurrency = 5, onProgress = null, onItemComplete = null } = options;
 
         const results = {
             succeeded: [],
@@ -361,36 +405,36 @@ export class ApiClient {
 
         for (let i = 0; i < itemIds.length; i += concurrency) {
             const batch = itemIds.slice(i, i + concurrency);
-            
+
             const batchPromises = batch.map(async (itemId) => {
                 try {
                     const result = await this.moveItem(userId, itemId, targetFolderId);
                     results.succeeded.push({ itemId, result });
-                    
+
                     if (onItemComplete) {
                         onItemComplete(itemId, result, null);
                     }
-                    
+
                     return { itemId, status: 'fulfilled', result };
                 } catch (error) {
-                    results.failed.push({ 
-                        itemId, 
+                    results.failed.push({
+                        itemId,
                         error: error.message,
-                        errorCode: error.code 
+                        errorCode: error.code
                     });
-                    
+
                     if (onItemComplete) {
                         onItemComplete(itemId, null, error);
                     }
-                    
+
                     return { itemId, status: 'rejected', error: error.message };
                 }
             });
 
             await Promise.allSettled(batchPromises);
-            
+
             results.completedCount = results.succeeded.length + results.failed.length;
-            
+
             if (onProgress) {
                 onProgress(results.completedCount, results.total, batch);
             }

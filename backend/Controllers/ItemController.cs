@@ -356,10 +356,14 @@ namespace CloudCore.Controllers
         }
 
 
-        [HttpDelete("delete/permanently")]
+        [HttpDelete("{itemId}/delete/permanently")]
         public async Task<IActionResult> DeletePermanently(int userId, int itemId)
         {
-            return Ok(); //TODO
+            var result = await _itemApplication.DeleteItemPermanentlyAsync(userId, itemId);
+
+            _logger.LogInformation("Item ID: {ItemId} permanently deleted for User ID: {UserId}.", itemId, userId);
+
+            return Ok(result);
         }
 
 

@@ -111,6 +111,9 @@ namespace CloudCore.Services.Interfaces
         /// <returns>A <see cref="DeleteResult"/> indicating the outcome of the operation.</returns>
         Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId);
 
+
+        Task<DeleteResult> DeleteItemPermanentlyAsync(int userId, int itemId);
+
         /// <summary>
         /// Orchestrates the entire process of uploading a new file.
         /// </summary>

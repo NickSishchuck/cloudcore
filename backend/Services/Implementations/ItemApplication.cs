@@ -302,6 +302,55 @@ namespace CloudCore.Services.Implementations
             }
         }
 
+
+        public async Task<DeleteResult> DeleteItemPermanentlyAsync(int userId, int itemId)
+        {
+            _logger.LogInformation("");
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+
+            if (item == null)
+            {
+                _logger.LogWarning("Permanent delete failed: item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "File not found"
+                };
+            }
+
+            _logger.LogInformation("Item retrieved for permanent deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
+            try
+            {
+                string folderPathWithoutUserPart = null;
+                if (item.Type == "folder")
+                {
+                    _logger.LogInformation("ItemId={ItemId} is folder. Getting it`s Folder Path...", item.Id);
+                    folderPathWithoutUserPart = await _itemRepository.GetFolderPathAsync(item);
+                }
+                await _itemRepository.DeleteItemPermanentlyAsync(item);
+                _itemStorageService.DeleteItemPhysically(item, folderPathWithoutUserPart);
+
+                return new DeleteResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
+                    Message = "Item deleted successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Permanent delete operation failed. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = ex.Message
+                };
+                throw;
+            }
+        }
+
         public async Task<RenameResult> RenameItemAsync(int userId, int itemId, string newName)
         {
             _logger.LogInformation("Rename request received. UserId={UserId}, ItemId={ItemId}, NewName={NewName}",

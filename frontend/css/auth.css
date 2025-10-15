@@ -11,14 +11,14 @@
     --shadow-sm: rgba(0, 0, 0, 0.1);
     --shadow-md: rgba(0, 0, 0, 0.15);
     --shadow-lg: rgba(0, 0, 0, 0.2);
-    
+
     --color-blue: #4285f4;
     --color-red: #ea4335;
     --color-green: #34a853;
     --color-yellow: #fbbc04;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
     --bg-primary: #1f1f1f;
     --bg-secondary: #2d2d2d;
     --bg-hover: #3c3c3c;
@@ -31,7 +31,7 @@
     --shadow-sm: rgba(0, 0, 0, 0.3);
     --shadow-md: rgba(0, 0, 0, 0.4);
     --shadow-lg: rgba(0, 0, 0, 0.5);
-    
+
     --color-blue: #8ab4f8;
     --color-red: #f28b82;
     --color-green: #81c995;
@@ -44,12 +44,20 @@
     box-sizing: border-box;
 }
 
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     font-family: 'Google Sans', Roboto, Arial, sans-serif;
     background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
     color: var(--text-primary);
-    min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .material-symbols-outlined {
@@ -65,6 +73,20 @@ body {
     word-wrap: normal;
     direction: ltr;
     -webkit-font-smoothing: antialiased;
+}
+
+/* Login/Register containers */
+.login-container,
+.register-container {
+    max-width: 440px;
+    width: 90%;
+    padding: 40px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px var(--shadow-md);
+    position: relative;
+    transition: all 0.3s ease;
 }
 
 /* Theme Switcher */
@@ -151,20 +173,6 @@ body {
     font-size: 12px;
 }
 
-/* Login/Register containers */
-.login-container,
-.register-container {
-    max-width: 440px;
-    margin: 120px auto;
-    padding: 40px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    box-shadow: 0 8px 24px var(--shadow-md);
-    position: relative;
-    transition: all 0.3s ease;
-}
-
 .login-form,
 .register-form {
     display: flex;
@@ -179,9 +187,9 @@ body {
 }
 
 /* Form elements */
-input[type="text"],
-input[type="password"],
-input[type="email"] {
+input[type='text'],
+input[type='password'],
+input[type='email'] {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid var(--border-color);
@@ -193,16 +201,16 @@ input[type="email"] {
     outline: none;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus {
+input[type='text']:focus,
+input[type='password']:focus,
+input[type='email']:focus {
     border-color: var(--color-blue);
     box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
 }
 
-[data-theme="dark"] input[type="text"]:focus,
-[data-theme="dark"] input[type="password"]:focus,
-[data-theme="dark"] input[type="email"]:focus {
+[data-theme='dark'] input[type='text']:focus,
+[data-theme='dark'] input[type='password']:focus,
+[data-theme='dark'] input[type='email']:focus {
     box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.1);
 }
 
@@ -344,7 +352,7 @@ input:focus + .input-hint,
 }
 
 /* Dark theme */
-[data-theme="dark"] .input-hint {
+[data-theme='dark'] .input-hint {
     background: var(--bg-hover);
     color: var(--text-secondary);
 }
@@ -432,19 +440,19 @@ input:valid:not(:placeholder-shown) + .input-hint {
 @media (max-width: 768px) {
     .login-container,
     .register-container {
-        margin: 20px;
+        width: calc(100% - 40px);
         padding: 24px;
     }
-    
+
     h1 {
         font-size: 24px;
     }
-    
+
     .toggle-password {
         width: 32px;
         height: 32px;
     }
-    
+
     .toggle-password .material-symbols-outlined {
         font-size: 18px;
     }
