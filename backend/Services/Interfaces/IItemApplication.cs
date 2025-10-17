@@ -70,7 +70,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="folderId">Folder ID.</param>
         /// <param name="type">Item type (should be "folder").</param>
         /// <returns>Breadcrumb-style string path for the folder.</returns>
-        Task<string> GetBreadcrumbPathAsync(int userId, int itemId, string type);
+        Task<string> GetBreadcrumbPathAsync(int userId, int folderId, string type);
 
         #endregion
 

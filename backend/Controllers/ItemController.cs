@@ -25,7 +25,7 @@ namespace CloudCore.Controllers
         private readonly IItemApplication _itemApplication;
         private readonly ILogger<ItemController> _logger;
 
-        public ItemController(IValidationService validationService, IItemApplication itemApplication, ILogger<ItemController> logger)
+        public ItemController(IItemApplication itemApplication, ILogger<ItemController> logger)
         {
             _itemApplication = itemApplication;
             _logger = logger;
@@ -59,14 +59,14 @@ namespace CloudCore.Controllers
         }
 
 
-        // <summary>
-        /// Gets the full breadcrumb path for a folder.
+        /// <summary>
+        /// Retrieves the full breadcrumb path of a folder by its ID.
         /// </summary>
         /// <param name="userId">The ID of the user.</param>
         /// <param name="folderId">The ID of the folder.</param>
         /// <returns>Full path string of the folder.</returns>
         /// <response code="200">Returns the folder path.</response>
-        /// <response code="404">Folder not found.</response>ы
+        /// <response code="404">Folder not found.</response>
         [HttpGet("folder/path/{folderId}")]
         [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -93,12 +93,22 @@ namespace CloudCore.Controllers
         {
             _logger.LogInformation("Fetching child folders for User ID: {UserId}, Parent Folder ID: {FolderId}", userId, parentFolderId);
 
-            var result = await _itemApplication.GetDirectChildrenAsync(userId, parentFolderId, "folder").ToListAsync();
+            var childrenAsyncEnumerable = _itemApplication.GetDirectChildrenAsync(userId, parentFolderId, "folder");
+
+            if (childrenAsyncEnumerable == null)
+            {
+                return Ok(Enumerable.Empty<ItemResponse>());
+            }
+
+            var result = await childrenAsyncEnumerable
+                .Where(item => item != null)
+                .ToListAsync();
 
             var sorted = result
-                .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase.WithNaturalSort()).Select(i => i.ToResponseDto());
-            return Ok(sorted);
+                .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase.WithNaturalSort())
+                .Select(i => i.ToResponseDto());
 
+            return Ok(sorted);
         }
 
         /// <summary>
@@ -128,11 +138,8 @@ namespace CloudCore.Controllers
         /// Retrieves items from the recycle bin (trash).
         /// </summary>
         /// <param name="userId">The ID of the user.</param>
-        /// <param name="parentId">Parent folder ID.</param>
-        /// <param name="page">Page number (default: 1).</param>
-        /// <param name="pageSize">Items per page (default: 30, max: 100).</param>
-        /// <param name="sortBy">Field to sort by (default: "name").</param>
-        /// <param name="sortDir">Sort direction: "asc" or "desc" (default: "asc").</param>
+        /// <param name="parentId">Parent folder ID (optional).</param>
+        /// <param name="queryParams">Query parameters for pagination and sorting.</param>
         /// <returns>Paginated list of deleted items.</returns>
         /// <response code="200">Returns paginated trash items.</response>
         [HttpGet("trash")]
@@ -156,6 +163,7 @@ namespace CloudCore.Controllers
         #endregion
 
         #region Download something
+
         /// <summary>
         /// Downloads a folder as a ZIP archive.
         /// </summary>
@@ -165,11 +173,9 @@ namespace CloudCore.Controllers
         /// <response code="200">Returns the folder as a ZIP file.</response>
         /// <response code="404">Folder not found.</response>
         /// <remarks>
-        /// Sample request:
-        ///
-        ///     GET /user/123/mydrive/456/downloadfolder
-        ///
-        /// Response: ZIP file named "FolderName.zip"
+        /// <para>Sample request:</para>
+        /// <para>    GET /user/123/mydrive/456/downloadfolder</para>
+        /// <para>Response: ZIP file named "FolderName.zip"</para>
         /// </remarks>
         [HttpGet("{folderId}/downloadfolder")]
         [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
@@ -217,12 +223,10 @@ namespace CloudCore.Controllers
         /// <response code="200">Returns the archive file.</response>
         /// <response code="400">Invalid item IDs or validation failed.</response>
         /// <remarks>
-        /// Sample request:
-        ///
-        ///     POST /user/123/mydrive/download/multiple
-        ///     [12, 45, 67, 89]
-        ///
-        /// Archive filename format: "selected_items_yyyyMMdd_HHmmss.zip"
+        /// <para>Sample request:</para>
+        /// <para>    POST /user/123/mydrive/download/multiple</para>
+        /// <para>    [12, 45, 67, 89]</para>
+        /// <para>Archive filename format: "selected_items_yyyyMMdd_HHmmss.zip"</para>
         /// </remarks>
         [HttpPost("download/multiple")]
         [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
@@ -253,11 +257,9 @@ namespace CloudCore.Controllers
         /// <response code="404">Item not found.</response>
         /// <response code="409">Name conflict - item with this name already exists.</response>
         /// <remarks>
-        /// Sample request:
-        ///
-        ///     PUT /user/123/mydrive/456/rename
-        ///     "New Document Name.pdf"
-        ///
+        /// <para>Sample request:</para>
+        /// <para>    PUT /user/123/mydrive/456/rename</para>
+        /// <para>    "New Document Name.pdf"</para>
         /// </remarks>
         [HttpPut("{itemId}/rename")]
         [ProducesResponseType(typeof(RenameResult), StatusCodes.Status200OK)]
@@ -428,13 +430,12 @@ namespace CloudCore.Controllers
         /// <response code="400">Invalid folder name or parent not found.</response>
         /// <response code="409">Folder with this name already exists.</response>
         /// <remarks>
-        /// Sample request:
-        ///
-        ///     POST /user/123/mydrive/createfolder
-        ///     {
-        ///       "name": "My Documents",
-        ///       "parentId": 456
-        ///     }
+        /// <para>Sample request:</para>
+        /// <para>POST /user/123/mydrive/createfolder</para>    
+        /// {
+        ///     "name": "My Documents",
+        ///     "parentId": 456
+        /// }
         ///
         /// </remarks>
         [HttpPost("createfolder")]
