@@ -135,3 +135,13 @@ mkcert -cert-file /frontend/certs/localhost.pem -key-file /frontend/certs/localh
 
 # Should be in /frontend/certs
 ```
+
+# Auto testing and generating report
+
+``` Run script (Maybe will also run in Linux)
+
+# Runs test and creates coverage report in backend/CloudCore.Tests/coverage-report
+pwsh ./generate-coverage.ps1
+
+# It will be opened in browser (if available)
+
