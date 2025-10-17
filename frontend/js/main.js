@@ -99,8 +99,6 @@ class CloudCoreDrive {
         if (error.message === 'TIMEOUT') {
             errorIcon.textContent = 'schedule';
             errorTitle.textContent = this.i18n.t('connectionTimeout') || 'Connection timed out';
-            errorMessage.textContent =
-                this.i18n.t('timeoutMessage') || 'The server took too long to respond. Please try again.';
         } else if (error.response?.status === 500) {
             errorIcon.textContent = 'error';
             errorTitle.textContent = this.i18n.t('serverError') || 'Server error';

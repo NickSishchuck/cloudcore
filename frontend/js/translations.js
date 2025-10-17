@@ -304,7 +304,20 @@ export const translations = {
         noConnectionMessage: 'Please check your internet connection and try again.',
         unableToConnect: 'Unable to connect',
         connectionErrorMessage: 'Please check your connection and try again.',
-        serviceUnavailable: 'Service unavailable'
+        serviceUnavailable: 'Service unavailable',
+
+        // ══════════════════════════════════════════════════════════════
+        // Error Pages
+        // ══════════════════════════════════════════════════════════════
+        error404Title: '404 - Page Not Found',
+        error404Heading: 'Page Not Found',
+        error404Message: "The page you're looking for doesn't exist or has been moved. Please check the URL or return to the home page.",
+        error50xTitle: 'Server Error',
+        error50xHeading: 'Server Error',
+        error50xMessage: "Something went wrong on our end. We're working to fix the issue. Please try again in a few moments.",
+        refreshPage: 'Refresh Page',
+        goHome: 'Go to Home',
+        contactSupport: 'If the problem persists, please contact support.'
     },
 
     uk: {
@@ -609,13 +622,27 @@ export const translations = {
         noConnectionMessage: 'Перевірте підключення до інтернету та спробуйте ще раз.',
         unableToConnect: 'Не вдається підключитися',
         connectionErrorMessage: 'Перевірте з\'єднання та спробуйте ще раз.',
-        serviceUnavailable: 'Сервіс недоступний'
+        serviceUnavailable: 'Сервіс недоступний',
+
+        // ══════════════════════════════════════════════════════════════
+        // Error Pages
+        // ══════════════════════════════════════════════════════════════
+        error404Title: '404 - Сторінку не знайдено',
+        error404Heading: 'Сторінку не знайдено',
+        error404Message: 'Сторінка, яку ви шукаєте, не існує або була переміщена. Будь ласка, перевірте URL або поверніться на головну сторінку.',
+        error50xTitle: 'Помилка сервера',
+        error50xHeading: 'Помилка сервера',
+        error50xMessage: 'Щось пішло не так на нашому боці. Ми працюємо над вирішенням проблеми. Будь ласка, спробуйте ще раз через кілька хвилин.',
+        refreshPage: 'Оновити сторінку',
+        goHome: 'На головну',
+        contactSupport: 'Якщо проблема не зникає, зверніться до служби підтримки.'
     }
 };
 
 export class I18n {
     constructor() {
         this.currentLanguage = localStorage.getItem('cloudcore-language') || 'en';
+        this.translations = translations;
     }
 
     t(key, replacements = {}) {

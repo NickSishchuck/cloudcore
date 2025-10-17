@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="404Title">404 - Page Not Found | CloudCore Drive</title>
+    
+    <!-- Google Fonts Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-hover: #f1f3f4;
+            --bg-active: #e8f0fe;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --text-link: #1a73e8;
+            --border-color: #dadce0;
+            --shadow-sm: rgba(0, 0, 0, 0.1);
+            --shadow-md: rgba(0, 0, 0, 0.15);
+            --shadow-lg: rgba(0, 0, 0, 0.2);
+            --color-blue: #4285f4;
+        }
+
+        [data-theme='dark'] {
+            --bg-primary: #1f1f1f;
+            --bg-secondary: #2d2d2d;
+            --bg-hover: #3c3c3c;
+            --bg-active: #1a3a52;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --text-link: #8ab4f8;
+            --border-color: #3c4043;
+            --shadow-sm: rgba(0, 0, 0, 0.3);
+            --shadow-md: rgba(0, 0, 0, 0.4);
+            --shadow-lg: rgba(0, 0, 0, 0.5);
+            --color-blue: #8ab4f8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px 20px;
+            max-width: 600px;
+        }
+
+        .icon {
+            font-size: 120px;
+            color: var(--color-blue);
+            margin-bottom: 20px;
+            opacity: 0.8;
+            font-family: 'Material Symbols Outlined';
+        }
+
+        .error-code {
+            font-size: 72px;
+            font-weight: 700;
+            color: var(--color-blue);
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 400;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 11px 26px;
+            min-width: 90px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--color-blue) 0%, #1967d2 100%);
+            color: white;
+            text-decoration: none;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.25px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            background: linear-gradient(135deg, #1557b0 0%, #0d47a1 100%);
+            box-shadow: 0 2px 4px rgba(66, 133, 244, 0.3);
+            transform: translateY(0);
+        }
+
+        [data-theme='dark'] .btn {
+            box-shadow: 0 2px 8px rgba(138, 180, 248, 0.3);
+        }
+
+        [data-theme='dark'] .btn:hover {
+            box-shadow: 0 4px 12px rgba(138, 180, 248, 0.4);
+        }
+
+        [data-theme='dark'] .icon {
+            filter: brightness(1.2);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="material-symbols-outlined icon">cloud_off</span>
+        <div class="error-code">404</div>
+        <h1 data-i18n="error404Title">Page Not Found</h1>
+        <p data-i18n="error404Message">The page you're looking for doesn't exist or has been moved. Please check the URL or return to the home page.</p>
+        <a href="/" class="btn" data-i18n="goHome">Go to Home</a>
+    </div>
+
+    <script type="module">
+        import { I18n } from './js/translations.js';
+
+        
+        
+        const i18n = new I18n();
+
+        console.log('Current language:', i18n.currentLanguage);
+    console.log('Has translations:', i18n.translations ? 'YES' : 'NO');
+    console.log('Test translation:', i18n.t('error404Heading'));
+        
+        // Применить переводы
+        function applyTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            const translation = i18n.t(key);
+            if (translation) {
+                element.textContent = translation;
+            }
+        });
+        
+        const titleTranslation = i18n.t('error404Title');
+        if (titleTranslation) {
+            document.title = titleTranslation;
+        }
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('cloudcore-theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+        
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+
+        // Initialize theme on load
+        initTheme();
+        applyTranslations();
+    </script>
+</body>
+</html>
