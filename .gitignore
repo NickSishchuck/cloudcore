@@ -6,8 +6,8 @@ backend/bin/
 backend/obj/
 backend/logs
 Properties/
-TODO/
 /frontend/.prettierrc
 /frontend/certs/
 **/bin/
 **/obj/
+backend/TODO.md
