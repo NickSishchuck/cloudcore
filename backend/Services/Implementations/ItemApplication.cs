@@ -31,6 +31,7 @@ namespace CloudCore.Services.Implementations
             _storageTrackingService = storageTrackingService;
         }
 
+        #region Helpers
         private IAsyncEnumerable<Item> CreateItemStream(int userId, Item item)
         {
             if (item.Type == "folder")
@@ -53,6 +54,9 @@ namespace CloudCore.Services.Implementations
             var streamForStorage = CreateItemStream(userId, rootItem);
             await storageAction(userId, streamForStorage, isAdding);
         }
+        #endregion
+
+        #region Get something
 
         public async Task<PaginatedResponse<Item>> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy, string? sortDir, bool isTrashFolder = false, string? searchQuery = null, int? teamspaceId = null)
         {
@@ -79,12 +83,12 @@ namespace CloudCore.Services.Implementations
             return await _itemRepository.GetItemAsync(userId, itemId, type);
         }
 
-        public async Task<Item?> GetItemByNameAsync(int userId, string  name, int? parentId, int? teamspaceId = null)
+        public async Task<Item?> GetItemByNameAsync(int userId, string name, int? parentId, int? teamspaceId = null)
         {
             return await _itemRepository.GetItemByNameAsync(userId, name, parentId, teamspaceId);
         }
 
-        public IAsyncEnumerable<Item> GetDirectChildrenAsync(int userId, int? parentId, string? itemType = null, bool includeDeleted = false)
+        public IAsyncEnumerable<Item?> GetDirectChildrenAsync(int userId, int? parentId, string? itemType = null, bool includeDeleted = false)
         {
             return _itemRepository.GetDirectChildrenAsync(userId, parentId, itemType, includeDeleted);
         }
@@ -105,6 +109,9 @@ namespace CloudCore.Services.Implementations
             return folderPath;
         }
 
+        #endregion
+
+        #region Download something
         public async Task<(Stream archiveStream, string fileName)> DownloadFolderAsync(int userId, int folderId)
         {
             var folder = await _itemRepository.GetItemAsync(userId, folderId, "folder");
@@ -176,6 +183,9 @@ namespace CloudCore.Services.Implementations
             return (archiveStream, fileName);
         }
 
+        #endregion
+
+        #region Modify something
 
         public async Task<RestoreResult> RestoreItemAsync(int userId, int itemId)
         {
@@ -248,51 +258,6 @@ namespace CloudCore.Services.Implementations
             {
                 _logger.LogError(ex, "Failed to restore item {ItemId} in a transaction.", itemId);
                 return new RestoreResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
-                    Message = ex.Message
-                };
-                throw;
-            }
-        }
-
-        public async Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId)
-        {
-            _logger.LogInformation("Delete request received. UserId={UserId}, ItemId={ItemId}", userId, itemId);
-            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
-
-            if (item == null)
-            {
-                _logger.LogWarning("Delete failed: item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
-                return new DeleteResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "File not found"
-                };
-            }
-
-            _logger.LogInformation("Item retrieved for deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
-
-            try
-            {
-                await ProcessItemStreamsAsync(userId, item, _itemManagerService.PrepareItemsForSoftDeleteAsync, _storageTrackingService.UpdateStorageForItemsAsync, isAdding: false);
-
-                _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}",
-                    item.Id, item.Type, item.Name);
-
-                return new DeleteResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
-                    Message = "Item deleted successfully"
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Delete operation failed. UserId={UserId}, ItemId={ItemId}", userId, itemId);
-                return new DeleteResult
                 {
                     IsSuccess = false,
                     ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
@@ -391,6 +356,231 @@ namespace CloudCore.Services.Implementations
             }
 
         }
+
+
+        public async Task<MoveResult> MoveItemAsync(int userId, int itemId, int? targetId)
+        {
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+            if (item == null)
+            {
+                _logger.LogWarning("MoveItem failed: Item with ID {ItemId} not found for user {UserId}", itemId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "Item to move not found."
+                };
+            }
+
+            Item targetItem = null;
+            bool isMovingToRoot = targetId == null || targetId == 0;
+
+            if (!isMovingToRoot)
+            {
+                targetItem = await _itemRepository.GetItemAsync(userId, (int)targetId, null);
+                if (targetItem == null)
+                {
+                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                        Message = "Target folder not found."
+                    };
+                }
+                if (targetItem.Type != "folder")
+                {
+                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} is not a folder for user {UserId}", targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = ErrorCodes.INVALID_TARGET,
+                        Message = "Target item is not a folder."
+                    };
+                }
+            }
+
+            if (item.Type == "folder" && !isMovingToRoot)
+            {
+                var circularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, (int)targetId);
+                if (!circularValidation.IsValid)
+                {
+                    _logger.LogWarning("MoveItem failed: Circular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                    return new MoveResult
+                    {
+                        IsSuccess = false,
+                        ErrorCode = circularValidation.ErrorCode,
+                        Message = circularValidation.ErrorMessage
+                    };
+                }
+            }
+
+            int? actualTargetId = isMovingToRoot ? null : targetId;
+            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(item.Name, item.Type, userId, actualTargetId, itemId, true);
+            if (!uniquenessValidation.IsValid)
+            {
+                _logger.LogWarning("MoveItem failed: Uniqueness validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = uniquenessValidation.ErrorCode,
+                    Message = uniquenessValidation.ErrorMessage
+                };
+            }
+
+            try
+            {
+                IAsyncEnumerable<Item> childItemsAsync = CreateItemStream(userId, item);
+                var basePath = _itemStorageService.GetUserStoragePath(userId);
+
+                string sourceFolderPath = null;
+                if (item.Type == "folder")
+                {
+                    var sourceFolderPathRelative = await _itemRepository.GetFolderPathAsync(item);
+                    sourceFolderPath = Path.Combine(basePath, sourceFolderPathRelative);
+                    _logger.LogInformation("Source folder path: {Path}", sourceFolderPath);
+                }
+
+                string destinationFolderPath;
+                if (isMovingToRoot)
+                {
+                    destinationFolderPath = basePath;
+                }
+                else
+                {
+                    var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem);
+                    destinationFolderPath = Path.Combine(basePath, targetRelativePath);
+                }
+                _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
+
+                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, actualTargetId, sourceFolderPath, destinationFolderPath, childItemsAsync);
+                await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
+
+                var itemsForCount = _itemRepository.GetAllChildItemsAsync(userId, itemId).Prepend(item);
+                var count = await itemsForCount.CountAsync() - 1;
+
+                return new MoveResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.MOVED_SUCCESSFULLY,
+                    Message = $"Item '{item.Name}' moved successfully",
+                    ItemId = item.Id,
+                    UpdatedItemsCount = count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during move. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new MoveResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = "An unexpected error occurred. Please try again later."
+                };
+            }
+        }
+
+        #endregion
+
+        #region Delete something
+
+        public async Task<DeleteResult> SoftDeleteItemAsync(int userId, int itemId)
+        {
+            _logger.LogInformation("Delete request received. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+
+            if (item == null)
+            {
+                _logger.LogWarning("Delete failed: item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "File not found"
+                };
+            }
+
+            _logger.LogInformation("Item retrieved for deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
+
+            try
+            {
+                await ProcessItemStreamsAsync(userId, item, _itemManagerService.PrepareItemsForSoftDeleteAsync, _storageTrackingService.UpdateStorageForItemsAsync, isAdding: false);
+
+                _logger.LogInformation("Item deleted successfully. ItemId={ItemId}, Type={ItemType}, Name={ItemName}",
+                    item.Id, item.Type, item.Name);
+
+                return new DeleteResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
+                    Message = "Item deleted successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Delete operation failed. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = ex.Message
+                };
+                throw;
+            }
+        }
+
+
+        public async Task<DeleteResult> DeleteItemPermanentlyAsync(int userId, int itemId)
+        {
+            _logger.LogInformation("");
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+
+            if (item == null)
+            {
+                _logger.LogWarning("Permanent delete failed: item not found. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "File not found"
+                };
+            }
+
+            _logger.LogInformation("Item retrieved for permanent deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
+            try
+            {
+                string folderPathWithoutUserPart = null;
+                if (item.Type == "folder")
+                {
+                    _logger.LogInformation("ItemId={ItemId} is folder. Getting it`s Folder Path...", item.Id);
+                    folderPathWithoutUserPart = await _itemRepository.GetFolderPathAsync(item);
+                }
+                await _itemRepository.DeleteItemPermanentlyAsync(item);
+                _itemStorageService.DeleteItemPhysically(item, folderPathWithoutUserPart);
+
+                return new DeleteResult
+                {
+                    IsSuccess = true,
+                    ErrorCode = ErrorCodes.DELETED_SUCCESSFULLY,
+                    Message = "Item deleted successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Permanent delete operation failed. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new DeleteResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
+                    Message = ex.Message
+                };
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region Upload/Create something
 
         public async Task<UploadResult> UploadFileAsync(int userId, IFormFile file, int? parentId = null, int? teamspaceId = null)
         {
@@ -570,128 +760,6 @@ namespace CloudCore.Services.Implementations
             }
         }
 
-        public async Task<MoveResult> MoveItemAsync(int userId, int itemId, int? targetId)
-        {
-            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
-            if (item == null)
-            {
-                _logger.LogWarning("MoveItem failed: Item with ID {ItemId} not found for user {UserId}", itemId, userId);
-                return new MoveResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                    Message = "Item to move not found."
-                };
-            }
-
-            Item targetItem = null;
-            bool isMovingToRoot = targetId == null || targetId == 0;
-
-            if (!isMovingToRoot)
-            {
-                targetItem = await _itemRepository.GetItemAsync(userId, (int)targetId, null);
-                if (targetItem == null)
-                {
-                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
-                    return new MoveResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
-                        Message = "Target folder not found."
-                    };
-                }
-                if (targetItem.Type != "folder")
-                {
-                    _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} is not a folder for user {UserId}", targetId, userId);
-                    return new MoveResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = ErrorCodes.INVALID_TARGET,
-                        Message = "Target item is not a folder."
-                    };
-                }
-            }
-
-            if (item.Type == "folder" && !isMovingToRoot)
-            {
-                var circularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, (int)targetId);
-                if (!circularValidation.IsValid)
-                {
-                    _logger.LogWarning("MoveItem failed: Circular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
-                    return new MoveResult
-                    {
-                        IsSuccess = false,
-                        ErrorCode = circularValidation.ErrorCode,
-                        Message = circularValidation.ErrorMessage
-                    };
-                }
-            }
-
-            int? actualTargetId = isMovingToRoot ? null : targetId;
-            var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(item.Name, item.Type, userId, actualTargetId, itemId, true);
-            if (!uniquenessValidation.IsValid)
-            {
-                _logger.LogWarning("MoveItem failed: Uniqueness validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
-                return new MoveResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
-                };
-            }
-
-            try
-            {
-                IAsyncEnumerable<Item> childItemsAsync = CreateItemStream(userId, item);
-                var basePath = _itemStorageService.GetUserStoragePath(userId);
-
-                string sourceFolderPath = null;
-                if (item.Type == "folder")
-                {
-                    var sourceFolderPathRelative = await _itemRepository.GetFolderPathAsync(item);
-                    sourceFolderPath = Path.Combine(basePath, sourceFolderPathRelative);
-                    _logger.LogInformation("Source folder path: {Path}", sourceFolderPath);
-                }
-
-                string destinationFolderPath;
-                if (isMovingToRoot)
-                {
-                    destinationFolderPath = basePath;
-                }
-                else
-                {
-                    var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem);
-                    destinationFolderPath = Path.Combine(basePath, targetRelativePath);
-                }
-                _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
-
-                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, actualTargetId, sourceFolderPath, destinationFolderPath, childItemsAsync);
-                await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
-
-                var itemsForCount = _itemRepository.GetAllChildItemsAsync(userId, itemId).Prepend(item);
-                var count = await itemsForCount.CountAsync() - 1;
-
-                return new MoveResult
-                {
-                    IsSuccess = true,
-                    ErrorCode = ErrorCodes.MOVED_SUCCESSFULLY,
-                    Message = $"Item '{item.Name}' moved successfully",
-                    ItemId = item.Id,
-                    UpdatedItemsCount = count
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error during move. UserId={UserId}, ItemId={ItemId}", userId, itemId);
-                return new MoveResult
-                {
-                    IsSuccess = false,
-                    ErrorCode = ErrorCodes.UNEXPECTED_ERROR,
-                    Message = "An unexpected error occurred. Please try again later."
-                };
-            }
-        }
-
-
+        #endregion
     }
 }

@@ -1,102 +1,102 @@
-# "Я здесь впервые"
-Сначала создай .env в своём локальном проекте. Перенеси содержимое из .envTemplate
-в новосозданный .env. Поменяй пароль.
+# "I am new here"
+First, create .env in your local project. Transfer the contents from .envTemplate to the newly created .env. 
+Change the password.
 
 
 ```dockerfile
-# Полная сборка и запуск
+# Full build and run
 docker-compose up --build
 
-# Или пошагово для отладки
-docker-compose up database --build    # сначала БД
-docker-compose up backend --build     # потом бекенд  
-docker-compose up frontend --build    # потом фронтенд
+# Or step-by-step for debugging
+docker-compose up database --build    # database first
+docker-compose up backend --build     # then backend 
+docker-compose up frontend --build    # then frontend
 
-# Проверка логов
+# Check logs
 docker-compose logs backend
 docker-compose logs frontend
 ```
 
-# Что-то пошло не так
+# Something went wrong
 ```dockerfile
-# Посмотри логи конкретного сервиса
+# View logs of a specific service
 docker compose logs backend
 docker compose logs frontend  
 docker compose logs database
 
-# Пересборка
+# Rebuild
 docker compose down
 docker compose up --build --force-recreate
 ```
 
-# Управление контейнерами
+Container Management
 ```dockerfile
-# Запуск только определённого сервиса
-docker compose up backend database --build   # без фронтенда
-docker compose up database --build           # только БД
+# Run only specific service
+docker compose up backend database --build   # without frontend
+docker compose up database --build           # database only
 
-# Остановка без удаления
+# Stop without removing
 docker compose stop
 
-# Перезапуск сервиса
+# Restart service
 docker compose restart backend
 ```
-# Работа с БД
+Working with Database
 ```dockerfile
-# Подключение к MySQL
-docker compose exec database mysql -uroot -p {пароль указан в .env. Ты должен будешь
- ввести его интерактивно. Если хочешь автоматически, убери пробел между -p и паролем}
+# Connect to MySQL
+docker compose exec database mysql -uroot -p {password is specified in .env. You will need to
+ enter it interactively. If you want it automatically, remove the space between -p and password}
 
-# Выполнение SQL команды
+# Execute SQL command
 docker compose exec database mysql -uroot -p CloudCoreDB -e "SELECT * FROM users;"
 
-# Просмотр логов БД
+# View database logs
 docker compose logs database --follow
 
-# Пересоздание БД
+# Recreate database
 docker compose down --volumes
-    #Поднятие всего приложения
+    # Bring up the entire application
     docker compose up --build
     
-MySQL автоматически по-очереди пройдётся по файлам в ../database/init/, но только если в вольюме будет пусто. 
-По-этому мы удаляем содержимое вольюма, чтобы внести обновления в бд.
+MySQL will automatically go through files in ../database/init/ sequentially, but only if the volume is empty. 
+That's why we delete the volume contents to apply updates to the database.
 
 ``` 
 
-# Работа с storage
+# Working with storage
 ```dockerfile
-У нас volume mapping, по-этому содержимое storage можно просматривать прям локально
-через проводник
+We have volume mapping, so storage contents can be viewed locally
+through file explorer
 
 
-Если бы у нас его не было, было бы:
+If we didn't have it, it would be:
 docker compose exec backend ls -la /app/storage
 ```
 
-# Очистка системы
+# System Cleanup
 ```dockerfile
-# Полная очистка проекта
+# Full project cleanup
 docker compose down --volumes --rmi all
 docker system prune -f
 
-# Очистка только volumes
+# Cleanup only volumes
 docker compose down --volumes
 
-# Очистка Docker кэша
+# Cleanup Docker cache
 docker builder prune -f
 
-# Очистка неиспользуемых образов
+# Cleanup unused images
 docker image prune -a
 ```
 
-# Добавление https
+# Adding https
 ```https setup
-# Установка mkcert для локального самоподписаного сертификата
+# Install mkcert for local self-signed certificate
 sudo pacman -Syu mkcert nss
 mkcert -install
 
-# Создание локальных сертификатов
+# Create local certificates
 mkcert -cert-file /frontend/certs/localhost.pem -key-file /frontend/certs/localhost-key.pem localhost 127.0.0.1 ::1
 
-# Должны быть в /frontend/certs
+# Should be in /frontend/certs
 ```

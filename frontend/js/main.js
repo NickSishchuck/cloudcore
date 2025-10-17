@@ -50,6 +50,152 @@ class CloudCoreDrive {
         this.initializeDeselectOnClick();
         this.initializeKeyboardShortcuts();
     }
+    // ═══════════════════════════════════════════════════════════════════
+    // Skeleton Loader
+    // ═══════════════════════════════════════════════════════════════════
+    generateSkeletonRows(count = 12) {
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (!skeletonLoader) return;
+
+        skeletonLoader.innerHTML = '';
+
+        for (let i = 0; i < count; i++) {
+            const row = document.createElement('div');
+            row.className = 'skeleton-row';
+            row.style.animationDelay = `${i * 0.05}s`;
+            row.innerHTML = `
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text skeleton-name"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-size"></div>
+        `;
+            skeletonLoader.appendChild(row);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ERROR STATE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════
+    showErrorState(error) {
+        this.hideLoading();
+
+        document.getElementById('emptyState').style.display = 'none';
+
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.classList.remove('visible');
+        }
+
+        this.fileList.style.display = 'none';
+        this.fileList.classList.remove('visible');
+        document.getElementById('emptyState').style.display = 'none';
+
+        const errorState = document.getElementById('errorState');
+        const errorTitle = document.getElementById('errorStateTitle');
+        const errorMessage = document.getElementById('errorStateMessage');
+        const errorIcon = errorState.querySelector('.error-icon');
+
+        if (error.message === 'TIMEOUT') {
+            errorIcon.textContent = 'schedule';
+            errorTitle.textContent = this.i18n.t('connectionTimeout') || 'Connection timed out';
+        } else if (error.response?.status === 500) {
+            errorIcon.textContent = 'error';
+            errorTitle.textContent = this.i18n.t('serverError') || 'Server error';
+            errorMessage.textContent =
+                this.i18n.t('serverErrorMessage') || 'Something went wrong on the server. Please try again later.';
+        } else if (!navigator.onLine) {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('noConnection') || 'No internet connection';
+            errorMessage.textContent =
+                this.i18n.t('noConnectionMessage') || 'Please check your internet connection and try again.';
+        } else {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('unableToConnect') || 'Unable to connect';
+            errorMessage.textContent =
+                this.i18n.t('connectionErrorMessage') || 'Please check your connection and try again.';
+        }
+
+        errorState.style.display = 'flex';
+    }
+
+    hideErrorState() {
+        document.getElementById('errorState').style.display = 'none';
+    }
+    // ═══════════════════════════════════════════════════════════════════
+    // Skeleton Loader
+    // ═══════════════════════════════════════════════════════════════════
+    generateSkeletonRows(count = 12) {
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (!skeletonLoader) return;
+
+        skeletonLoader.innerHTML = '';
+
+        for (let i = 0; i < count; i++) {
+            const row = document.createElement('div');
+            row.className = 'skeleton-row';
+            row.style.animationDelay = `${i * 0.05}s`;
+            row.innerHTML = `
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text skeleton-name"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-size"></div>
+        `;
+            skeletonLoader.appendChild(row);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ERROR STATE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════
+    showErrorState(error) {
+        this.hideLoading();
+
+        document.getElementById('emptyState').style.display = 'none';
+
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.classList.remove('visible');
+        }
+
+        this.fileList.style.display = 'none';
+        this.fileList.classList.remove('visible');
+        document.getElementById('emptyState').style.display = 'none';
+
+        const errorState = document.getElementById('errorState');
+        const errorTitle = document.getElementById('errorStateTitle');
+        const errorMessage = document.getElementById('errorStateMessage');
+        const errorIcon = errorState.querySelector('.error-icon');
+
+        if (error.message === 'TIMEOUT') {
+            errorIcon.textContent = 'schedule';
+            errorTitle.textContent = this.i18n.t('connectionTimeout') || 'Connection timed out';
+            errorMessage.textContent =
+                this.i18n.t('timeoutMessage') || 'The server took too long to respond. Please try again.';
+        } else if (error.response?.status === 500) {
+            errorIcon.textContent = 'error';
+            errorTitle.textContent = this.i18n.t('serverError') || 'Server error';
+            errorMessage.textContent =
+                this.i18n.t('serverErrorMessage') || 'Something went wrong on the server. Please try again later.';
+        } else if (!navigator.onLine) {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('noConnection') || 'No internet connection';
+            errorMessage.textContent =
+                this.i18n.t('noConnectionMessage') || 'Please check your internet connection and try again.';
+        } else {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('unableToConnect') || 'Unable to connect';
+            errorMessage.textContent =
+                this.i18n.t('connectionErrorMessage') || 'Please check your connection and try again.';
+        }
+
+        errorState.style.display = 'flex';
+    }
+
+    hideErrorState() {
+        document.getElementById('errorState').style.display = 'none';
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // THEME MANAGEMENT
@@ -201,6 +347,16 @@ class CloudCoreDrive {
             this.hideContextMenu();
         });
 
+        // Error retry button
+        const errorRetryBtn = document.getElementById('errorRetryBtn');
+        if (errorRetryBtn) {
+            errorRetryBtn.addEventListener('click', () => {
+                console.log('Retry button clicked');
+                this.hideErrorState();
+                this.loadFiles(this.currentFolderId, true, this.isTrashView);
+            });
+        }
+
         // Setup drag and drop functionality
         this.setupDragAndDrop();
 
@@ -323,7 +479,23 @@ class CloudCoreDrive {
             this.clearSelection();
         }
 
+        this.hideErrorState();
+
+        this.hideErrorState();
+
         if (resetPagination) this.showLoading();
+
+
+        const LOAD_TIMEOUT = 25000;
+        let timeoutId;
+        let isTimeout = false;
+
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+                isTimeout = true;
+                reject(new Error('TIMEOUT'));
+            }, LOAD_TIMEOUT);
+        });
 
         try {
             this.isTrashView = isTrashView;
@@ -345,9 +517,13 @@ class CloudCoreDrive {
 
             console.log('Fetching files with params:', params);
 
-            const result = isTrashView
-                ? await this.api.getTrash(this.currentUserId, params)
-                : await this.api.getFiles(this.currentUserId, params);
+            const fetchPromise = isTrashView
+                ? this.api.getTrash(this.currentUserId, params)
+                : this.api.getFiles(this.currentUserId, params);
+
+            const result = await Promise.race([fetchPromise, timeoutPromise]);
+
+            clearTimeout(timeoutId);
 
             console.log('Files received:', result);
 
@@ -368,7 +544,42 @@ class CloudCoreDrive {
             this.updateBreadcrumbs();
         } catch (error) {
             console.error('loadFiles error:', error);
-            this.notifications.error(this.i18n.t('failedRename'));
+
+            if (resetPagination) {
+                this.showErrorState(error);
+            }
+
+            if (error.message === 'TIMEOUT') {
+                this.notifications.error(this.i18n.t('connectionTimeout'));
+            } else if (error.response?.status === 500) {
+                this.notifications.error(this.i18n.t('serverError'));
+            } else if (error.response?.status === 503) {
+                this.notifications.error(this.i18n.t('serviceUnavailable'));
+            } else if (!navigator.onLine) {
+                this.notifications.error(this.i18n.t('noConnection'));
+            } else {
+                this.notifications.error(this.i18n.t('networkError'));
+            }
+
+            clearTimeout(timeoutId);
+
+            if (resetPagination) {
+                this.showErrorState(error);
+            }
+
+            if (error.message === 'TIMEOUT') {
+                this.notifications.error(this.i18n.t('connectionTimeout'));
+            } else if (error.response?.status === 500) {
+                this.notifications.error(this.i18n.t('serverError'));
+            } else if (error.response?.status === 503) {
+                this.notifications.error(this.i18n.t('serviceUnavailable'));
+            } else if (!navigator.onLine) {
+                this.notifications.error(this.i18n.t('noConnection'));
+            } else {
+                this.notifications.error(this.i18n.t('networkError'));
+            }
+
+            clearTimeout(timeoutId);
         } finally {
             if (resetPagination) this.hideLoading();
         }
@@ -387,49 +598,66 @@ class CloudCoreDrive {
         }
         this.selectedItems = newSelectedItems;
 
-        this.fileList.style.display = 'table';
         this.fileListBody.innerHTML = '';
 
+        const toolbar = document.querySelector('.toolbar');
+
         if (this.allLoadedItems.length === 0) {
-            const emptyRow = document.createElement('tr');
-            if (this.currentSearchQuery) {
-                emptyRow.innerHTML = `
-                    <td colspan="5" style="padding: 0; border: none;">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined empty-icon">search_off</span>
-                            <h3 data-i18n="noSearchResults">No results found</h3>
-                            <p data-i18n="noSearchResultsMessage">Try a different search query</p>
-                        </div>
-                    </td>
-                `;
-            } else if (this.isTrashView) {
-                emptyRow.innerHTML = `
-                    <td colspan="5" style="padding: 0; border: none;">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined empty-icon">delete_outline</span>
-                            <h3 data-i18n="emptyTrash">Trash is empty</h3>
-                            <p data-i18n="emptyTrashMessage">Deleted files will be stored here for 30 days</p>
-                        </div>
-                    </td>
-                `;
-            } else {
-                emptyRow.innerHTML = `
-                    <td colspan="5" style="padding: 0; border: none;">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined empty-icon">folder_open</span>
-                            <h3 data-i18n="emptyFolder">This folder is empty</h3>
-                            <p data-i18n="uploadGetStarted">Upload files or folders to get started</p>
-                        </div>
-                    </td>
-                `;
+            this.fileList.style.display = 'none';
+            this.fileList.classList.remove('visible');
+
+            if (toolbar) {
+                setTimeout(() => {
+                    toolbar.classList.add('visible');
+                }, 100);
             }
-            this.fileListBody.appendChild(emptyRow);
-            this.i18n.updateUI();
+
+            if (emptyState) {
+                const icon = emptyState.querySelector('.empty-icon');
+                const title = emptyState.querySelector('h3');
+                const message = emptyState.querySelector('p');
+
+                if (this.currentSearchQuery) {
+                    icon.textContent = 'search_off';
+                    title.textContent = this.i18n.t('noSearchResults') || 'No results found';
+                    message.textContent = this.i18n.t('noSearchResultsMessage') || 'Try a different search query';
+                } else if (this.isTrashView) {
+                    icon.textContent = 'delete_outline';
+                    title.textContent = this.i18n.t('emptyTrash') || 'Trash is empty';
+                    message.textContent =
+                        this.i18n.t('emptyTrashMessage') || 'Deleted files will be stored here for 30 days';
+                } else {
+                    icon.textContent = 'folder_open';
+                    title.textContent = this.i18n.t('emptyFolder') || 'This folder is empty';
+                    message.textContent = this.i18n.t('uploadGetStarted') || 'Upload files or folders to get started';
+                }
+
+                emptyState.style.display = 'flex';
+                emptyState.style.opacity = '0';
+                setTimeout(() => {
+                    emptyState.style.opacity = '1';
+                }, 50);
+            }
         } else {
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+
             this.allLoadedItems.forEach((item) => {
                 const row = this.createFileRow(item);
                 this.fileListBody.appendChild(row);
             });
+
+            setTimeout(() => {
+                this.fileList.style.display = 'table';
+                this.fileList.classList.add('visible');
+
+                if (toolbar) {
+                    setTimeout(() => {
+                        toolbar.classList.add('visible');
+                    }, 150);
+                }
+            }, 50);
         }
 
         this.updateSortIndicators();
@@ -1019,7 +1247,7 @@ class CloudCoreDrive {
                 this.deleteSelectedItems();
                 break;
             case 'delete-permanently':
-                this.notifications.info('Not implemented yet');
+                this.deletePermanentlySelectedItems();
                 break;
             case 'restore':
                 this.restoreSelectedItems();
@@ -1439,7 +1667,7 @@ class CloudCoreDrive {
         }
 
         const message = this.isTrashView
-            ? this.i18n.t('confirmDeletePermanent', { filename: item.name })
+            ? this.i18n.t('confirmDeletePermanentFinal', { filename: item.name })
             : this.i18n.t('confirmDelete', { filename: item.name });
 
         messageEl.textContent = message;
@@ -1598,20 +1826,16 @@ class CloudCoreDrive {
             itemIcon.textContent = iconInfo.icon;
             itemIcon.className = `material-symbols-outlined file-list-icon ${iconInfo.class}`;
         } else {
-
             const folderCount = items.filter((item) => item.type === 'folder').length;
             const fileCount = count - folderCount;
 
             if (folderCount > 0 && fileCount === 0) {
-
                 itemIcon.textContent = 'folder_copy';
                 itemIcon.className = 'material-symbols-outlined file-list-icon folder-icon';
             } else if (fileCount > 0 && folderCount === 0) {
-
                 itemIcon.textContent = 'description';
                 itemIcon.className = 'material-symbols-outlined file-list-icon file-icon';
             } else {
-
                 itemIcon.textContent = 'content_copy';
                 itemIcon.className = 'material-symbols-outlined file-list-icon file-icon';
             }
@@ -1734,7 +1958,6 @@ class CloudCoreDrive {
         const toggleBtn = wrapper.querySelector('.folder-toggle');
         const childrenContainer = wrapper.querySelector('.folder-children');
 
-
         folderEl.addEventListener('click', (e) => {
             if (e.target.classList.contains('folder-toggle')) return;
 
@@ -1747,12 +1970,10 @@ class CloudCoreDrive {
             console.log('Folder clicked:', folder.id, folder.name);
             console.log('this.moveToSelectedFolder BEFORE:', this.moveToSelectedFolder);
 
-
             this.selectMoveDestination(folder.id, folder.name, folderEl);
 
             console.log('this.moveToSelectedFolder AFTER:', this.moveToSelectedFolder);
         });
-
 
         toggleBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1764,10 +1985,8 @@ class CloudCoreDrive {
                 toggleBtn.classList.remove('expanded');
                 childrenContainer.classList.remove('expanded');
             } else {
-
                 toggleBtn.classList.add('expanded');
                 childrenContainer.classList.add('expanded');
-
 
                 if (!childrenContainer.hasChildNodes()) {
                     await this.loadFolderChildren(folder.id, childrenContainer);
@@ -1853,7 +2072,6 @@ class CloudCoreDrive {
                 return false;
             }
 
-
             if (item.type === 'folder') {
                 if (this.isDescendantOf(targetFolderId, item.id)) {
                     return false;
@@ -1864,12 +2082,9 @@ class CloudCoreDrive {
         return true;
     }
 
-
     isDescendantOf(targetId, parentId) {
-
         const parentWrapper = document.querySelector(`.folder-item-wrapper[data-folder-id="${parentId}"]`);
         if (!parentWrapper) return false;
-
 
         const targetInside = parentWrapper.querySelector(`.folder-item-wrapper[data-folder-id="${targetId}"]`);
         return targetInside !== null;
@@ -1954,7 +2169,7 @@ class CloudCoreDrive {
 
             const result = await this.api.bulkMoveItems(
                 this.currentUserId,
-                items.map((item) => item.id), 
+                items.map((item) => item.id),
                 targetFolderId,
                 {
                     concurrency: 5,
@@ -2151,7 +2366,10 @@ class CloudCoreDrive {
 
         const emptyTrashBtn = document.getElementById('emptyTrashBtn');
         if (emptyTrashBtn) {
-            emptyTrashBtn.addEventListener('click', () => this.emptyTrash());
+            emptyTrashBtn.addEventListener('click', () => this.showEmptyTrashModal());
+            console.log('Empty trash button initialized');
+        } else {
+            console.warn('Empty trash button not found');
         }
 
         // View toggle buttons
@@ -2361,15 +2579,14 @@ class CloudCoreDrive {
         const items = Array.from(this.selectedItems);
         const count = items.length;
 
-        // Build confirmation message
-        const message =
+        // FIRST CONFIRMATION - Initial warning
+        const firstMessage =
             count === 1
                 ? this.i18n.t('confirmDeletePermanent', { filename: items[0].name }) ||
                   `Delete "${items[0].name}" permanently? This action cannot be undone.`
                 : this.i18n.t('confirmDeletePermanentMultiple', { count }) ||
                   `Delete ${count} items permanently? This action cannot be undone.`;
 
-        // Show confirmation modal
         const modal = document.getElementById('deleteModal');
         const overlay = document.getElementById('deleteModalOverlay');
         const messageEl = document.getElementById('deleteModalMessage');
@@ -2377,11 +2594,11 @@ class CloudCoreDrive {
 
         if (!modal || !overlay || !messageEl) return;
 
-        // Update modal content
+        // Update modal content for first confirmation
         if (titleEl) titleEl.textContent = this.i18n.t('deletePermanently') || 'Delete Permanently';
-        messageEl.textContent = message;
+        messageEl.textContent = firstMessage;
 
-        const confirmed = await new Promise((resolve) => {
+        const firstConfirmed = await new Promise((resolve) => {
             const confirmBtn = document.getElementById('deleteConfirmBtn');
             const cancelBtn = document.getElementById('deleteCancelBtn');
             const closeBtn = document.getElementById('deleteModalClose');
@@ -2413,22 +2630,104 @@ class CloudCoreDrive {
             this.showModal(modal, overlay);
         });
 
-        if (!confirmed) return;
+        if (!firstConfirmed) return;
 
+        // SECOND CONFIRMATION - "Are you absolutely sure?"
+        const secondMessage =
+            count === 1
+                ? this.i18n.t('confirmDeletePermanentFinal', { filename: items[0].name }) ||
+                  `Are you absolutely sure? "${items[0].name}" will be permanently deleted and cannot be recovered.`
+                : this.i18n.t('confirmDeletePermanentFinalMultiple', { count }) ||
+                  `Are you absolutely sure? ${count} items will be permanently deleted and cannot be recovered.`;
+
+        if (titleEl) titleEl.textContent = this.i18n.t('finalConfirmation') || 'Final Confirmation';
+        messageEl.textContent = secondMessage;
+
+        const finalConfirmed = await new Promise((resolve) => {
+            const confirmBtn = document.getElementById('deleteConfirmBtn');
+            const cancelBtn = document.getElementById('deleteCancelBtn');
+            const closeBtn = document.getElementById('deleteModalClose');
+
+            const handleConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.remove('show');
+                overlay.classList.remove('show');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('click', handleCancel);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('click', handleCancel);
+
+            this.showModal(modal, overlay);
+        });
+
+        if (!finalConfirmed) return;
+
+        // Proceed with deletion - show notification for progress
         try {
             console.log(`Permanently deleting ${count} items`);
 
-            for (const item of items) {
-                await this.api.deletePermanently(this.currentUserId, item.id);
+            const itemIds = items.map((item) => item.id);
+
+            // Show simple "Deleting..." notification (no progress updates)
+            const deletingMessage =
+                count === 1
+                    ? this.i18n.t('deletingItem', { filename: items[0].name }) || `Deleting "${items[0].name}"...`
+                    : this.i18n.t('deletingItems', { count }) || `Deleting ${count} items...`;
+
+            this.notifications.info(deletingMessage, { duration: 0 });
+
+            const result = await this.api.bulkDeletePermanentlyItems(this.currentUserId, itemIds, {
+                concurrency: 5,
+                onItemComplete: (itemId, result, error) => {
+                    if (error) {
+                        console.error(`Failed to delete item ${itemId}:`, error);
+                    }
+                }
+            });
+
+            // Handle results
+            const succeededCount = result.succeeded.length;
+            const failedCount = result.failed.length;
+
+            if (succeededCount > 0) {
+                const successText =
+                    succeededCount === 1 && count === 1
+                        ? this.i18n.t('deletedPermanently', { filename: items[0].name }) ||
+                          `"${items[0].name}" deleted permanently`
+                        : succeededCount === count
+                        ? this.i18n.t('deletedPermanentlyMultiple', { count: succeededCount }) ||
+                          `${succeededCount} items deleted permanently`
+                        : this.i18n.t('deletedPermanentlyPartial', { succeeded: succeededCount, total: count }) ||
+                          `${succeededCount} of ${count} items deleted permanently`;
+
+                this.notifications.success(successText);
             }
 
-            const successText =
-                count === 1
-                    ? this.i18n.t('deletedPermanently', { filename: items[0].name }) ||
-                      `"${items[0].name}" deleted permanently`
-                    : this.i18n.t('deletedPermanentlyMultiple', { count }) || `${count} items deleted permanently`;
+            if (failedCount > 0) {
+                const errorText =
+                    failedCount === 1
+                        ? this.i18n.t('failedDeletePermanentlySingle') || 'Failed to delete 1 item'
+                        : this.i18n.t('failedDeletePermanentlyMultiple', { count: failedCount }) ||
+                          `Failed to delete ${failedCount} items`;
 
-            this.notifications.success(successText);
+                this.notifications.error(errorText);
+                console.error('Failed to delete items:', result.failed);
+            }
 
             this.selectedItems.clear();
             await this.loadFiles(null, true, true);
@@ -2443,76 +2742,166 @@ class CloudCoreDrive {
         const modal = document.getElementById('emptyTrashModal');
         const overlay = document.getElementById('deleteModalOverlay');
         const messageEl = document.getElementById('emptyTrashModalMessage');
-        const progressSection = document.getElementById('emptyTrashProgress');
-        const progressText = document.getElementById('emptyTrashProgressText');
-        const progressCount = document.getElementById('emptyTrashProgressCount');
-        const progressBar = document.getElementById('emptyTrashProgressBar');
+        const titleEl = document.getElementById('emptyTrashModalTitle');
+
+        if (!modal || !overlay) return;
+
+        // FIRST CONFIRMATION - Initial warning
+        const firstMessage = this.i18n.t('confirmEmptyTrash') || 'Empty trash? All items will be permanently deleted.';
+
+        if (titleEl) titleEl.textContent = this.i18n.t('emptyTheTrash') || 'Empty Trash';
+        if (messageEl) messageEl.textContent = firstMessage;
+
         const confirmBtn = document.getElementById('emptyTrashConfirmBtn');
         const cancelBtn = document.getElementById('emptyTrashCancelBtn');
         const closeBtn = document.getElementById('emptyTrashModalClose');
 
-        if (!modal || !overlay) return;
+        if (!confirmBtn || !cancelBtn || !closeBtn) return;
 
-        // Reset modal state
-        if (messageEl) messageEl.style.display = 'block';
-        if (progressSection) progressSection.style.display = 'none';
-        if (progressBar) progressBar.style.width = '0%';
+        // Reset button states
         confirmBtn.disabled = false;
         cancelBtn.disabled = false;
+        confirmBtn.textContent = this.i18n.t('continue') || 'Continue';
 
-        let isOperationInProgress = false;
-
-        const handleConfirm = async () => {
-            if (isOperationInProgress) return;
-
-            isOperationInProgress = true;
-            confirmBtn.disabled = true;
-            cancelBtn.disabled = true;
-            confirmBtn.textContent = this.i18n.t('processing') || 'Processing...';
-
-            // Hide message, show progress
-            if (messageEl) messageEl.style.display = 'none';
-            if (progressSection) progressSection.style.display = 'block';
-
-            try {
-                await this.performEmptyTrash(progressText, progressCount, progressBar);
+        const firstConfirmed = await new Promise((resolve) => {
+            const handleConfirm = () => {
                 cleanup();
-                this.hideModal(modal, overlay);
-            } catch (error) {
-                console.error('Empty trash error:', error);
-                isOperationInProgress = false;
-                confirmBtn.disabled = false;
-                cancelBtn.disabled = false;
-                confirmBtn.textContent = this.i18n.t('emptyTrash') || 'Empty Trash';
-            }
-        };
+                resolve(true);
+            };
 
-        const handleCancel = () => {
-            if (!isOperationInProgress) {
+            const handleCancel = () => {
                 cleanup();
-                this.hideModal(modal, overlay);
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.remove('show');
+                overlay.classList.remove('show');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('click', handleCancel);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('click', handleCancel);
+
+            this.showModal(modal, overlay);
+        });
+
+        if (!firstConfirmed) return;
+
+        // SECOND CONFIRMATION - "Are you absolutely sure?"
+        const secondMessage =
+            this.i18n.t('confirmEmptyTrashFinal') ||
+            'Are you absolutely sure? This will permanently delete ALL items in trash and cannot be undone.';
+
+        if (titleEl) titleEl.textContent = this.i18n.t('finalConfirmation') || 'Final Confirmation';
+        if (messageEl) messageEl.textContent = secondMessage;
+
+        confirmBtn.textContent = this.i18n.t('emptyTheTrash') || 'Empty Trash';
+
+        const finalConfirmed = await new Promise((resolve) => {
+            const handleConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.remove('show');
+                overlay.classList.remove('show');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('click', handleCancel);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('click', handleCancel);
+
+            this.showModal(modal, overlay);
+        });
+
+        if (!finalConfirmed) return;
+
+        // Proceed with emptying trash
+        try {
+            console.log('Starting empty trash operation...');
+
+            // Show simple notification
+            this.notifications.info(this.i18n.t('emptyingTrash') || 'Emptying trash...', { duration: 0 });
+
+            // Get trash items with proper validation
+            const response = await this.api.getTrash(this.currentUserId, {
+                page: '1',
+                pageSize: '9999' // Get all items
+            });
+
+            console.log('Trash response:', response);
+
+            let trashItems = [];
+            if (response) {
+                if (Array.isArray(response)) {
+                    trashItems = response;
+                } else if (response.data && Array.isArray(response.data)) {
+                    trashItems = response.data;
+                } else if (response.items && Array.isArray(response.items)) {
+                    trashItems = response.items;
+                }
             }
-        };
 
-        const cleanup = () => {
-            confirmBtn.removeEventListener('click', handleConfirm);
-            cancelBtn.removeEventListener('click', handleCancel);
-            closeBtn.removeEventListener('click', handleCancel);
-            overlay.removeEventListener('click', handleOverlayClick);
-        };
+            console.log('Trash items:', trashItems);
 
-        const handleOverlayClick = (e) => {
-            if (e.target === overlay && !isOperationInProgress) {
-                handleCancel();
+            if (!trashItems || trashItems.length === 0) {
+                this.notifications.info(this.i18n.t('trashAlreadyEmpty') || 'Trash is already empty');
+                return;
             }
-        };
 
-        confirmBtn.addEventListener('click', handleConfirm);
-        cancelBtn.addEventListener('click', handleCancel);
-        closeBtn.addEventListener('click', handleCancel);
-        overlay.addEventListener('click', handleOverlayClick);
+            const itemIds = trashItems.map((item) => item.id);
 
-        this.showModal(modal, overlay);
+            const result = await this.api.bulkDeletePermanentlyItems(this.currentUserId, itemIds, {
+                concurrency: 5,
+                onItemComplete: (itemId, result, error) => {
+                    if (error) {
+                        console.error(`Failed to delete item ${itemId}:`, error);
+                    }
+                }
+            });
+
+            // Handle results
+            const succeededCount = result.succeeded.length;
+            const failedCount = result.failed.length;
+
+            if (succeededCount > 0) {
+                const successText =
+                    this.i18n.t('trashEmptiedCount', { count: succeededCount }) ||
+                    `${succeededCount} items deleted permanently`;
+                this.notifications.success(successText);
+            }
+
+            if (failedCount > 0) {
+                const errorText =
+                    this.i18n.t('failedEmptyTrashPartial', { count: failedCount }) ||
+                    `Failed to delete ${failedCount} items`;
+                this.notifications.error(errorText);
+                console.error('Failed to delete items:', result.failed);
+            }
+
+            await this.loadFiles(null, true, true);
+            console.log('Empty trash completed successfully');
+        } catch (error) {
+            console.error('Empty trash error:', error);
+            this.notifications.error(this.i18n.t('failedEmptyTrash') || 'Failed to empty trash');
+        }
     }
 
     async performEmptyTrash(progressText, progressCount, progressBar) {
@@ -2576,6 +2965,13 @@ class CloudCoreDrive {
 
     handleSidebarClick(e) {
         console.log('Sidebar clicked');
+
+        this.currentSearchQuery = null;
+        if (searchBox) {
+            searchBox.value = '';
+        }
+
+        this.hideErrorState();
 
         document.querySelectorAll('.sidebar-item').forEach((item) => {
             item.classList.remove('active');
@@ -3232,14 +3628,36 @@ class CloudCoreDrive {
     // ═══════════════════════════════════════════════════════════════════
 
     showLoading() {
-        document.getElementById('loadingState').style.display = 'flex';
+        // Hide toolbar and file list when loading
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.classList.remove('visible');
+        }
+
+
         this.fileList.style.display = 'none';
+        this.fileList.classList.remove('visible');
+
+        this.fileList.classList.remove('visible');
+
         document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+
+        // Show skeleton loader
+        this.generateSkeletonRows(11);
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (skeletonLoader) {
+            skeletonLoader.style.display = 'block';
+        }
+        document.getElementById('errorState').style.display = 'none';
+
     }
 
     hideLoading() {
-        document.getElementById('loadingState').style.display = 'none';
-        this.fileList.style.display = 'table';
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (skeletonLoader) {
+            skeletonLoader.style.display = 'none';
+        }
     }
 
     showEmptyState() {

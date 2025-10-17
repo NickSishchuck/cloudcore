@@ -508,8 +508,9 @@ namespace CloudCore.Services.Implementations
 
         public async Task DeleteItemPermanentlyAsync(Item item)
         {
-            using var context = _dbContextFactory.CreateDbContext();
+            await using var context = _dbContextFactory.CreateDbContext();
             await using var transaction = await context.Database.BeginTransactionAsync();
+
             _logger.LogInformation("Starting transaction to delete ItemID={ItemId}.", item.Id);
             try
             {
