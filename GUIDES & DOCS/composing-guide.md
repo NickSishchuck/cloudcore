@@ -1,15 +1,15 @@
-# "I am new here"
-First, create .env in your local project. Transfer the contents from .envTemplate to the newly created .env. 
-Change the password.
+# "First Time Here"
 
+First, create a .env file in your local project. Transfer the contents from .envTemplate
+to the newly created .env file. Change the password.
 
 ```dockerfile
 # Full build and run
 docker-compose up --build
 
-# Or step-by-step for debugging
-docker-compose up database --build    # database first
-docker-compose up backend --build     # then backend 
+# Or step by step for debugging
+docker-compose up database --build    # first DB
+docker-compose up backend --build     # then backend  
 docker-compose up frontend --build    # then frontend
 
 # Check logs
@@ -17,9 +17,23 @@ docker-compose logs backend
 docker-compose logs frontend
 ```
 
-# Something went wrong
+# Running with tests
+
 ```dockerfile
-# View logs of a specific service
+RUN_TESTS=true docker-compose up --build
+# Or add to .env file
+echo "RUN_TESTS=true" >> .env
+docker-compose up --build
+# By default tests do NOT run
+docker-compose up --build
+# Only backend with tests
+RUN_TESTS=true docker-compose up backend --build
+```
+
+# Something went wrong
+
+```dockerfile
+# Check logs of specific service
 docker compose logs backend
 docker compose logs frontend  
 docker compose logs database
@@ -27,13 +41,17 @@ docker compose logs database
 # Rebuild
 docker compose down
 docker compose up --build --force-recreate
+# If tests fail during build
+# Remove RUN_TESTS or set to false
+RUN_TESTS=false docker compose up --build
 ```
 
-Container Management
+# Container management
+
 ```dockerfile
 # Run only specific service
 docker compose up backend database --build   # without frontend
-docker compose up database --build           # database only
+docker compose up database --build           # only DB
 
 # Stop without removing
 docker compose stop
@@ -41,7 +59,9 @@ docker compose stop
 # Restart service
 docker compose restart backend
 ```
-Working with Database
+
+# Working with DB
+
 ```dockerfile
 # Connect to MySQL
 docker compose exec database mysql -uroot -p {password is specified in .env. You will need to
@@ -50,32 +70,46 @@ docker compose exec database mysql -uroot -p {password is specified in .env. You
 # Execute SQL command
 docker compose exec database mysql -uroot -p CloudCoreDB -e "SELECT * FROM users;"
 
-# View database logs
+# View DB logs
 docker compose logs database --follow
 
-# Recreate database
+# Recreate DB
 docker compose down --volumes
-    # Bring up the entire application
+    # Start the entire application
     docker compose up --build
     
-MySQL will automatically go through files in ../database/init/ sequentially, but only if the volume is empty. 
+MySQL will automatically go through files in ../database/init/ in sequence, but only if the volume is empty. 
 That's why we delete the volume contents to apply updates to the database.
-
-``` 
+```
 
 # Working with storage
+
 ```dockerfile
 We have volume mapping, so storage contents can be viewed locally
 through file explorer
-
 
 If we didn't have it, it would be:
 docker compose exec backend ls -la /app/storage
 ```
 
-# System Cleanup
+# Testing
+
 ```dockerfile
-# Full project cleanup
+# Run tests locally (without Docker)
+cd backend
+dotnet test
+# Run tests in Docker during build
+RUN_TESTS=true docker-compose up backend --build
+# Run specific test
+dotnet test --filter "FullyQualifiedName~UnitTest1"
+# Run with detailed output
+dotnet test --logger "console;verbosity=detailed"
+```
+
+# System cleanup
+
+```dockerfile
+# Complete project cleanup
 docker compose down --volumes --rmi all
 docker system prune -f
 
@@ -89,7 +123,8 @@ docker builder prune -f
 docker image prune -a
 ```
 
-# Adding https
+# Adding HTTPS
+
 ```https setup
 # Install mkcert for local self-signed certificate
 sudo pacman -Syu mkcert nss

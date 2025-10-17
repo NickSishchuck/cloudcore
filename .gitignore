@@ -9,3 +9,5 @@ Properties/
 TODO/
 /frontend/.prettierrc
 /frontend/certs/
+**/bin/
+**/obj/
