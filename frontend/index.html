@@ -166,7 +166,16 @@
 
             <!-- File Container -->
             <div class="file-container" id="fileContainer">
-                <div class="loading" id="loadingState" data-i18n="loading">Loading...</div>
+                <div class="skeleton-loader" id="skeletonLoader" style="display: none;">
+                    <div class="skeleton-row" v-for="i in 12">
+                        <div class="skeleton-checkbox"></div>
+                        <div class="skeleton-icon"></div>
+                        <div class="skeleton-text skeleton-name"></div>
+                        <div class="skeleton-text skeleton-date"></div>
+                        <div class="skeleton-text skeleton-date"></div>
+                        <div class="skeleton-text skeleton-size"></div>
+                    </div>
+                </div>
 
                 <!-- List View -->
                 <table class="file-list" id="fileList">
@@ -189,6 +198,19 @@
                     </span>
                     <h3 data-i18n="emptyFolder">This folder is empty</h3>
                     <p data-i18n="uploadGetStarted">Upload files or folders to get started</p>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-state" id="errorState" style="display: none;">
+                    <span class="material-symbols-outlined error-icon">
+                        cloud_off
+                    </span>
+                    <h3 id="errorStateTitle">Unable to connect</h3>
+                    <p id="errorStateMessage">Please check your connection and try again</p>
+                    <button class="error-retry-btn" id="errorRetryBtn">
+                        <span class="material-symbols-outlined">refresh</span>
+                        <span>Retry</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -266,7 +288,7 @@
         </div>
     </div>
 
-    <!-- Empty Trash Modal with Progress -->
+    <!-- Empty Trash Modal -->
     <div class="modal" id="emptyTrashModal">
         <div class="modal-header">
             <h3 id="emptyTrashModalTitle" data-i18n="emptyTheTrash">Empty Trash</h3>
@@ -277,16 +299,6 @@
                 Delete all items in trash permanently? This action cannot be undone.
             </p>
             
-            <!-- Progress section (hidden by default) -->
-            <div class="bulk-operation-progress" id="emptyTrashProgress" style="display: none;">
-                <div class="progress-info">
-                    <span id="emptyTrashProgressText">Deleting items...</span>
-                    <span id="emptyTrashProgressCount">0 / 0</span>
-                </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="emptyTrashProgressBar" style="width: 0%"></div>
-                </div>
-            </div>
         </div>
         <div class="modal-footer">
             <button class="modal-btn modal-btn-secondary" id="emptyTrashCancelBtn" data-i18n="cancel">Cancel</button>

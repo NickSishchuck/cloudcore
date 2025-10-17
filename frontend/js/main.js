@@ -50,6 +50,154 @@ class CloudCoreDrive {
         this.initializeDeselectOnClick();
         this.initializeKeyboardShortcuts();
     }
+    // ═══════════════════════════════════════════════════════════════════
+    // Skeleton Loader
+    // ═══════════════════════════════════════════════════════════════════
+    generateSkeletonRows(count = 12) {
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (!skeletonLoader) return;
+
+        skeletonLoader.innerHTML = '';
+
+        for (let i = 0; i < count; i++) {
+            const row = document.createElement('div');
+            row.className = 'skeleton-row';
+            row.style.animationDelay = `${i * 0.05}s`;
+            row.innerHTML = `
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text skeleton-name"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-size"></div>
+        `;
+            skeletonLoader.appendChild(row);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ERROR STATE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════
+    showErrorState(error) {
+        this.hideLoading();
+
+        document.getElementById('emptyState').style.display = 'none';
+
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.classList.remove('visible');
+        }
+
+        this.fileList.style.display = 'none';
+        this.fileList.classList.remove('visible');
+        document.getElementById('emptyState').style.display = 'none';
+
+        const errorState = document.getElementById('errorState');
+        const errorTitle = document.getElementById('errorStateTitle');
+        const errorMessage = document.getElementById('errorStateMessage');
+        const errorIcon = errorState.querySelector('.error-icon');
+
+        if (error.message === 'TIMEOUT') {
+            errorIcon.textContent = 'schedule';
+            errorTitle.textContent = this.i18n.t('connectionTimeout') || 'Connection timed out';
+            errorMessage.textContent =
+                this.i18n.t('timeoutMessage') || 'The server took too long to respond. Please try again.';
+        } else if (error.response?.status === 500) {
+            errorIcon.textContent = 'error';
+            errorTitle.textContent = this.i18n.t('serverError') || 'Server error';
+            errorMessage.textContent =
+                this.i18n.t('serverErrorMessage') || 'Something went wrong on the server. Please try again later.';
+        } else if (!navigator.onLine) {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('noConnection') || 'No internet connection';
+            errorMessage.textContent =
+                this.i18n.t('noConnectionMessage') || 'Please check your internet connection and try again.';
+        } else {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('unableToConnect') || 'Unable to connect';
+            errorMessage.textContent =
+                this.i18n.t('connectionErrorMessage') || 'Please check your connection and try again.';
+        }
+
+        errorState.style.display = 'flex';
+    }
+
+    hideErrorState() {
+        document.getElementById('errorState').style.display = 'none';
+    }
+    // ═══════════════════════════════════════════════════════════════════
+    // Skeleton Loader
+    // ═══════════════════════════════════════════════════════════════════
+    generateSkeletonRows(count = 12) {
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (!skeletonLoader) return;
+
+        skeletonLoader.innerHTML = '';
+
+        for (let i = 0; i < count; i++) {
+            const row = document.createElement('div');
+            row.className = 'skeleton-row';
+            row.style.animationDelay = `${i * 0.05}s`;
+            row.innerHTML = `
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text skeleton-name"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-date"></div>
+            <div class="skeleton-text skeleton-size"></div>
+        `;
+            skeletonLoader.appendChild(row);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ERROR STATE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════
+    showErrorState(error) {
+        this.hideLoading();
+
+        document.getElementById('emptyState').style.display = 'none';
+
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.classList.remove('visible');
+        }
+
+        this.fileList.style.display = 'none';
+        this.fileList.classList.remove('visible');
+        document.getElementById('emptyState').style.display = 'none';
+
+        const errorState = document.getElementById('errorState');
+        const errorTitle = document.getElementById('errorStateTitle');
+        const errorMessage = document.getElementById('errorStateMessage');
+        const errorIcon = errorState.querySelector('.error-icon');
+
+        if (error.message === 'TIMEOUT') {
+            errorIcon.textContent = 'schedule';
+            errorTitle.textContent = this.i18n.t('connectionTimeout') || 'Connection timed out';
+            errorMessage.textContent =
+                this.i18n.t('timeoutMessage') || 'The server took too long to respond. Please try again.';
+        } else if (error.response?.status === 500) {
+            errorIcon.textContent = 'error';
+            errorTitle.textContent = this.i18n.t('serverError') || 'Server error';
+            errorMessage.textContent =
+                this.i18n.t('serverErrorMessage') || 'Something went wrong on the server. Please try again later.';
+        } else if (!navigator.onLine) {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('noConnection') || 'No internet connection';
+            errorMessage.textContent =
+                this.i18n.t('noConnectionMessage') || 'Please check your internet connection and try again.';
+        } else {
+            errorIcon.textContent = 'cloud_off';
+            errorTitle.textContent = this.i18n.t('unableToConnect') || 'Unable to connect';
+            errorMessage.textContent =
+                this.i18n.t('connectionErrorMessage') || 'Please check your connection and try again.';
+        }
+
+        errorState.style.display = 'flex';
+    }
+
+    hideErrorState() {
+        document.getElementById('errorState').style.display = 'none';
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // THEME MANAGEMENT
@@ -201,6 +349,16 @@ class CloudCoreDrive {
             this.hideContextMenu();
         });
 
+        // Error retry button
+        const errorRetryBtn = document.getElementById('errorRetryBtn');
+        if (errorRetryBtn) {
+            errorRetryBtn.addEventListener('click', () => {
+                console.log('Retry button clicked');
+                this.hideErrorState();
+                this.loadFiles(this.currentFolderId, true, this.isTrashView);
+            });
+        }
+
         // Setup drag and drop functionality
         this.setupDragAndDrop();
 
@@ -323,7 +481,23 @@ class CloudCoreDrive {
             this.clearSelection();
         }
 
+        this.hideErrorState();
+
+        this.hideErrorState();
+
         if (resetPagination) this.showLoading();
+
+
+        const LOAD_TIMEOUT = 25000;
+        let timeoutId;
+        let isTimeout = false;
+
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+                isTimeout = true;
+                reject(new Error('TIMEOUT'));
+            }, LOAD_TIMEOUT);
+        });
 
         try {
             this.isTrashView = isTrashView;
@@ -345,9 +519,13 @@ class CloudCoreDrive {
 
             console.log('Fetching files with params:', params);
 
-            const result = isTrashView
-                ? await this.api.getTrash(this.currentUserId, params)
-                : await this.api.getFiles(this.currentUserId, params);
+            const fetchPromise = isTrashView
+                ? this.api.getTrash(this.currentUserId, params)
+                : this.api.getFiles(this.currentUserId, params);
+
+            const result = await Promise.race([fetchPromise, timeoutPromise]);
+
+            clearTimeout(timeoutId);
 
             console.log('Files received:', result);
 
@@ -368,7 +546,42 @@ class CloudCoreDrive {
             this.updateBreadcrumbs();
         } catch (error) {
             console.error('loadFiles error:', error);
-            this.notifications.error(this.i18n.t('failedRename'));
+
+            if (resetPagination) {
+                this.showErrorState(error);
+            }
+
+            if (error.message === 'TIMEOUT') {
+                this.notifications.error(this.i18n.t('connectionTimeout'));
+            } else if (error.response?.status === 500) {
+                this.notifications.error(this.i18n.t('serverError'));
+            } else if (error.response?.status === 503) {
+                this.notifications.error(this.i18n.t('serviceUnavailable'));
+            } else if (!navigator.onLine) {
+                this.notifications.error(this.i18n.t('noConnection'));
+            } else {
+                this.notifications.error(this.i18n.t('networkError'));
+            }
+
+            clearTimeout(timeoutId);
+
+            if (resetPagination) {
+                this.showErrorState(error);
+            }
+
+            if (error.message === 'TIMEOUT') {
+                this.notifications.error(this.i18n.t('connectionTimeout'));
+            } else if (error.response?.status === 500) {
+                this.notifications.error(this.i18n.t('serverError'));
+            } else if (error.response?.status === 503) {
+                this.notifications.error(this.i18n.t('serviceUnavailable'));
+            } else if (!navigator.onLine) {
+                this.notifications.error(this.i18n.t('noConnection'));
+            } else {
+                this.notifications.error(this.i18n.t('networkError'));
+            }
+
+            clearTimeout(timeoutId);
         } finally {
             if (resetPagination) this.hideLoading();
         }
@@ -387,49 +600,66 @@ class CloudCoreDrive {
         }
         this.selectedItems = newSelectedItems;
 
-        this.fileList.style.display = 'table';
         this.fileListBody.innerHTML = '';
 
+        const toolbar = document.querySelector('.toolbar');
+
         if (this.allLoadedItems.length === 0) {
-            const emptyRow = document.createElement('tr');
-            if (this.currentSearchQuery) {
-                emptyRow.innerHTML = `
-                    <td colspan="5" style="padding: 0; border: none;">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined empty-icon">search_off</span>
-                            <h3 data-i18n="noSearchResults">No results found</h3>
-                            <p data-i18n="noSearchResultsMessage">Try a different search query</p>
-                        </div>
-                    </td>
-                `;
-            } else if (this.isTrashView) {
-                emptyRow.innerHTML = `
-                    <td colspan="5" style="padding: 0; border: none;">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined empty-icon">delete_outline</span>
-                            <h3 data-i18n="emptyTrash">Trash is empty</h3>
-                            <p data-i18n="emptyTrashMessage">Deleted files will be stored here for 30 days</p>
-                        </div>
-                    </td>
-                `;
-            } else {
-                emptyRow.innerHTML = `
-                    <td colspan="5" style="padding: 0; border: none;">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined empty-icon">folder_open</span>
-                            <h3 data-i18n="emptyFolder">This folder is empty</h3>
-                            <p data-i18n="uploadGetStarted">Upload files or folders to get started</p>
-                        </div>
-                    </td>
-                `;
+            this.fileList.style.display = 'none';
+            this.fileList.classList.remove('visible');
+
+            if (toolbar) {
+                setTimeout(() => {
+                    toolbar.classList.add('visible');
+                }, 100);
             }
-            this.fileListBody.appendChild(emptyRow);
-            this.i18n.updateUI();
+
+            if (emptyState) {
+                const icon = emptyState.querySelector('.empty-icon');
+                const title = emptyState.querySelector('h3');
+                const message = emptyState.querySelector('p');
+
+                if (this.currentSearchQuery) {
+                    icon.textContent = 'search_off';
+                    title.textContent = this.i18n.t('noSearchResults') || 'No results found';
+                    message.textContent = this.i18n.t('noSearchResultsMessage') || 'Try a different search query';
+                } else if (this.isTrashView) {
+                    icon.textContent = 'delete_outline';
+                    title.textContent = this.i18n.t('emptyTrash') || 'Trash is empty';
+                    message.textContent =
+                        this.i18n.t('emptyTrashMessage') || 'Deleted files will be stored here for 30 days';
+                } else {
+                    icon.textContent = 'folder_open';
+                    title.textContent = this.i18n.t('emptyFolder') || 'This folder is empty';
+                    message.textContent = this.i18n.t('uploadGetStarted') || 'Upload files or folders to get started';
+                }
+
+                emptyState.style.display = 'flex';
+                emptyState.style.opacity = '0';
+                setTimeout(() => {
+                    emptyState.style.opacity = '1';
+                }, 50);
+            }
         } else {
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+
             this.allLoadedItems.forEach((item) => {
                 const row = this.createFileRow(item);
                 this.fileListBody.appendChild(row);
             });
+
+            setTimeout(() => {
+                this.fileList.style.display = 'table';
+                this.fileList.classList.add('visible');
+
+                if (toolbar) {
+                    setTimeout(() => {
+                        toolbar.classList.add('visible');
+                    }, 150);
+                }
+            }, 50);
         }
 
         this.updateSortIndicators();
@@ -2738,6 +2968,13 @@ class CloudCoreDrive {
     handleSidebarClick(e) {
         console.log('Sidebar clicked');
 
+        this.currentSearchQuery = null;
+        if (searchBox) {
+            searchBox.value = '';
+        }
+
+        this.hideErrorState();
+
         document.querySelectorAll('.sidebar-item').forEach((item) => {
             item.classList.remove('active');
         });
@@ -3393,14 +3630,36 @@ class CloudCoreDrive {
     // ═══════════════════════════════════════════════════════════════════
 
     showLoading() {
-        document.getElementById('loadingState').style.display = 'flex';
+        // Hide toolbar and file list when loading
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.classList.remove('visible');
+        }
+
+
         this.fileList.style.display = 'none';
+        this.fileList.classList.remove('visible');
+
+        this.fileList.classList.remove('visible');
+
         document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+
+        // Show skeleton loader
+        this.generateSkeletonRows(11);
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (skeletonLoader) {
+            skeletonLoader.style.display = 'block';
+        }
+        document.getElementById('errorState').style.display = 'none';
+
     }
 
     hideLoading() {
-        document.getElementById('loadingState').style.display = 'none';
-        this.fileList.style.display = 'table';
+        const skeletonLoader = document.getElementById('skeletonLoader');
+        if (skeletonLoader) {
+            skeletonLoader.style.display = 'none';
+        }
     }
 
     showEmptyState() {

@@ -295,7 +295,16 @@ export const translations = {
         operationFailed: 'The operation failed. Please try again',
         unexpectedError: 'An unexpected error occurred',
         ioError: 'A file system error occurred on the server',
-        networkError: 'Network error. Please check your connection'
+        networkError: 'Network error. Please check your connection',
+        connectionTimeout: 'Connection timed out',
+        timeoutMessage: 'The server took too long to respond. Please try again.',
+        serverError: 'Server error',
+        serverErrorMessage: 'Something went wrong on the server. Please try again later.',
+        noConnection: 'No internet connection',
+        noConnectionMessage: 'Please check your internet connection and try again.',
+        unableToConnect: 'Unable to connect',
+        connectionErrorMessage: 'Please check your connection and try again.',
+        serviceUnavailable: 'Service unavailable'
     },
 
     uk: {
@@ -591,7 +600,16 @@ export const translations = {
         operationFailed: 'Операція не вдалася. Спробуйте ще раз',
         unexpectedError: 'Сталася неочікувана помилка',
         ioError: 'На сервері сталася помилка файлової системи',
-        networkError: "Помилка мережі. Перевірте з'єднання"
+        networkError: "Помилка мережі. Перевірте з'єднання",
+        connectionTimeout: 'Час очікування минув',
+        timeoutMessage: 'Сервер занадто довго відповідає. Спробуйте ще раз.',
+        serverError: 'Помилка сервера',
+        serverErrorMessage: 'Щось пішло не так на сервері. Спробуйте пізніше.',
+        noConnection: 'Немає з\'єднання з інтернетом',
+        noConnectionMessage: 'Перевірте підключення до інтернету та спробуйте ще раз.',
+        unableToConnect: 'Не вдається підключитися',
+        connectionErrorMessage: 'Перевірте з\'єднання та спробуйте ще раз.',
+        serviceUnavailable: 'Сервіс недоступний'
     }
 };
 
