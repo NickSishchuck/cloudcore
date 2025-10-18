@@ -81,7 +81,7 @@ namespace CloudCore.Tests
             await context.SaveChangesAsync();
         }
 
-        private Item CreateTestItem(int id, int userId, string name, string type = "file", int? parentId = null, bool isDeleted = false, long? fileSize = 1000)
+        private Item CreateTestItem(int id, int userId, string name, string type = "file", int? parentId = null,bool isDeleted = false, long? fileSize = 1000, int? teamspace = null)
         {
             return new Item
             {
@@ -90,6 +90,7 @@ namespace CloudCore.Tests
                 Name = name,
                 Type = type,
                 ParentId = parentId,
+                TeamspaceId = teamspace,
                 IsDeleted = isDeleted,
                 FileSize = fileSize,
                 FilePath = type == "file" ? $"/path/to/{name}" : null,
@@ -100,6 +101,354 @@ namespace CloudCore.Tests
 
         #endregion
 
+        #region GetItemsAsync Tests
+        [Fact]
+        public async Task GetItemsAsync_ReturnsAllItemsForUser()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "file1.txt", "file"),
+                CreateTestItem(2, userId, "file2.txt", "file"),
+                CreateTestItem(3, 2, "other_user_file.txt", "file") // another user's item
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, null, null);
+
+            // Assert
+            Assert.Equal(2, totalCount);
+            Assert.Equal(2, items.Count());
+            Assert.All(items, item => Assert.Equal(userId, item.UserId));
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_FiltersByParentId()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "folder1", "folder", null),
+                CreateTestItem(2, userId, "file_in_root.txt", "file", null),
+                CreateTestItem(3, userId, "file_in_folder1.txt", "file", 1),
+                CreateTestItem(4, userId, "file_in_folder1_2.txt", "file", 1)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, 1, 1, 30, null, null, false, null, null);
+
+            // Assert
+            Assert.Equal(2, totalCount);
+            Assert.All(items, item => Assert.Equal(1, item.ParentId));
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_ExcludesDeletedItems()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "active_file.txt", "file", isDeleted: false),
+                CreateTestItem(2, userId, "deleted_file.txt", "file", isDeleted: true)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, null, null);
+
+            // Assert
+            Assert.Single(items);
+            Assert.Equal("active_file.txt", items.First().Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_TrashFolder_ReturnsOnlyDeletedItemsAtTopLevel()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "deleted_folder", "folder", null, isDeleted: true),
+                CreateTestItem(2, userId, "file_in_deleted_folder.txt", "file", 1, isDeleted: true),
+                CreateTestItem(3, userId, "active_file.txt", "file", null, isDeleted: false),
+                CreateTestItem(4, userId, "deleted_file_in_active_folder.txt", "file", 5, isDeleted: true),
+                CreateTestItem(5, userId, "active_folder", "folder", null, isDeleted: false)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, true, null, null);
+
+            // Assert
+            Assert.Equal(2, totalCount);
+            Assert.Contains(items, i => i.Name == "deleted_folder");
+            Assert.Contains(items, i => i.Name == "deleted_file_in_active_folder.txt");
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SearchQuery_FiltersItemsByName()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "document.pdf", "file"),
+                CreateTestItem(2, userId, "image.jpg", "file"),
+                CreateTestItem(3, userId, "another_document.docx", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, "document", null);
+
+            // Assert
+            Assert.Equal(2, totalCount);
+            Assert.All(items, item => Assert.Contains("document", item.Name.ToLower()));
+        }
+
+
+        [Fact]
+        public async Task GetItemsAsync_SearchQuery_IsCaseInsensitive()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "UPPERCASE.txt", "file"),
+                CreateTestItem(2, userId, "lowercase.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, "CASE", null);
+
+            // Assert
+            Assert.Equal(2, totalCount);
+        }
+
+
+        [Fact]
+        public async Task GetItemsAsync_TeamspaceId_FiltersCorrectly()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "team1_file.txt", "file", teamspace: 1),
+                CreateTestItem(2, userId, "team2_file.txt", "file", teamspace: 2),
+                CreateTestItem(3, userId, "personal_file.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, null, 1);
+
+            // Assert
+            Assert.Single(items);
+            Assert.Equal("team1_file.txt", items.First().Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SortByName_Ascending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "zebra.txt", "file"),
+                CreateTestItem(2, userId, "apple.txt", "file"),
+                CreateTestItem(3, userId, "banana.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "name", "asc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("apple.txt", itemList[0].Name);
+            Assert.Equal("banana.txt", itemList[1].Name);
+            Assert.Equal("zebra.txt", itemList[2].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SortByName_Descending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "apple.txt", "file"),
+                CreateTestItem(2, userId, "zebra.txt", "file"),
+                CreateTestItem(3, userId, "banana.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "name", "desc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("zebra.txt", itemList[0].Name);
+            Assert.Equal("banana.txt", itemList[1].Name);
+            Assert.Equal("apple.txt", itemList[2].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SortBySize_Ascending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "large.txt", "file", fileSize: 5000),
+                CreateTestItem(2, userId, "small.txt", "file", fileSize: 100),
+                CreateTestItem(3, userId, "medium.txt", "file", fileSize: 1000)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "size", "asc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("small.txt", itemList[0].Name);
+            Assert.Equal("medium.txt", itemList[1].Name);
+            Assert.Equal("large.txt", itemList[2].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SortBySize_Descending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "small.txt", "file", fileSize: 100),
+                CreateTestItem(2, userId, "large.txt", "file", fileSize: 5000),
+                CreateTestItem(3, userId, "medium.txt", "file", fileSize: 1000)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "size", "desc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("large.txt", itemList[0].Name);
+            Assert.Equal("medium.txt", itemList[1].Name);
+            Assert.Equal("small.txt", itemList[2].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_FoldersAppearFirst()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "file1.txt", "file"),
+                CreateTestItem(2, userId, "folder1", "folder"),
+                CreateTestItem(3, userId, "file2.txt", "file"),
+                CreateTestItem(4, userId, "folder2", "folder")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "name", "asc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("folder", itemList[0].Type);
+            Assert.Equal("folder", itemList[1].Type);
+            Assert.Equal("file", itemList[2].Type);
+            Assert.Equal("file", itemList[3].Type);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_Pagination_FirstPage()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "file1.txt", "file"),
+                CreateTestItem(2, userId, "file2.txt", "file"),
+                CreateTestItem(3, userId, "file3.txt", "file"),
+                CreateTestItem(4, userId, "file4.txt", "file"),
+                CreateTestItem(5, userId, "file5.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 2, "name", "asc", false, null, null);
+
+            // Assert
+            Assert.Equal(5, totalCount);
+            Assert.Equal(2, items.Count());
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_Pagination_SecondPage()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "file1.txt", "file"),
+                CreateTestItem(2, userId, "file2.txt", "file"),
+                CreateTestItem(3, userId, "file3.txt", "file"),
+                CreateTestItem(4, userId, "file4.txt", "file"),
+                CreateTestItem(5, userId, "file5.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 2, 2, "name", "asc", false, null, null);
+
+            // Assert
+            Assert.Equal(5, totalCount);
+            Assert.Equal(2, items.Count());
+            var itemList = items.ToList();
+            Assert.Equal("file3.txt", itemList[0].Name);
+            Assert.Equal("file4.txt", itemList[1].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_Pagination_LastPage()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "file1.txt", "file"),
+                CreateTestItem(2, userId, "file2.txt", "file"),
+                CreateTestItem(3, userId, "file3.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 2, 2, "name", "asc", false, null, null);
+
+            // Assert
+            Assert.Equal(3, totalCount);
+            Assert.Single(items);
+            Assert.Equal("file3.txt", items.First().Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_EmptyResults()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, 2, "other_user_file.txt", "file")
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, null, null);
+
+            // Assert
+            Assert.Equal(0, totalCount);
+            Assert.Empty(items);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SearchWithDeletedItemsExcluded()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "test_file.txt", "file", isDeleted: false),
+                CreateTestItem(2, userId, "test_deleted.txt", "file", isDeleted: true)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, null, null, false, "test", null);
+
+            // Assert
+            Assert.Single(items);
+            Assert.Equal("test_file.txt", items.First().Name);
+        }
+
+
+
+        #endregion
 
         #region GetDirectChildrenAsync Tests
 
@@ -113,7 +462,7 @@ namespace CloudCore.Tests
             await SeedDataAsync(
                 CreateTestItem(1, userId, "file1.txt", "file", parentId),
                 CreateTestItem(2, userId, "file2.txt", "file", parentId),
-                CreateTestItem(3, userId, "nested.txt", "file", 20), // Другой parent
+                CreateTestItem(3, userId, "nested.txt", "file", 20), // Another parent
                 CreateTestItem(4, userId, "folder1", "folder", parentId)
             );
 
