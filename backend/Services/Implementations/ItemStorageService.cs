@@ -139,7 +139,19 @@ namespace CloudCore.Services.Implementations
                 var directory = Path.GetDirectoryName(oldFilePath);
 
 
-                //var extension = Path.GetExtension(oldFilePath);
+                var oldExtension = Path.GetExtension(oldFilePath);
+                var newExtension = Path.GetExtension(newName);
+
+                // If new name does not have an extension, keep the old one
+                if (string.IsNullOrEmpty(newExtension))
+                {
+                    newName += oldExtension;
+                    newExtension = oldExtension;
+                }
+
+                // Check if the new extension is supported
+                if (!MimeTypeMappings.ContainsKey(newExtension.ToLowerInvariant()))
+                    throw new NotSupportedException($"Extension '{newExtension}' is not supported.");
 
 
                 // Make new file path "/app/storage/users/user/1/documents/newFileName" 

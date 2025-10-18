@@ -21,45 +21,45 @@ namespace CloudCore.Services.Implementations
             // Documents
             ".pdf", ".doc", ".docx", ".rtf", ".txt", ".odt", ".pages",
             ".dotx", ".dotm", ".docm", ".xml", ".html", ".htm", ".mht",
-    
+
             // Tables
             ".xls", ".xlsx", ".xlsm", ".xlsb", ".xltx", ".csv", ".ods",
             ".numbers", ".tsv",
-    
+
             // Presentations
             ".ppt", ".pptx", ".pptm", ".potx", ".ppsx", ".ppsm", ".odp",
             ".key",
-    
+
             // Images
             ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif",
             ".svg", ".webp", ".ico", ".heic", ".heif", ".raw", ".psd",
-    
+
             // Audio
             ".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a",
             ".opus", ".aiff",
-    
+
             // Video
             ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm",
             ".m4v", ".3gp", ".ogv",
-    
+
             // Archives
             ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz",
             ".cab", ".dmg", ".iso",
-    
+
             // Code
             ".js", ".css", ".json", ".xml", ".sql", ".py", ".java",
             ".cpp", ".c", ".cs", ".php", ".rb", ".go", ".rs", ".swift",
             ".kt", ".ts", ".scss", ".less", ".yaml", ".yml", ".md",
-    
+
             // Fonts
             ".ttf", ".otf", ".woff", ".woff2", ".eot",
-    
+
             // Books
             ".epub", ".mobi", ".fb2", ".azw", ".azw3",
-    
+
             // Design
             ".dwg", ".dxf", ".ai", ".eps", ".indd", ".sketch",
-    
+
             // Another
             ".log", ".cfg", ".conf", ".ini", ".properties",
             ".ics", ".vcf", ".gpx", ".kml"
@@ -69,10 +69,10 @@ namespace CloudCore.Services.Implementations
         private readonly ILogger<ValidationService> _logger;
         private readonly IItemRepository _itemRepository;
 
-        public ValidationService(ILogger<ValidationService> logger, IItemRepository itemDataService)
+        public ValidationService(ILogger<ValidationService> logger, IItemRepository itemRepository)
         {
             _logger = logger;
-            _itemRepository = itemDataService;
+            _itemRepository = itemRepository;
         }
 
         public ValidationResult ValidateFile(IFormFile file)
@@ -108,7 +108,7 @@ namespace CloudCore.Services.Implementations
         }
         public ValidationResult ValidateItemName(string name)
         {
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrWhiteSpace(name))
             {
                 _logger.LogWarning("Item name validation failed: empty name");
                 return ValidationResult.Failure("Item name cannot be empty", ErrorCodes.INVALID_NAME);
