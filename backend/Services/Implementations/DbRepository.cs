@@ -449,7 +449,7 @@ namespace CloudCore.Services.Implementations
             _logger.LogInformation("Starting transaction to add ItemName={ItemName}.", item.Name);
             try
             {
-                context.Update(item);
+                context.Add(item);
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 _logger.LogInformation("Transaction committed successfully. Item added.");
@@ -618,7 +618,7 @@ namespace CloudCore.Services.Implementations
         //     if (userId == null)
         //         return false;
         //
-        //     //TODO: 
+        //     //TODO:
         // }
 
         public async Task<TeamspaceLimits> GetTeamspaceLimitsAsync(int userId)

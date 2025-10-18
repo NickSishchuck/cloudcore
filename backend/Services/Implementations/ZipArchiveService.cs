@@ -122,6 +122,11 @@ namespace CloudCore.Services.Implementations
             {
                 await foreach (var item in items)
                 {
+                    if (item.IsDeleted == true)
+                    {
+                        _logger.LogDebug("Skipping deleted item '{ItemName}' (ID: {ItemId})", item.Name, item.Id);
+                        continue;
+                    }
                     if (item.Type == "folder")
                     {
                         _logger.LogInformation("Processing folder '{ItemName}' (ID: {ItemId}) for multi-item archive.", item.Name, item.Id);

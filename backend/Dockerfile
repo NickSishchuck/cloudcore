@@ -2,12 +2,17 @@
 
 WORKDIR /app
 
+
 COPY *.csproj ./
 COPY CloudCore.Tests/*.csproj ./CloudCore.Tests/
+
+
 RUN dotnet restore
 
 COPY . ./
-RUN dotnet build -c Release --no-restore
+
+
+RUN dotnet build -c Release
 
 # Test stage (optional)
 FROM build AS test
