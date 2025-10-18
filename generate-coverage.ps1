@@ -27,7 +27,7 @@ if (-not $coverageFile) {
 
 
 Write-Host "Generating HTML report..."
-reportgenerator -reports:$coverageFile.FullName -targetdir:$CoverageDir -reporttypes:"HtmlSummary;HtmlChart"
+reportgenerator -reports:$coverageFile.FullName -targetdir:$CoverageDir -reporttypes:"Html;HtmlSummary;HtmlChart"
 
 
 try {
