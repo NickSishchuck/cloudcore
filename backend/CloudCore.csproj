@@ -5,15 +5,17 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591;1570</NoWarn>
+		<RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+		<RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
     </PropertyGroup>
-    
+
     <ItemGroup>
         <!-- Exclude test project directory -->
         <Compile Remove="CloudCore.Tests/**" />
         <EmbeddedResource Remove="CloudCore.Tests/**" />
         <None Remove="CloudCore.Tests/**" />
     </ItemGroup>
-    
+
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
         <PackageReference Include="DotNetEnv" Version="3.1.1" />
@@ -33,7 +35,7 @@
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3" />
     </ItemGroup>
-    
+
     <ItemGroup>
         <Folder Include="logs\" />
     </ItemGroup>

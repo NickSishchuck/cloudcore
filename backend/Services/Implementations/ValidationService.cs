@@ -158,7 +158,7 @@ namespace CloudCore.Services.Implementations
             return ValidationResult.Success();
         }
 
-        public async Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string itemType = null)
+        public async Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string? itemType = null)
         {
             _logger.LogInformation("Validating existence of item {ItemId} of type {ItemType} for user {UserId}", itemId, itemType ?? "any", userId);
 

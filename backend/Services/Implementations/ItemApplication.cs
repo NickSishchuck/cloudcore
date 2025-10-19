@@ -136,7 +136,7 @@ namespace CloudCore.Services.Implementations
                 throw new FileNotFoundException(ErrorCodes.FOLDER_NOT_FOUND);
             }
 
-            var fullPath = _itemStorageService.GetFileFullPath(userId, file.FilePath);
+            var fullPath = _itemStorageService.GetFileFullPath(userId, file.FilePath!);
 
             if (!File.Exists(fullPath))
             {
@@ -205,8 +205,8 @@ namespace CloudCore.Services.Implementations
                 return new RestoreResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
 
             if (itemToRestore.Type == "file" && itemToRestore.ParentId.HasValue)
@@ -272,6 +272,22 @@ namespace CloudCore.Services.Implementations
             _logger.LogInformation("Rename request received. UserId={UserId}, ItemId={ItemId}, NewName={NewName}",
         userId, itemId, newName);
 
+            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
+            if (item == null)
+            {
+                _logger.LogInformation("Item retrieved successfully. ItemId={ItemId}, CurrentName={CurrentName}, ParentId={ParentId}", item!.Id, item.Name, item.ParentId);
+            }
+            else
+            {
+                _logger.LogWarning("Item not found after existence validation. This should not happen. UserId={UserId}, ItemId={ItemId}", userId, itemId);
+                return new RenameResult
+                {
+                    IsSuccess = false,
+                    ErrorCode = ErrorCodes.ITEM_NOT_FOUND,
+                    Message = "Item to rename not found."
+                };
+            }
+
             var itemNameValidation = _validationService.ValidateItemName(newName);
             if (!itemNameValidation.IsValid)
             {
@@ -279,8 +295,8 @@ namespace CloudCore.Services.Implementations
                 return new RenameResult
                 {
                     IsSuccess = false,
-                    ErrorCode = itemNameValidation.ErrorCode,
-                    Message = itemNameValidation.ErrorMessage
+                    ErrorCode = itemNameValidation.ErrorCode!,
+                    Message = itemNameValidation.ErrorMessage!
                 };
             }
 
@@ -291,13 +307,10 @@ namespace CloudCore.Services.Implementations
                 return new RenameResult
                 {
                     IsSuccess = false,
-                    ErrorCode = itemExistsValidation.ErrorCode,
-                    Message = itemExistsValidation.ErrorMessage
+                    ErrorCode = itemExistsValidation.ErrorCode!,
+                    Message = itemExistsValidation.ErrorMessage!
                 };
             }
-
-            var item = await _itemRepository.GetItemAsync(userId, itemId, null);
-            _logger.LogInformation("Item retrieved successfully. ItemId={ItemId}, CurrentName={CurrentName}, ParentId={ParentId}", item.Id, item.Name, item.ParentId);
 
             var uniquenessValidation = await _validationService.ValidateNameUniquenessAsync(newName, item.Type, userId, item.ParentId, itemId, true);
             if (!uniquenessValidation.IsValid)
@@ -306,8 +319,8 @@ namespace CloudCore.Services.Implementations
                 return new RenameResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -372,12 +385,12 @@ namespace CloudCore.Services.Implementations
                 };
             }
 
-            Item targetItem = null;
+            Item? targetItem = null;
             bool isMovingToRoot = targetId == null || targetId == 0;
 
             if (!isMovingToRoot)
             {
-                targetItem = await _itemRepository.GetItemAsync(userId, (int)targetId, null);
+                targetItem = await _itemRepository.GetItemAsync(userId, (int)targetId!, null);
                 if (targetItem == null)
                 {
                     _logger.LogWarning("MoveItem failed: Target item with ID {TargetId} not found for user {UserId}", targetId, userId);
@@ -402,15 +415,15 @@ namespace CloudCore.Services.Implementations
 
             if (item.Type == "folder" && !isMovingToRoot)
             {
-                var circularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, (int)targetId);
+                var circularValidation = await _validationService.ValidateIsFolderSubFolder(userId, itemId, (int)targetId!);
                 if (!circularValidation.IsValid)
                 {
                     _logger.LogWarning("MoveItem failed: Circular validation failed for ItemId {ItemId} and TargetId {TargetId} for user {UserId}", itemId, targetId, userId);
                     return new MoveResult
                     {
                         IsSuccess = false,
-                        ErrorCode = circularValidation.ErrorCode,
-                        Message = circularValidation.ErrorMessage
+                        ErrorCode = circularValidation.ErrorCode!,
+                        Message = circularValidation.ErrorMessage!
                     };
                 }
             }
@@ -423,8 +436,8 @@ namespace CloudCore.Services.Implementations
                 return new MoveResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -433,7 +446,7 @@ namespace CloudCore.Services.Implementations
                 IAsyncEnumerable<Item> childItemsAsync = CreateItemStream(userId, item);
                 var basePath = _itemStorageService.GetUserStoragePath(userId);
 
-                string sourceFolderPath = null;
+                string? sourceFolderPath = null;
                 if (item.Type == "folder")
                 {
                     var sourceFolderPathRelative = await _itemRepository.GetFolderPathAsync(item);
@@ -448,7 +461,7 @@ namespace CloudCore.Services.Implementations
                 }
                 else
                 {
-                    var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem);
+                    var targetRelativePath = await _itemRepository.GetFolderPathAsync(targetItem!);
                     destinationFolderPath = Path.Combine(basePath, targetRelativePath);
                 }
                 _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
@@ -549,7 +562,7 @@ namespace CloudCore.Services.Implementations
             _logger.LogInformation("Item retrieved for permanent deletion. ItemId={ItemId}, Type={ItemType}, Name={ItemName}", item.Id, item.Type, item.Name);
             try
             {
-                string folderPathWithoutUserPart = null;
+                string? folderPathWithoutUserPart = null;
                 if (item.Type == "folder")
                 {
                     _logger.LogInformation("ItemId={ItemId} is folder. Getting it`s Folder Path...", item.Id);
@@ -590,8 +603,8 @@ namespace CloudCore.Services.Implementations
                 return new UploadResult
                 {
                     IsSuccess = false,
-                    ErrorCode = fileValidation.ErrorCode,
-                    Message = fileValidation.ErrorMessage
+                    ErrorCode = fileValidation.ErrorCode!,
+                    Message = fileValidation.ErrorMessage!
                 };
             }
 
@@ -611,7 +624,7 @@ namespace CloudCore.Services.Implementations
                     Message = $"Upload would exceed your storage limit ({usedMb + fileSizeMb}MB / {limitMb}MB)"
                 };
             }
-            Item createdItem = null;
+            Item? createdItem = null;
 
             string targetDirectory = String.Empty;
 
@@ -639,8 +652,8 @@ namespace CloudCore.Services.Implementations
                 return new UploadResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -683,8 +696,8 @@ namespace CloudCore.Services.Implementations
                 return new CreateFolderResult
                 {
                     IsSuccess = false,
-                    ErrorCode = nameValidation.ErrorCode,
-                    Message = nameValidation.ErrorMessage
+                    ErrorCode = nameValidation.ErrorCode!,
+                    Message = nameValidation.ErrorMessage!
                 };
 
             // Validate parent folder exists if specified
@@ -695,8 +708,8 @@ namespace CloudCore.Services.Implementations
                     return new CreateFolderResult
                     {
                         IsSuccess = false,
-                        ErrorCode = parentValidation.ErrorCode,
-                        Message = parentValidation.ErrorMessage
+                        ErrorCode = parentValidation.ErrorCode!,
+                        Message = parentValidation.ErrorMessage!
                     };
             }
 
@@ -706,8 +719,8 @@ namespace CloudCore.Services.Implementations
                 return new CreateFolderResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
 
             var folder = new Item

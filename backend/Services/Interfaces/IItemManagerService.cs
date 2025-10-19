@@ -18,7 +18,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="childItems">Optional collection of all descendant items if the primary item is a folder.</param>
         /// <param name="folderPath">The current absolute path of the folder on disk. Required only if renaming a folder.</param>
         /// <returns>A list of all item entities (primary and children) that have been modified and need to be updated in the database.</returns>
-        IAsyncEnumerable<Item> PrepareItemsForRenaming(Item item, string newName, IAsyncEnumerable<Item> childItems = null, string folderPath = null);
+        IAsyncEnumerable<Item> PrepareItemsForRenaming(Item item, string newName, IAsyncEnumerable<Item>? childItems = null, string? folderPath = null);
 
         /// <summary>
         /// Prepares an item and its children (if it's a folder) for a soft-delete operation.
@@ -67,7 +67,7 @@ namespace CloudCore.Services.Interfaces
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="destinationFolderPath"/> is null or whitespace, or when <paramref name="sourceFolderPath"/> is missing for folder type items.</exception>
         /// <exception cref="NotSupportedException">Thrown when the item type is not 'file' or 'folder'.</exception>
-        IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null);
+        IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item>? childItems = null);
 
 
 

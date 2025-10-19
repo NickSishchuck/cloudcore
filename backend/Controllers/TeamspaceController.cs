@@ -28,10 +28,6 @@ namespace CloudCore.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Gets the current user ID from JWT token
-        /// </summary>
-
         #region Teamspace Management
 
         /// <summary>

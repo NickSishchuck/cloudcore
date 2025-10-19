@@ -14,7 +14,10 @@ namespace CloudCore.Services.Implementations
         private readonly ILogger<ItemStorageService> _logger;
         public ItemStorageService(IConfiguration configuration, ILogger<ItemStorageService> logger)
         {
-            _basePath = configuration["FileStorage:BasePath"];
+            if(configuration["FileStorage:BasePath"] != null)
+                _basePath = configuration["FileStorage:BasePath"]!;
+            else
+                _basePath = Path.Combine(Directory.GetCurrentDirectory(), "storage");
             _logger = logger;
         }
 
@@ -44,7 +47,7 @@ namespace CloudCore.Services.Implementations
         public string RemoveFromFolderPath(string path, string searchString)
         {
             int lastIndexofSearchString = path.LastIndexOf(searchString);
-            string newPath = null;
+            string? newPath = null;
 
             if (lastIndexofSearchString != -1)
                 newPath = path.Remove(lastIndexofSearchString, searchString.Length);
@@ -133,7 +136,7 @@ namespace CloudCore.Services.Implementations
             if (item.Type == "file")
             {
                 // Get old file path "/app/storage/users/user/1/documents/test.pdf"
-                var oldFilePath = GetFileFullPath(item.UserId, item.FilePath);
+                var oldFilePath = GetFileFullPath(item.UserId, item.FilePath!);
 
                 // Get directory "/documents"
                 var directory = Path.GetDirectoryName(oldFilePath);
@@ -154,21 +157,21 @@ namespace CloudCore.Services.Implementations
                     throw new NotSupportedException($"Extension '{newExtension}' is not supported.");
 
 
-                // Make new file path "/app/storage/users/user/1/documents/newFileName" 
-                var newFilePath = Path.Combine(directory, newName);
+                // Make new file path "/app/storage/users/user/1/documents/newFileName"
+                var newFilePath = Path.Combine(directory!, newName);
 
                 if (File.Exists(newFilePath))
                     throw new IOException("File with this name already exists");
 
                 File.Move(oldFilePath, newFilePath);
 
-                var newRelativePath = Path.Combine(Path.GetDirectoryName(item.FilePath), newName);
+                var newRelativePath = Path.Combine(Path.GetDirectoryName(item.FilePath)!, newName);
                 return newRelativePath;
             }
             else if (item.Type == "folder")
             {
-                var oldFolderPath = Path.Combine(GetUserStoragePath(item.UserId), folderPath);
-                var newFolderPath = Path.Combine(Path.GetDirectoryName(oldFolderPath), newName);
+                var oldFolderPath = Path.Combine(GetUserStoragePath(item.UserId), folderPath!);
+                var newFolderPath = Path.Combine(Path.GetDirectoryName(oldFolderPath)!, newName);
 
                 if (Directory.Exists(newFolderPath))
                     throw new IOException($"Folder with name '{newName}' already exists in this directory.");
@@ -188,7 +191,7 @@ namespace CloudCore.Services.Implementations
 
             if (item.Type == "file")
             {
-                var fullPath = Path.Combine(basePath, item.FilePath);
+                var fullPath = Path.Combine(basePath, item.FilePath!);
 
                 if (File.Exists(fullPath))
                 {
@@ -200,7 +203,7 @@ namespace CloudCore.Services.Implementations
             }
             else if (item.Type == "folder")
             {
-                var fullPath = Path.Combine(basePath, folderPath);
+                var fullPath = Path.Combine(basePath, folderPath!);
 
                 if (Directory.Exists(fullPath))
                 {
@@ -231,7 +234,7 @@ namespace CloudCore.Services.Implementations
             }
             else if (item.Type == "folder")
             {
-                relativePath = MoveFolder(item, basePath, destinationPath, folderPath);
+                relativePath = MoveFolder(item, basePath, destinationPath, folderPath!);
             }
             else
             {
@@ -243,7 +246,7 @@ namespace CloudCore.Services.Implementations
 
         private string MoveFile(Item item, string basePath, string destinationPath)
         {
-            var sourceFilePath = Path.Combine(basePath, item.FilePath);
+            var sourceFilePath = Path.Combine(basePath, item.FilePath!);
 
             if (!File.Exists(sourceFilePath))
             {
@@ -264,7 +267,7 @@ namespace CloudCore.Services.Implementations
             var relativePath = Path.GetRelativePath(basePath, destinationFilePath);
 
             return relativePath;
-            
+
         }
 
         private string MoveFolder(Item item, string basePath, string destinationPath, string folderPath)
@@ -297,7 +300,7 @@ namespace CloudCore.Services.Implementations
 
         private static readonly Dictionary<string, string> MimeTypeMappings = new Dictionary<string, string>
         {
-            
+
             [".pdf"] = "application/pdf",
             [".doc"] = "application/msword",
             [".docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -313,7 +316,7 @@ namespace CloudCore.Services.Implementations
             [".htm"] = "text/html",
             [".mht"] = "message/rfc822",
 
-            
+
             [".xls"] = "application/vnd.ms-excel",
             [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             [".xlsm"] = "application/vnd.ms-excel.sheet.macroEnabled.12",
@@ -324,7 +327,7 @@ namespace CloudCore.Services.Implementations
             [".numbers"] = "application/vnd.apple.numbers",
             [".tsv"] = "text/tab-separated-values",
 
-            
+
             [".ppt"] = "application/vnd.ms-powerpoint",
             [".pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             [".pptm"] = "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
@@ -334,7 +337,7 @@ namespace CloudCore.Services.Implementations
             [".odp"] = "application/vnd.oasis.opendocument.presentation",
             [".key"] = "application/vnd.apple.keynote",
 
-            
+
             [".jpg"] = "image/jpeg",
             [".jpeg"] = "image/jpeg",
             [".png"] = "image/png",
@@ -350,7 +353,7 @@ namespace CloudCore.Services.Implementations
             [".raw"] = "image/x-canon-cr2",
             [".psd"] = "image/vnd.adobe.photoshop",
 
-            
+
             [".mp3"] = "audio/mpeg",
             [".wav"] = "audio/wav",
             [".flac"] = "audio/flac",
@@ -361,7 +364,7 @@ namespace CloudCore.Services.Implementations
             [".opus"] = "audio/opus",
             [".aiff"] = "audio/aiff",
 
-            
+
             [".mp4"] = "video/mp4",
             [".avi"] = "video/x-msvideo",
             [".mkv"] = "video/x-matroska",
@@ -373,7 +376,7 @@ namespace CloudCore.Services.Implementations
             [".3gp"] = "video/3gpp",
             [".ogv"] = "video/ogg",
 
-            
+
             [".zip"] = "application/zip",
             [".rar"] = "application/vnd.rar",
             [".7z"] = "application/x-7z-compressed",
@@ -385,7 +388,7 @@ namespace CloudCore.Services.Implementations
             [".dmg"] = "application/x-apple-diskimage",
             [".iso"] = "application/x-iso9660-image",
 
-            
+
             [".js"] = "application/javascript",
             [".css"] = "text/css",
             [".json"] = "application/json",
@@ -408,21 +411,21 @@ namespace CloudCore.Services.Implementations
             [".yml"] = "application/x-yaml",
             [".md"] = "text/markdown",
 
-            
+
             [".ttf"] = "font/ttf",
             [".otf"] = "font/otf",
             [".woff"] = "font/woff",
             [".woff2"] = "font/woff2",
             [".eot"] = "application/vnd.ms-fontobject",
 
-            
+
             [".epub"] = "application/epub+zip",
             [".mobi"] = "application/x-mobipocket-ebook",
             [".fb2"] = "application/x-fictionbook+xml",
             [".azw"] = "application/vnd.amazon.ebook",
             [".azw3"] = "application/vnd.amazon.ebook",
 
-            
+
             [".dwg"] = "image/vnd.dwg",
             [".dxf"] = "image/vnd.dxf",
             [".ai"] = "application/illustrator",
@@ -430,7 +433,7 @@ namespace CloudCore.Services.Implementations
             [".indd"] = "application/x-indesign",
             [".sketch"] = "application/sketch",
 
-            
+
             [".log"] = "text/plain",
             [".cfg"] = "text/plain",
             [".conf"] = "text/plain",

@@ -13,8 +13,6 @@
 **/*.jfm
 **/azds.yaml
 **/bin
-/backend/bin
-/backend/obj
 **/charts
 **/docker-compose*
 **/Dockerfile*
@@ -30,4 +28,8 @@ README.md
 !.git/config
 !.git/packed-refs
 !.git/refs/heads/**
+
+**/*.Tests/
+**/CloudCore.Tests/
+**/*Tests/
 

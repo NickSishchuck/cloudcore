@@ -79,7 +79,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user who should own the item.</param>
         /// <param name="itemType">Optional. The type of the item to check for (e.g., "file" or "folder").</param>
         /// <returns>A Task representing the asynchronous operation, containing a ValidationResult.</returns>
-        Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string itemType = null);
+        Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string? itemType = null);
 
         /// <summary>
         /// Asynchronously validates a list of item IDs, ensuring all exist and belong to the user.
@@ -97,6 +97,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="userId">The ID of the user.</param>
         /// <param name="parentId">The ID of the parent folder where the item will reside. Null for the root directory.</param>
         /// <param name="excludeItemId">Optional. The ID of an item to exclude from the check, used during rename operations.</param>
+        /// <param name="includeDeleted">Optional. Whether to include deleted items in the uniqueness check. Default is false.</param>
         /// <returns>A Task representing the asynchronous operation, containing a ValidationResult.</returns>
         Task<ValidationResult> ValidateNameUniquenessAsync(string name, string itemType, int userId, int? parentId, int? excludeItemId = null, bool includeDeleted = false);
 

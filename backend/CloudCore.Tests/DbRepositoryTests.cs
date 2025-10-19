@@ -81,7 +81,7 @@ namespace CloudCore.Tests
             await context.SaveChangesAsync();
         }
 
-        private Item CreateTestItem(int id, int userId, string name, string type = "file", int? parentId = null,bool isDeleted = false, long? fileSize = 1000, int? teamspace = null)
+        private Item CreateTestItem(int id, int userId, string name, string type = "file", int? parentId = null,bool isDeleted = false, long? fileSize = 1000, int? teamspace = null, DateTime? dateTime = null)
         {
             return new Item
             {
@@ -95,7 +95,7 @@ namespace CloudCore.Tests
                 FileSize = fileSize,
                 FilePath = type == "file" ? $"/path/to/{name}" : null,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = dateTime ?? DateTime.UtcNow
             };
         }
 
@@ -321,6 +321,27 @@ namespace CloudCore.Tests
             Assert.Equal("large.txt", itemList[0].Name);
             Assert.Equal("medium.txt", itemList[1].Name);
             Assert.Equal("small.txt", itemList[2].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SortByModifiedDate_Descending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "first.txt", "file", fileSize: 1000),
+                CreateTestItem(2, userId, "second.txt", "file", fileSize: 5000),
+                CreateTestItem(3, userId, "third.txt", "file", fileSize: 1000)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "modified", "desc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("third.txt", itemList[0].Name);
+            Assert.Equal("second.txt", itemList[1].Name);
+            Assert.Equal("first.txt", itemList[2].Name);
         }
 
         [Fact]

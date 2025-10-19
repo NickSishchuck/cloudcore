@@ -20,7 +20,7 @@ namespace CloudCore.Services.Implementations
             throw new NotImplementedException();
         }
 
-        public async IAsyncEnumerable<Item> PrepareItemsForRenaming(Item item, string newName, IAsyncEnumerable<Item> childItems = null, string folderPath = null)
+        public async IAsyncEnumerable<Item> PrepareItemsForRenaming(Item item, string newName, IAsyncEnumerable<Item>? childItems = null, string? folderPath = null)
         {
             if (item.Type == "file")
             {
@@ -41,7 +41,7 @@ namespace CloudCore.Services.Implementations
             {
                 _logger.LogInformation("Renaming folder physically: {OldName} -> {NewName}", item.Name, newName);
 
-                var newFolderPath = _itemStorageService.GetNewFolderPath(folderPath, item.Name, newName);
+                var newFolderPath = _itemStorageService.GetNewFolderPath(folderPath!, item.Name, newName);
                 _logger.LogInformation($"New folder path is {newFolderPath}");
                 var basePath = _itemStorageService.GetUserStoragePath(item.UserId);
                 _logger.LogInformation($"Base path is {basePath}");
@@ -52,12 +52,12 @@ namespace CloudCore.Services.Implementations
                     {
                         if (childItem.Type == "file")
                         {
-                            childItem.FilePath = _itemStorageService.GetNewFilePath(childItem.FilePath, newFolderPath, basePath);
+                            childItem.FilePath = _itemStorageService.GetNewFilePath(childItem.FilePath!, newFolderPath, basePath);
                         }
                         yield return childItem;
                     }
                 }
-                
+
 
                 _itemStorageService.RenameItemPhysically(item, newName, folderPath);
 
@@ -71,7 +71,7 @@ namespace CloudCore.Services.Implementations
             throw new NotSupportedException($"Item type '{item.Type}' is not supported for renaming.");
         }
 
-        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item> childItems = null)
+        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item>? childItems = null)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
@@ -116,7 +116,7 @@ namespace CloudCore.Services.Implementations
                     {
                         if (childItem.Type == "file")
                         {
-                            var oldChildAbsolutePath = Path.Combine(basePath, childItem.FilePath);
+                            var oldChildAbsolutePath = Path.Combine(basePath, childItem.FilePath!);
                             var relativePathInFolder = Path.GetRelativePath(sourceFolderPath, oldChildAbsolutePath);
                             var newChildAbsolutePath = Path.Combine(newFolderPath, relativePathInFolder);
                             childItem.FilePath = Path.GetRelativePath(basePath, newChildAbsolutePath).Replace("\\", "/");
@@ -185,7 +185,7 @@ namespace CloudCore.Services.Implementations
         }
 
 
-        
+
     }
 
 }

@@ -5,6 +5,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+
+	  <IncrementalBuild>true</IncrementalBuild>
+	  <Deterministic>true</Deterministic>
+
+	  <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+	  <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+
+	  <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +31,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <!--<PackageReference Include="coverlet.collector" Version="6.0.2" />-->
   </ItemGroup>
 </Project>

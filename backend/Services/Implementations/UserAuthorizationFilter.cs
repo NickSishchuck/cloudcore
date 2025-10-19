@@ -57,7 +57,7 @@ namespace CloudCore.Services.Implementations
             {
                 _logger.LogWarning("User authorization failed. CurrentUserId={CurrentUserId}, TargetUserId={TargetUserId}",
                     currentUserId, targetUserId);
-                var errorResponse = ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode);
+                var errorResponse = ApiResponse.Error(authValidation.ErrorMessage!, authValidation.ErrorCode);
                 context.Result = new ObjectResult(errorResponse)
                 {
                     StatusCode = StatusCodes.Status403Forbidden

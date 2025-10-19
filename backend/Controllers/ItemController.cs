@@ -50,10 +50,10 @@ namespace CloudCore.Controllers
 
             var result = await _itemApplication.GetItemsAsync(userId, parentId, queryParams.Page, queryParams.PageSize, queryParams.SortBy, queryParams.SortDir, searchQuery: queryParams.SearchQuery);
 
-            _logger.LogInformation("Successfully fetched {ItemCount} items for User ID: {UserId}.", result.Data.Count(), userId);
+            _logger.LogInformation("Successfully fetched {ItemCount} items for User ID: {UserId}.", result.Data?.Count(), userId);
             return Ok(new PaginatedResponse<ItemResponse>
             {
-                Data = result.Data.Select(i => i.ToResponseDto()),
+                Data = result.Data?.Select(i => i.ToResponseDto()),
                 Pagination = result.Pagination
             });
         }
@@ -104,9 +104,14 @@ namespace CloudCore.Controllers
                 .Where(item => item != null)
                 .ToListAsync();
 
+            if(result.Count == 0)
+            {
+                return Ok(Enumerable.Empty<ItemResponse>());
+            }
+
             var sorted = result
-                .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase.WithNaturalSort())
-                .Select(i => i.ToResponseDto());
+                .OrderBy(i => i!.Name, StringComparer.OrdinalIgnoreCase.WithNaturalSort())
+                .Select(i => i!.ToResponseDto());
 
             return Ok(sorted);
         }
@@ -431,7 +436,7 @@ namespace CloudCore.Controllers
         /// <response code="409">Folder with this name already exists.</response>
         /// <remarks>
         /// <para>Sample request:</para>
-        /// <para>POST /user/123/mydrive/createfolder</para>    
+        /// <para>POST /user/123/mydrive/createfolder</para>
         /// {
         ///     "name": "My Documents",
         ///     "parentId": 456
