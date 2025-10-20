@@ -15,11 +15,6 @@ namespace CloudCore.Services.Implementations
             _logger = logger;
         }
 
-        public Task<ItemResultResponses.DeleteResult> DeleteItemPermanentlyAsync(int userId, int id)
-        {
-            throw new NotImplementedException();
-        }
-
         public async IAsyncEnumerable<Item> PrepareItemsForRenaming(Item item, string newName, IAsyncEnumerable<Item>? childItems = null, string? folderPath = null)
         {
             if (item.Type == "file")
@@ -71,13 +66,13 @@ namespace CloudCore.Services.Implementations
             throw new NotSupportedException($"Item type '{item.Type}' is not supported for renaming.");
         }
 
-        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item>? childItems = null)
+        public async IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string destinationFolderPath, string? sourceFolderPath, IAsyncEnumerable<Item>? childItems = null)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
             if (string.IsNullOrWhiteSpace(destinationFolderPath))
-                throw new ArgumentException("Destination folder path is required", nameof(destinationFolderPath));
+                throw new ArgumentNullException("Destination folder path is required", nameof(destinationFolderPath));
 
             _logger.LogInformation("Starting move operation for item {ItemId} of type {ItemType} to parent {ParentId}",
                 item.Id, item.Type, newParentId);
@@ -106,7 +101,7 @@ namespace CloudCore.Services.Implementations
             if (item.Type == "folder")
             {
                 if (string.IsNullOrWhiteSpace(sourceFolderPath))
-                    throw new ArgumentException("Source folder path is required for folder items", nameof(sourceFolderPath));
+                    throw new ArgumentNullException("Source folder path is required for folder items", nameof(sourceFolderPath));
 
                 var newFolderPath = Path.Combine(destinationFolderPath, item.Name);
 

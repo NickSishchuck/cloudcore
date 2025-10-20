@@ -256,7 +256,7 @@ namespace CloudCore.Services.Implementations
 
         public ValidationResult ValidateQuery(string query)
         {
-            if(string.IsNullOrEmpty(query))
+            if (string.IsNullOrEmpty(query))
             {
                 _logger.LogWarning("Validation failed: query is null or empty.");
                 return ValidationResult.Failure("Querry cannot be null or empty", ErrorCodes.NULL_OR_EMPTY);

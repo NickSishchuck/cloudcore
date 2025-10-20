@@ -35,15 +35,6 @@ namespace CloudCore.Services.Interfaces
         IAsyncEnumerable<Item> PrepareItemsForRestoreAsync(IAsyncEnumerable<Item> items);
 
         /// <summary>
-        /// Handles the business logic for permanently deleting an item, including any cleanup of associated resources.
-        /// Note: The actual data persistence is handled by the data service layer.
-        /// </summary>
-        /// <param name="userId">The ID of the user requesting the deletion.</param>
-        /// <param name="id">The ID of the item to be permanently deleted.</param>
-        /// <returns>A result object indicating the outcome of the deletion process.</returns>
-        Task<DeleteResult> DeleteItemPermanentlyAsync(int userId, int id);
-
-        /// <summary>
         /// Processes a file upload by saving the file to physical storage and creating a corresponding Item entity.
         /// </summary>
         /// <param name="userId">The ID of the user uploading the file.</param>
@@ -60,17 +51,16 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="item">The item (file or folder) to be moved.</param>
         /// <param name="newParentId">The ID of the target parent folder where the item will be moved.</param>
-        /// <param name="sourceFolderPath">The full absolute path to the source folder (required for folder type items).</param>
         /// <param name="destinationFolderPath">The full absolute path to the destination folder where the item will be placed.</param>
+        /// <param name="sourceFolderPath">The full absolute path to the source folder (required for folder type items).</param>
         /// <param name="childItems">Optional list of child items that need path updates (applicable when moving folders with contents).</param>
         /// <returns>A list of items with updated metadata (ParentId, FilePath, UpdatedAt) that need to be saved to the database.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="destinationFolderPath"/> is null or whitespace, or when <paramref name="sourceFolderPath"/> is missing for folder type items.</exception>
         /// <exception cref="NotSupportedException">Thrown when the item type is not 'file' or 'folder'.</exception>
-        IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string sourceFolderPath, string destinationFolderPath, IAsyncEnumerable<Item>? childItems = null);
+        IAsyncEnumerable<Item> PrepareItemsForMoving(Item item, int? newParentId, string destinationFolderPath, string? sourceFolderPath, IAsyncEnumerable<Item>? childItems = null);
 
 
 
     }
 }
-

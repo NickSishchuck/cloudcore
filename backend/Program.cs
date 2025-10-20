@@ -1,16 +1,16 @@
-using Microsoft.EntityFrameworkCore;
-using CloudCore.Services.Interfaces;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 using System.Text;
+using CloudCore.Data.Context;
 using CloudCore.Middleware;
 using CloudCore.Services.Implementations;
-using CloudCore.Data.Context;
+using CloudCore.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
-using Microsoft.OpenApi.Models;
-using System.Reflection;
-using Microsoft.AspNetCore.Http.Features;
 
 namespace CloudCore
 {

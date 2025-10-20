@@ -57,7 +57,7 @@ public class AuthController : ControllerBase
         if (result == null)
         {
             _logger.LogWarning($"Failed register attempt for user: {request.Username}, (Email: {request.Email})");
-            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS")); 
+            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS"));
         }
         _logger.LogInformation($"User {request.Username} (ID: {result.UserId}) registered successfully.");
         return Ok(result);

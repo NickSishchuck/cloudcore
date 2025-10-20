@@ -14,7 +14,7 @@ namespace CloudCore.Services.Implementations
         private readonly ILogger<ItemStorageService> _logger;
         public ItemStorageService(IConfiguration configuration, ILogger<ItemStorageService> logger)
         {
-            if(configuration["FileStorage:BasePath"] != null)
+            if (configuration["FileStorage:BasePath"] != null)
                 _basePath = configuration["FileStorage:BasePath"]!;
             else
                 _basePath = Path.Combine(Directory.GetCurrentDirectory(), "storage");

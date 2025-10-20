@@ -457,3 +457,73 @@ input:valid:not(:placeholder-shown) + .input-hint {
         font-size: 18px;
     }
 }
+
+@media (max-width: 480px) {
+    .login-container,
+    .register-container {
+        width: 98vw;
+        max-width: 99vw;
+        min-width: 0;
+        border-radius: 0;
+        padding: 14px 4vw;
+        box-shadow: none;
+        font-size: 15px;
+    }
+
+    h1 {
+        font-size: 19px;
+        margin-bottom: 16px;
+    }
+
+    .theme-switcher,
+    .language-switcher {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+    }
+
+    .form-group {
+        gap: 4px;
+    }
+
+    .btn,
+    .btn-primary {
+        padding: 12px 0;
+        font-size: 17px;
+    }
+
+    input[type='text'],
+    input[type='password'],
+    input[type='email'] {
+        font-size: 15px;
+        padding: 10px 12px;
+    }
+
+    .login-link {
+        margin-top: 16px;
+        padding-top: 12px;
+        font-size: 12px;
+    }
+
+    .password-wrapper input {
+        padding-right: 32px;
+    }
+
+    .toggle-password {
+        width: 28px;
+        height: 28px;
+        right: 4px;
+    }
+
+    .toggle-password .material-symbols-outlined {
+        font-size: 16px;
+    }
+}
+
+/* For very small screens */
+@media (max-width: 360px) {
+    .login-container, .register-container {
+        padding: 4px 1vw;
+    }
+    h1 { font-size: 16px; }
+}

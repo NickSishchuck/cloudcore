@@ -8,5 +8,3 @@ namespace CloudCore.Services.Interfaces
         Task<bool> CanCreateTeamspaceAsync(int userId);
     }
 }
-
-

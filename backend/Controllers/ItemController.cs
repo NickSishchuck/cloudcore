@@ -1,14 +1,14 @@
-using CloudCore.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
-using CloudCore.Domain.Entities;
-using CloudCore.Contracts.Responses;
-using CloudCore.Contracts.Requests;
-using CloudCore.Mappers;
-using CloudCore.Common.QueryParameters;
+using System.Security.Claims;
 using CloudCore.Common.Errors;
+using CloudCore.Common.QueryParameters;
+using CloudCore.Contracts.Requests;
+using CloudCore.Contracts.Responses;
+using CloudCore.Domain.Entities;
+using CloudCore.Mappers;
+using CloudCore.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NaturalSort.Extension;
 using static CloudCore.Contracts.Responses.ItemResultResponses;
 
@@ -104,7 +104,7 @@ namespace CloudCore.Controllers
                 .Where(item => item != null)
                 .ToListAsync();
 
-            if(result.Count == 0)
+            if (result.Count == 0)
             {
                 return Ok(Enumerable.Empty<ItemResponse>());
             }

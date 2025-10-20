@@ -466,7 +466,7 @@ namespace CloudCore.Services.Implementations
                 }
                 _logger.LogInformation("Destination folder path: {Path}", destinationFolderPath);
 
-                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, actualTargetId, sourceFolderPath, destinationFolderPath, childItemsAsync);
+                var preparedItemsAsync = _itemManagerService.PrepareItemsForMoving(item, actualTargetId, destinationFolderPath, sourceFolderPath, childItemsAsync);
                 await _itemRepository.UpdateItemsInTransactionAsync(preparedItemsAsync);
 
                 var itemsForCount = _itemRepository.GetAllChildItemsAsync(userId, itemId).Prepend(item);

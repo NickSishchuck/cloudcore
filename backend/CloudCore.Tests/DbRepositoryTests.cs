@@ -81,7 +81,7 @@ namespace CloudCore.Tests
             await context.SaveChangesAsync();
         }
 
-        private Item CreateTestItem(int id, int userId, string name, string type = "file", int? parentId = null,bool isDeleted = false, long? fileSize = 1000, int? teamspace = null, DateTime? dateTime = null)
+        private Item CreateTestItem(int id, int userId, string name, string type = "file", int? parentId = null, bool isDeleted = false, long? fileSize = 1000, int? teamspace = null, DateTime? dateTime = null, DateTime? deletedAt = null)
         {
             return new Item
             {
@@ -95,7 +95,8 @@ namespace CloudCore.Tests
                 FileSize = fileSize,
                 FilePath = type == "file" ? $"/path/to/{name}" : null,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = dateTime ?? DateTime.UtcNow
+                UpdatedAt = dateTime ?? DateTime.UtcNow,
+                DeletedAt = deletedAt ?? DateTime.UtcNow
             };
         }
 
@@ -324,6 +325,27 @@ namespace CloudCore.Tests
         }
 
         [Fact]
+        public async Task GetItemsAsync_SortByModifiedDate_Ascending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "first.txt", "file", fileSize: 1000),
+                CreateTestItem(2, userId, "second.txt", "file", fileSize: 5000),
+                CreateTestItem(3, userId, "third.txt", "file", fileSize: 1000)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "modified", "asc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("third.txt", itemList[2].Name);
+            Assert.Equal("second.txt", itemList[1].Name);
+            Assert.Equal("first.txt", itemList[0].Name);
+        }
+
+        [Fact]
         public async Task GetItemsAsync_SortByModifiedDate_Descending()
         {
             // Arrange
@@ -343,6 +365,49 @@ namespace CloudCore.Tests
             Assert.Equal("second.txt", itemList[1].Name);
             Assert.Equal("first.txt", itemList[2].Name);
         }
+
+        [Fact]
+        public async Task GetItemsAsync_SortByCreatedDate_Ascending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "first.txt", "file", fileSize: 1000),
+                CreateTestItem(2, userId, "second.txt", "file", fileSize: 5000),
+                CreateTestItem(3, userId, "third.txt", "file", fileSize: 1000)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "createdat", "asc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("third.txt", itemList[2].Name);
+            Assert.Equal("second.txt", itemList[1].Name);
+            Assert.Equal("first.txt", itemList[0].Name);
+        }
+
+        [Fact]
+        public async Task GetItemsAsync_SortByCreatedDate_Descending()
+        {
+            // Arrange
+            int userId = 1;
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "first.txt", "file", fileSize: 1000),
+                CreateTestItem(2, userId, "second.txt", "file", fileSize: 5000),
+                CreateTestItem(3, userId, "third.txt", "file", fileSize: 1000)
+            );
+
+            // Act
+            var (items, totalCount) = await _repository.GetItemsAsync(userId, null, 1, 30, "createdat", "desc", false, null, null);
+
+            // Assert
+            var itemList = items.ToList();
+            Assert.Equal("third.txt", itemList[0].Name);
+            Assert.Equal("second.txt", itemList[1].Name);
+            Assert.Equal("first.txt", itemList[2].Name);
+        }
+
 
         [Fact]
         public async Task GetItemsAsync_FoldersAppearFirst()
@@ -734,6 +799,39 @@ namespace CloudCore.Tests
 
         #endregion
 
+        #region GetDeletedItemAsync Tests
+
+        [Fact]
+        public async Task GetDeletedItemAsync_ItemExists_ReturnsItem()
+        {
+            // Arrange
+            int userId = 1;
+            int itemId = 5;
+            await SeedDataAsync(
+                CreateTestItem(itemId, userId, "deleted.txt", "file", isDeleted: true)
+            );
+            // Act
+            var result = await _repository.GetDeletedItemAsync(userId, itemId);
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(itemId, result.Id);
+            Assert.True(result.IsDeleted);
+        }
+
+        [Fact]
+        public async Task GetDeletedItemAsync_ItemNotFound_ReturnsNull()
+        {
+            // Arrange
+            int userId = 1;
+            int itemId = 999;
+            // Act
+            var result = await _repository.GetDeletedItemAsync(userId, itemId);
+            // Assert
+            Assert.Null(result);
+        }
+
+        #endregion
+
         #region GetItemsByIdsForUserAsync Tests
 
         [Fact]
@@ -806,6 +904,80 @@ namespace CloudCore.Tests
 
         #endregion
 
+        #region GetDeletedItemsByIdsAsync Tests
+        [Fact]
+        public async Task GetDeletedItemsByIdsAsync_ReturnsOnlyDeletedItems()
+        {
+            // Arrange
+            int userId = 1;
+            var itemIds = new List<int> { 1, 2, 3 };
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "deleted1.txt", "file", isDeleted: true),
+                CreateTestItem(2, userId, "active.txt", "file", isDeleted: false),
+                CreateTestItem(3, userId, "deleted2.txt", "file", isDeleted: true)
+            );
+            // Act
+            var results = await _repository.GetDeletedItemsByIdsAsync(itemIds);
+            // Assert
+            Assert.Equal(2, results.ToList().Count);
+            Assert.All(results, item => Assert.True(item.IsDeleted));
+        }
+
+        [Fact]
+        public async Task GetDeletedItemsByIdsAsync_ReturnsEmptyEnumerableIfPassingValueIsEmpty()
+        {
+            // Arrange
+            int userId = 1;
+            var itemIds = new List<int> { };
+
+            // Act
+            var results = await _repository.GetDeletedItemsByIdsAsync(itemIds);
+            // Assert
+            Assert.Equal(Enumerable.Empty<Item>(), results);
+        }
+        #endregion
+
+
+        #region IsNameUniqueAsync Tests
+
+        [Fact]
+        public async Task IsNameUniqueAsync_NameIsUnique_ReturnsTrue()
+        {
+            // Arrange
+            int userId = 1;
+            int parentId = 10;
+            string itemName = "unique.txt";
+            string itemType = "file";
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "existing.txt", itemType, parentId)
+            );
+            // Act
+            var result = await _repository.IsNameUniqueAsync(itemName, userId, itemType, parentId);
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task IsNameUniqueAsync_NameIsUnique_ReturnsFalse()
+        {
+            // Arrange
+            int userId = 1;
+            int parentId = 10;
+            string itemName = "existing.txt";
+            string itemType = "file";
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "existing.txt", itemType, parentId)
+            );
+            // Act
+            var result = await _repository.IsNameUniqueAsync(itemName, userId, itemType, parentId);
+            // Assert
+            Assert.False(result);
+        }
+
+        #endregion
+
         #region ItemExistsAsync Tests
 
         [Fact]
@@ -821,6 +993,24 @@ namespace CloudCore.Tests
 
             // Act
             var result = await _repository.ItemExistsAsync(itemId, userId, null);
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task ItemExistsAsync_ItemExistsWithType_ReturnsTrue()
+        {
+            // Arrange
+            int userId = 1;
+            int itemId = 5;
+
+            await SeedDataAsync(
+                CreateTestItem(itemId, userId, "test.txt", "file")
+            );
+
+            // Act
+            var result = await _repository.ItemExistsAsync(itemId, userId, "file");
 
             // Assert
             Assert.True(result);
@@ -992,6 +1182,176 @@ namespace CloudCore.Tests
 
         #endregion
 
+        #region GetExpiredItemIdsAsync Tests
+        [Fact]
+        public async Task GetExpiredItemIdsAsync_ReturnsExpiredItemIds()
+        {
+            // Arrange
+            int userId = 1;
+            var thresholdDate = DateTime.UtcNow;
+            var oldDate = thresholdDate.AddDays(-5);
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "ExpiredItem1", "folder", null, isDeleted: true, deletedAt: oldDate),
+                CreateTestItem(2, userId, "ExpiredItem2", "folder", null, isDeleted: true, deletedAt: oldDate.AddDays(-1)),
+                CreateTestItem(3, userId, "RecentItem", "folder", null, isDeleted: true, deletedAt: thresholdDate.AddDays(1)),
+                CreateTestItem(4, userId, "NotDeletedItem", "folder", null, isDeleted: false)
+            );
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains(1, result);
+            Assert.Contains(2, result);
+            Assert.DoesNotContain(3, result);
+            Assert.DoesNotContain(4, result);
+        }
+
+        [Fact]
+        public async Task GetExpiredItemIdsAsync_ReturnsEmptyList_WhenNoExpiredItems()
+        {
+            // Arrange
+            int userId = 1;
+            var thresholdDate = DateTime.UtcNow;
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "RecentItem", "folder", null, isDeleted: true, deletedAt: thresholdDate.AddDays(1)),
+                CreateTestItem(2, userId, "NotDeletedItem", "folder", null, isDeleted: false)
+            );
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetExpiredItemIdsAsync_ReturnsOnlyDeletedItems()
+        {
+            // Arrange
+            int userId = 1;
+            var thresholdDate = DateTime.UtcNow;
+            var oldDate = thresholdDate.AddDays(-5);
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "DeletedExpired", "folder", null, isDeleted: true, deletedAt: oldDate),
+                CreateTestItem(2, userId, "NotDeletedExpired", "folder", null, isDeleted: false, deletedAt: oldDate)
+            );
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains(1, result);
+            Assert.DoesNotContain(2, result);
+        }
+
+        [Fact]
+        public async Task GetExpiredItemIdsAsync_IncludesItemsDeletedExactlyAtThreshold()
+        {
+            // Arrange
+            int userId = 1;
+            var thresholdDate = new DateTime(2025, 10, 1, 12, 0, 0, DateTimeKind.Utc);
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "ExactThreshold", "folder", null, isDeleted: true, deletedAt: thresholdDate),
+                CreateTestItem(2, userId, "BeforeThreshold", "folder", null, isDeleted: true, deletedAt: thresholdDate.AddMinutes(-1)),
+                CreateTestItem(3, userId, "AfterThreshold", "folder", null, isDeleted: true, deletedAt: thresholdDate.AddMinutes(1))
+            );
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains(1, result);
+            Assert.Contains(2, result);
+            Assert.DoesNotContain(3, result);
+        }
+
+        [Fact]
+        public async Task GetExpiredItemIdsAsync_WorksAcrossMultipleUsers()
+        {
+            // Arrange
+            var thresholdDate = DateTime.UtcNow;
+            var oldDate = thresholdDate.AddDays(-5);
+
+            await SeedDataAsync(
+                CreateTestItem(1, 1, "User1Expired", "folder", null, isDeleted: true, deletedAt: oldDate),
+                CreateTestItem(2, 2, "User2Expired", "folder", null, isDeleted: true, deletedAt: oldDate),
+                CreateTestItem(3, 3, "User3Recent", "folder", null, isDeleted: true, deletedAt: thresholdDate.AddDays(1))
+            );
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains(1, result);
+            Assert.Contains(2, result);
+            Assert.DoesNotContain(3, result);
+        }
+
+        [Fact]
+        public async Task GetExpiredItemIdsAsync_HandlesLargeNumberOfItems()
+        {
+            // Arrange
+            int userId = 1;
+            var thresholdDate = DateTime.UtcNow;
+            var oldDate = thresholdDate.AddDays(-10);
+
+            var items = new List<Item>();
+            for (int i = 1; i <= 100; i++)
+            {
+                items.Add(CreateTestItem(i, userId, $"Item{i}", "folder", null,
+                    isDeleted: true,
+                    deletedAt: i % 2 == 0 ? oldDate : thresholdDate.AddDays(1)));
+            }
+
+            await SeedDataAsync(items.ToArray());
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.Equal(50, result.Count); // Половина expired
+            Assert.All(result, id => Assert.True(id % 2 == 0));
+        }
+
+        [Theory]
+        [InlineData(-30)] // 30 дней назад
+        [InlineData(-7)]  // неделя назад
+        [InlineData(-1)]  // вчера
+        [InlineData(0)]   // сегодня
+        public async Task GetExpiredItemIdsAsync_WorksWithDifferentThresholds(int daysOffset)
+        {
+            // Arrange
+            int userId = 1;
+            var baseDate = new DateTime(2025, 10, 15, 12, 0, 0, DateTimeKind.Utc);
+            var thresholdDate = baseDate.AddDays(daysOffset);
+
+            await SeedDataAsync(
+                CreateTestItem(1, userId, "VeryOld", "folder", null, isDeleted: true, deletedAt: baseDate.AddDays(-31)),
+                CreateTestItem(2, userId, "Old", "folder", null, isDeleted: true, deletedAt: baseDate.AddDays(-8)),
+                CreateTestItem(3, userId, "Recent", "folder", null, isDeleted: true, deletedAt: baseDate.AddDays(-2)),
+                CreateTestItem(4, userId, "Today", "folder", null, isDeleted: true, deletedAt: baseDate)
+            );
+
+            // Act
+            var result = await _repository.GetExpiredItemIdsAsync(thresholdDate);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.All(result, id => Assert.InRange(id, 1, 4));
+        }
+
+
+        #endregion
+
         #region DeleteItemPermanentlyAsync Tests
 
         [Fact]
@@ -1011,6 +1371,7 @@ namespace CloudCore.Tests
         }
 
         #endregion
+
 
         #region GetTeamspaceLimitsAsync Tests
 
@@ -1039,7 +1400,7 @@ namespace CloudCore.Tests
             int userId = 1;
             string userName = "premium_user";
             string userEmail = "premium_user_email@gmail.com";
-            await SeedUsersAsync(new User {Id = userId, Username = userName, Email = userEmail, SubscriptionPlan = "premium" });
+            await SeedUsersAsync(new User { Id = userId, Username = userName, Email = userEmail, SubscriptionPlan = "premium" });
 
             // Act
             var limits = await _repository.GetTeamspaceLimitsAsync(userId);
@@ -1083,4 +1444,3 @@ namespace CloudCore.Tests
         #endregion
     }
 }
-
