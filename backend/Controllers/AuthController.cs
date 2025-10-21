@@ -68,10 +68,12 @@ public class AuthController : ControllerBase
     /// </summary>
     /// <param name="token">JWT token from email link</param>
     /// <returns>Result of verification</returns>
-    [HttpGet("verify-email")]
-    public async Task<ActionResult> VerifyEmail([FromQuery] string token)
+    [HttpPost("verify-email")]
+    public async Task<ActionResult> VerifyEmail([FromBody] TokenRequest token)
     {
-        var jwtToken = await _authService.ConfirmEmailAndGenerateTokenAsync(token);
+        _logger.LogInformation("Email verification attempt.");
+        _logger.LogInformation($"Verification token: {token.Token}");
+        var jwtToken = await _authService.ConfirmEmailAndGenerateTokenAsync(token.Token);
         if (jwtToken == null)
         {
             _logger.LogWarning("Email verification failed or token invalid.");

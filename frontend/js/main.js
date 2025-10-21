@@ -3512,8 +3512,7 @@ class CloudCoreDrive {
                 }
 
                 try {
-                    const targetName =
-                        folderId === null ? this.i18n.t('myDrive') : breadcrumbElement.textContent.trim();
+                    const targetName = folderId === null ? this.i18n.t('myDrive') : breadcrumbElement.textContent.trim();
 
                     console.log(`Moving ${this.draggedItems.length} item(s) to:`, targetName);
 

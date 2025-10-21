@@ -61,6 +61,16 @@ export class ApiClient {
         return this.handleResponse(response);
     }
 
+    async verifyEmailToken(token) {
+        const response = await fetch(`${this.baseUrl}/auth/verify-email`, {
+            method: 'POST',
+            headers: this.getHeaders(false),
+            body: JSON.stringify({ token })
+        });
+
+        return this.handleResponse(response);
+    }
+
     // File/Folder endpoints
     async getFiles(userId, params = {}) {
         const queryString = new URLSearchParams(params).toString();

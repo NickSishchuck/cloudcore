@@ -104,13 +104,11 @@ namespace CloudCore
                 var emailHost = Environment.GetEnvironmentVariable("Email_Host");
                 var emailPort = int.Parse(Environment.GetEnvironmentVariable("Email_Port"));
 
-                Console.WriteLine($"Sender emal {senderEmail}, sender name {senderName}, email host {emailHost}, email port {emailPort}");
+                Console.WriteLine($"Email Config - Sender Email: {senderEmail}, Sender Name: {senderName} Host: {emailHost}, Port: {emailPort}");
 
                 builder.Services
                     .AddFluentEmail(senderEmail, senderName)
                     .AddSmtpSender(emailHost, emailPort);
-
-
 
                 // Add JWT Authentication
                 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";

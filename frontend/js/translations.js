@@ -234,6 +234,14 @@ export const translations = {
         accountCreated: 'Account created! Welcome, {username}!',
         usernameHint: '3-50 latin letters or numbers',
         passwordHint: 'At least 6 characters. Use a strong, unique password',
+        emailVerificationRequired: 'Email verification required',
+        checkYourEmail: 'Please check your email and follow the link to activate your account.',
+        emailVerification: 'Email Verification',
+        checkingVerification: 'Checking verification...',
+        verificationSuccess: 'Your email has been successfully verified! You can now log in.',
+        vereficationTokenMissing: 'Verification token missing.',
+        verificationFailed: 'Email verification failed or token expired.',
+        goToLogin: 'Go to Login',
 
         // ═══════════════════════════════════════════════════════════════
         // VALIDATION ERRORS
@@ -552,6 +560,14 @@ export const translations = {
         accountCreated: 'Акаунт створено! Вітаємо, {username}!',
         usernameHint: '3-50 латинських букв або цифр',
         passwordHint: 'Щонайменше 6 символів. Використовуйте надійний унікальний пароль',
+        emailVerificationRequired: 'Потрібна перевірка електронної пошти',
+        checkYourEmail: 'Будь ласка, перевірте свою пошту та перейдіть за посиланням для активації вашого акаунту.',
+        emailVerification: 'Перевірка електронної пошти',
+        checkingVerification: 'Перевірка...',
+        verificationSuccess: 'Ваша електронна пошта успішно підтверджена! Тепер ви можете увійти.',
+        vereficationTokenMissing: 'Відсутній токен підтвердження.',
+        verificationFailed: 'Перевірка електронної пошти не вдалася або термін дії токена минув.',
+        goToLogin: 'Перейти до входу',
 
         // ═══════════════════════════════════════════════════════════════
         // VALIDATION ERRORS

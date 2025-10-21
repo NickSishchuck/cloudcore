@@ -66,7 +66,7 @@ public class AuthService : IAuthService
         try
         {
             var emailToken = GenerateEmailVerificationToken(user);
-            var verifyUrl = $"http://localhost:5000/auth/verify-email?token={emailToken}";
+            var verifyUrl = $"https://localhost:3443/verify-email.html?token={emailToken}";
 
             var contentRoot = AppContext.BaseDirectory;
             var templatePath = Path.Combine(contentRoot, "EmailTemplates", "VerifyEmail.cshtml");
@@ -144,7 +144,7 @@ public class AuthService : IAuthService
             issuer: "CloudCore",
             audience: "CloudCore",
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(10),
+            expires: DateTime.UtcNow.AddDays(10),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

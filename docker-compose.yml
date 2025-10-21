@@ -27,9 +27,9 @@ services:
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD:-defaultpassword}
       - FileStorage__BasePath=/app/storage
-      - Email_Host=papercut
-      - Email_Port=2525
-      - Email_SenderEmail=papercut@test.com
+      - Email_Host=mailhog
+      - Email_Port=1025
+      - Email_SenderEmail=mailhog@test.com
       - Email_Sender=CloudCore
     volumes:
       - ./backend/storage:/app/storage
@@ -60,12 +60,12 @@ services:
     networks:
       - app-network
 
-  papercut:
-    image: changemakerstudiosus/papercut-smtp:latest
-    container_name: papercut
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
     ports:
-      - "8080:8080"
-      - "2525:2525"
+      - "8025:8025"
+      - "1025:1025"
     networks:
       - app-network
 
