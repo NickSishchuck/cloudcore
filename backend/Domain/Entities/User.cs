@@ -14,6 +14,8 @@ public partial class User
 
     public string? PasswordHash { get; set; }
 
+    public bool? IsEmailVerified { get; set; }
+
     public string? SubscriptionPlan { get; set; }
 
     public string? SubscriptionStatus { get; set; }

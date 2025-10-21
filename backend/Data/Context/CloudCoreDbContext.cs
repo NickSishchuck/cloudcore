@@ -175,6 +175,9 @@ public partial class CloudCoreDbContext : DbContext
             entity.Property(e => e.Email)
                 .HasMaxLength(100)
                 .HasColumnName("email");
+            entity.Property(e => e.IsEmailVerified)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("is_email_verified");
             entity.Property(e => e.PasswordHash)
                 .HasMaxLength(255)
                 .HasColumnName("password_hash");

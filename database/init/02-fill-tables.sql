@@ -4,9 +4,9 @@ USE CloudCoreDB;
 --     ('admin', 'admin@cloudcore.com', 'password123'),
 --     ('user', 'user@cloudcore.com', 'password123');
 --
-INSERT INTO users (username, email, password_hash, subscription_plan, subscription_status, personal_storage_used_mb, teamspaces_owned) VALUES
-    ('admin', 'admin@cloudcore.com', 'password123', 'enterprise', 'active', 0, 0),
-    ('user', 'user@cloudcore.com', 'password123', 'premium', 'active', 0, 0);
+INSERT INTO users (username, email, password_hash, is_email_verified, subscription_plan, subscription_status, personal_storage_used_mb, teamspaces_owned) VALUES
+    ('admin', 'admin@cloudcore.com', 'password123', true, 'enterprise', 'active', 0, 0),
+    ('user', 'user@cloudcore.com', 'password123', true, 'premium', 'active', 0, 0);
 
 INSERT INTO items (name, type, parent_id, user_id, file_path, file_size, mime_type, is_deleted) VALUES
     ('test.html', 'file', NULL, 1, 'test.html', 138, 'text/html', FALSE);

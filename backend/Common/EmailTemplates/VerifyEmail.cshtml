@@ -1,0 +1,62 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body {
+    margin: 0; padding: 0; background-color: #ffffff; color: #202124;
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  }
+  .container {
+    max-width: 600px;
+    margin: 40px auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15);
+    padding: 30px;
+  }
+  h1 {
+    color: #4285f4;
+    font-weight: 600;
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+  p {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #202124;
+  }
+  a.button {
+    display: inline-block;
+    background-color: #4285f4;
+    color: #ffffff !important;
+    font-weight: 600;
+    border-radius: 24px;
+    padding: 14px 32px;
+    text-decoration: none;
+    margin-top: 24px;
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    transition: background-color 0.3s ease;
+  }
+  a.button:hover {
+    background-color: #3367d6;
+  }
+  .footer {
+    margin-top: 40px;
+    font-size: 14px;
+    color: #5f6368;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to CloudCore!</h1>
+    <p>To verify your email, please click the button below:</p>
+    <a href="{{VerifyUrl}}" class="button">Verify Email</a>
+    <p>If you did not create an account, you can safely ignore this email.</p>
+    <div class="footer">&copy; 2025 CloudCore. All rights reserved.</div>
+  </div>
+</body>
+</html>

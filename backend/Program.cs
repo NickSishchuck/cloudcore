@@ -64,7 +64,6 @@ namespace CloudCore
                 var connectionString = $"Server={host};Port={port};Database={database};Uid={user};Pwd={password};";
 
 
-
                 // Create web
                 var builder = WebApplication.CreateBuilder(args);
 
@@ -100,6 +99,16 @@ namespace CloudCore
                 builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
                 builder.Services.AddScoped<UserAuthorizationFilter>();
 
+                var senderEmail = Environment.GetEnvironmentVariable("Email_SenderEmail");
+                var senderName = Environment.GetEnvironmentVariable("Email_Sender");
+                var emailHost = Environment.GetEnvironmentVariable("Email_Host");
+                var emailPort = int.Parse(Environment.GetEnvironmentVariable("Email_Port"));
+
+                Console.WriteLine($"Sender emal {senderEmail}, sender name {senderName}, email host {emailHost}, email port {emailPort}");
+
+                builder.Services
+                    .AddFluentEmail(senderEmail, senderName)
+                    .AddSmtpSender(emailHost, emailPort);
 
 
 

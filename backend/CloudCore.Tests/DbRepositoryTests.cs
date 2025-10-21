@@ -927,7 +927,6 @@ namespace CloudCore.Tests
         public async Task GetDeletedItemsByIdsAsync_ReturnsEmptyEnumerableIfPassingValueIsEmpty()
         {
             // Arrange
-            int userId = 1;
             var itemIds = new List<int> { };
 
             // Act

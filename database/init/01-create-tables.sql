@@ -7,6 +7,7 @@ CREATE TABLE users (
   username VARCHAR(50) NOT NULL UNIQUE,
   email VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255),
+  is_email_verified BOOLEAN DEFAULT FALSE,
 
     -- subscription state
   subscription_plan ENUM('free', 'premium', 'enterprise') DEFAULT 'free',

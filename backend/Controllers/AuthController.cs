@@ -62,4 +62,25 @@ public class AuthController : ControllerBase
         _logger.LogInformation($"User {request.Username} (ID: {result.UserId}) registered successfully.");
         return Ok(result);
     }
+
+    /// <summary>
+    /// Email verification endpoint
+    /// </summary>
+    /// <param name="token">JWT token from email link</param>
+    /// <returns>Result of verification</returns>
+    [HttpGet("verify-email")]
+    public async Task<ActionResult> VerifyEmail([FromQuery] string token)
+    {
+        var jwtToken = await _authService.ConfirmEmailAndGenerateTokenAsync(token);
+        if (jwtToken == null)
+        {
+            _logger.LogWarning("Email verification failed or token invalid.");
+            return BadRequest(ApiResponse.Error("Invalid or expired token", "INVALID_TOKEN"));
+        }
+
+        return Ok(new AuthResponse
+        {
+            Token = jwtToken
+        });
+    }
 }
