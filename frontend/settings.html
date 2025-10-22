@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <script>
+            (function () {
+                const savedTheme = localStorage.getItem('cloudcore-theme');
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
+            })();
+        </script>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Settings</title>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+        <link rel="stylesheet" href="css/settings.css" />
+        <script type="module" src="js/settings.js"></script>
+    </head>
+    <body>
+        <div class="header">
+            <button id="backBtn" aria-label="Back">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+
+            <div class="header-controls">
+                <button class="language-btn" id="languageBtn" aria-label="Change Language" type="button">
+                    <span class="material-symbols-outlined" aria-hidden="true">language</span>
+                    <span class="language-code">EN</span>
+                </button>
+
+                <button id="themeToggleBtn" class="theme-btn" aria-label="Toggle Theme" type="button">
+                    <span class="material-symbols-outlined theme-icon" aria-hidden="true">light_mode</span>
+                </button>
+            </div>
+
+            <h1 data-i18n="settings">Settings</h1>
+        </div>
+
+        <div class="settings-container" role="main">
+            <div class="sidebar-wrapper">
+                <nav class="sidebar" role="tablist" aria-label="Settings Categories">
+                    <button
+                        class="sidebar-item active"
+                        role="tab"
+                        aria-selected="true"
+                        aria-controls="profile-tab"
+                        id="tab-profile"
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true">person</span>
+                        <span data-i18n="profile">Profile</span>
+                    </button>
+                    <button
+                        class="sidebar-item"
+                        role="tab"
+                        aria-selected="false"
+                        aria-controls="subscription-tab"
+                        id="tab-subscription"
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true">subscriptions</span>
+                        <span data-i18n="subscription">Subscription</span>
+                    </button>
+                    <button
+                        class="sidebar-item"
+                        role="tab"
+                        aria-selected="false"
+                        aria-controls="security-tab"
+                        id="tab-security"
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true">security</span>
+                        <span data-i18n="security">Security</span>
+                    </button>
+                </nav>
+                <button class="logout-btn" id="logoutBtn" data-i18n="signOut">Sign Out</button>
+            </div>
+
+            <section id="profile-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-profile">
+                <div class="account-info" aria-label="Account Information">
+                    <h2 id="nicknameDisplay">Hello, NicknameUser!</h2>
+                    <p><span data-i18n="email">Email</span>: <strong id="emailDisplay">user@example.com</strong></p>
+                    <p>
+                        <span data-i18n="currentPlan">Current plan</span>: <strong id="currentPlan">Basic Plan</strong>
+                    </p>
+                    <p data-i18n="storageUsed">Storage used:</p>
+                    <div class="storage-bar" aria-label="Disk usage progress">
+                        <div class="storage-bar-fill" id="storageBarFill" style="width: 45%"></div>
+                    </div>
+                    <div class="storage-info" id="storageInfo">45 GB of 100 GB</div>
+                </div>
+            </section>
+
+            <section id="subscription-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-subscription">
+                <div class="plans-container" role="radiogroup" aria-label="Choose a plan">
+                    <!-- Free Plan (Current) -->
+                    <div
+                        tabindex="0"
+                        aria-checked="true"
+                        class="plan-card plan-card-current"
+                        data-plan="free"
+                        aria-label="Free plan"
+                    >
+                        <div class="plan-badge plan-badge-current" data-i18n="currentPlanBadge">Current</div>
+                        <div class="plan-header">
+                            <h3 class="plan-title">Free</h3>
+                            <div class="plan-price">
+                                <span class="price-amount" data-price-usd="0" data-price-uah="0">$0</span>
+                                <span class="price-period" data-i18n="perMonth">/month</span>
+                            </div>
+                        </div>
+                        <ul class="plan-features">
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_free_1">10GB personal</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_free_2">5GB teamspace</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_free_3">2 teamspaces</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_free_4">5 members</span>
+                            </li>
+                        </ul>
+                        <button class="plan-btn plan-btn-current" disabled>
+                            <span class="material-symbols-outlined">check_circle</span>
+                            <span data-i18n="currentPlanBtn">Current Plan</span>
+                        </button>
+                    </div>
+
+                    <!-- Premium Plan (Popular) -->
+                    <div
+                        tabindex="0"
+                        aria-checked="false"
+                        class="plan-card plan-card-popular"
+                        data-plan="premium"
+                        aria-label="Premium plan"
+                    >
+                        <div class="plan-badge plan-badge-popular" data-i18n="popularBadge">Popular</div>
+                        <div class="plan-header">
+                            <h3 class="plan-title">Premium</h3>
+                            <div class="plan-price">
+                                <span class="price-amount" data-price-usd="9.99" data-price-uah="399">$9.99</span>
+                                <span class="price-period" data-i18n="perMonth">/month</span>
+                            </div>
+                        </div>
+                        <ul class="plan-features">
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_premium_1">20GB personal</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_premium_2">50GB teamspace</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_premium_3">10 teamspaces</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_premium_4">25 members</span>
+                            </li>
+                        </ul>
+                        <button class="plan-btn plan-btn-upgrade">
+                            <span data-i18n="getStarted">Get Started</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    </div>
+
+                    <!-- Enterprise Plan -->
+                    <div
+                        tabindex="0"
+                        aria-checked="false"
+                        class="plan-card"
+                        data-plan="enterprise"
+                        aria-label="Enterprise plan"
+                    >
+                        <div class="plan-header">
+                            <h3 class="plan-title">Enterprise</h3>
+                            <div class="plan-price">
+                                <span class="price-amount" data-price-usd="29.99" data-price-uah="1199">$29.99</span>
+                                <span class="price-period" data-i18n="perMonth">/month</span>
+                            </div>
+                        </div>
+                        <ul class="plan-features">
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_enterprise_1">50GB personal</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_enterprise_2">500GB teamspace</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_enterprise_3">Unlimited teamspaces</span>
+                            </li>
+                            <li>
+                                <span class="material-symbols-outlined feature-icon">check_circle</span>
+                                <span data-i18n="plan_enterprise_4">100 members</span>
+                            </li>
+                        </ul>
+                        <button class="plan-btn plan-btn-upgrade">
+                            <span data-i18n="getStarted">Get Started</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="security-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-security">
+                <div style="display: flex; flex-direction: column; gap: 16px">
+                    <button type="button" class="modal-trigger btn" data-modal="modalEmail" data-i18n="changeEmail">
+                        Change Email
+                    </button>
+                    <button
+                        type="button"
+                        class="modal-trigger btn"
+                        data-modal="modalUsername"
+                        data-i18n="changeUsername"
+                    >
+                        Change Username
+                    </button>
+                    <button
+                        type="button"
+                        class="modal-trigger btn"
+                        data-modal="modalPassword"
+                        data-i18n="changePassword"
+                    >
+                        Change Password
+                    </button>
+                </div>
+            </section>
+        </div>
+    </body>
+</html>

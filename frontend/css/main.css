@@ -515,9 +515,6 @@ body {
 
 /* ==================== Header Buttons ==================== */
 /* Theme Switcher */
-.theme-switcher {
-    margin-right: 12px;
-}
 
 .theme-btn {
     display: flex;
@@ -542,7 +539,7 @@ body {
 .theme-btn:hover {
     background: var(--bg-hover);
     box-shadow: 0 2px 8px var(--shadow-sm);
-    transform: rotate(20deg) scale(1.05);
+    transform: rotate(20deg);
 }
 
 .theme-btn:hover .theme-icon {
@@ -551,7 +548,7 @@ body {
 }
 
 .theme-btn:active {
-    transform: rotate(20deg) scale(0.95);
+    transform: rotate(20deg);
 }
 
 [data-theme='dark'] .theme-btn:hover .theme-icon {
@@ -571,6 +568,7 @@ body {
     color: var(--text-secondary);
     cursor: pointer;
     font-size: 14px;
+    height: 40px;
     transition: all 0.3s ease;
     outline: none;
 }
@@ -638,6 +636,48 @@ body {
     filter: brightness(1.2);
 }
 
+
+.user-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s ease, box-shadow 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  outline: none;
+}
+
+.user-menu-btn .material-symbols-outlined,
+.user-menu-btn span {
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.user-menu-btn:hover {
+  background: var(--bg-hover);
+  box-shadow: 0 1px 3px var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.user-menu-btn:hover .material-symbols-outlined{
+  color: var(--color-blue);
+  transform: scale(1.1) rotate(20deg);
+}
+
+.user-menu-btn:active {
+  transform: scale(0.95);
+}
+
+[data-theme='dark'] .user-menu-btn:hover .material-symbols-outlined,
+[data-theme='dark'] .user-menu-btn:hover span {
+  color: var(--color-blue);
+  filter: brightness(1.2) drop-shadow(0 0 8px rgba(138, 180, 248, 0.6));
+}
 /* ==================== Sidebar ==================== */
 .sidebar {
     width: 256px;
@@ -1899,7 +1939,6 @@ body {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* Анимация иконки при наведении - ИСПРАВЛЕНО */
 .notification:hover .notification-icon {
     transform: scale(1.1) rotate(20deg);
 }
@@ -3450,4 +3489,3 @@ body {
 [data-theme='dark'] .error-retry-btn:hover {
     box-shadow: 0 4px 12px rgba(138, 180, 248, 0.4);
 }
-

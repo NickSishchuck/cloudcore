@@ -61,6 +61,30 @@ export class ApiClient {
         return this.handleResponse(response);
     }
 
+    async verifyEmailToken(token) {
+        const response = await fetch(`${this.baseUrl}/auth/verify-email`, {
+            method: 'POST',
+            headers: this.getHeaders(false),
+            body: JSON.stringify({ token })
+        });
+
+        return this.handleResponse(response);
+    }
+
+    async confirmEmailChange(token) {
+        const response = await fetch(`${this.baseUrl}/auth/confirm-email-change`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+
+        if (!response.ok) {
+            throw new Error('Email change confirmation failed');
+        }
+
+        return response.json();
+    }
+
     // File/Folder endpoints
     async getFiles(userId, params = {}) {
         const queryString = new URLSearchParams(params).toString();

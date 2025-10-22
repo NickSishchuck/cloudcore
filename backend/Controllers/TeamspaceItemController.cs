@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using CloudCore.Common.Errors;
 using CloudCore.Common.QueryParameters;
 using CloudCore.Contracts.Requests;
@@ -6,8 +8,6 @@ using CloudCore.Mappers;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 
 namespace CloudCore.Controllers
 {

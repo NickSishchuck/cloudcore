@@ -1,11 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using CloudCore.Common.Errors;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 
 namespace CloudCore.Controllers
 {
@@ -27,10 +27,6 @@ namespace CloudCore.Controllers
             _validationService = validationService;
             _logger = logger;
         }
-
-        /// <summary>
-        /// Gets the current user ID from JWT token
-        /// </summary>
 
         #region Teamspace Management
 

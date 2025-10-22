@@ -1,4 +1,6 @@
 
+using System.Security.Claims;
+using CloudCore.Common.Errors;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
@@ -57,9 +59,89 @@ public class AuthController : ControllerBase
         if (result == null)
         {
             _logger.LogWarning($"Failed register attempt for user: {request.Username}, (Email: {request.Email})");
-            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS")); 
+            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS"));
         }
         _logger.LogInformation($"User {request.Username} (ID: {result.UserId}) registered successfully.");
         return Ok(result);
     }
+
+    /// <summary>
+    /// Email verification endpoint
+    /// </summary>
+    /// <param name="token">JWT token from email link</param>
+    /// <returns>Result of verification</returns>
+    [HttpPost("verify-email")]
+    public async Task<ActionResult> VerifyEmail([FromBody] TokenRequest token)
+    {
+        _logger.LogInformation("Email verification attempt.");
+        _logger.LogInformation($"Verification token: {token.Token}");
+        var jwtToken = await _authService.ConfirmEmailAndGenerateTokenAsync(token.Token);
+        if (jwtToken == null)
+        {
+            _logger.LogWarning("Email verification failed or token invalid.");
+            return BadRequest(ApiResponse.Error("Invalid or expired token", "INVALID_TOKEN"));
+        }
+
+        return Ok(new AuthResponse
+        {
+            Token = jwtToken
+        });
+    }
+
+    [Authorize]
+    [HttpPost("{userId}/change-username")]
+    public async Task<ActionResult> ChangeUsername(int userId, [FromBody] ChangeUsernameRequest request)
+    {
+        var tokenUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (tokenUserId != userId)
+        {
+            return Forbid();
+        }
+        var success = await _authService.ChangeUsernameAsync(userId, request.NewUsername);
+        if (!success)
+            return BadRequest(ApiResponse.Error("Username already taken", ErrorCodes.USERNAME_EXISTS));
+
+        return Ok(ApiResponse.Ok("Username updated successfully"));
+    }
+
+    [Authorize]
+    [HttpPost("{userId}/change-password")]
+    public async Task<IActionResult> ChangePassword(int userId, [FromBody] ChangePasswordRequest request)
+    {
+        var tokenUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (tokenUserId != userId)
+        {
+            return Forbid();
+        }
+        var success = await _authService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+        if (!success)
+            return BadRequest(ApiResponse.Error("Invalid current password", "INVALID_PASSWORD"));
+        return Ok(ApiResponse.Ok("Password changed successfully"));
+    }
+
+    [Authorize]
+    [HttpPost("{userId}/request-email-change")]
+    public async Task<ActionResult> RequestEmailChange(int userId, [FromBody] ChangeEmailRequest request)
+    {
+        var tokenUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (tokenUserId != userId)
+            return Forbid();
+
+        var success = await _authService.SendEmailVerificationAsync(userId, request.NewEmail);
+        if (!success)
+            return BadRequest(ApiResponse.Error("Email already taken or invalid", ErrorCodes.EMAIL_EXISTS));
+
+        return Ok(ApiResponse.Ok("Verification email sent. Please confirm your new email address."));
+    }
+
+    [HttpPost("confirm-email-change")]
+    public async Task<ActionResult> ConfirmEmailChange([FromBody] TokenRequest token)
+    {
+        var success = await _authService.ConfirmEmailChangeAsync(token.Token);
+        if (!success)
+            return BadRequest(ApiResponse.Error("Invalid or expired token", "INVALID_TOKEN"));
+
+        return Ok(ApiResponse.Ok("Email successfully changed and verified."));
+    }
+
 }

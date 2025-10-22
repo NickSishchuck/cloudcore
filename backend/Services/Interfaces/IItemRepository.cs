@@ -27,6 +27,8 @@ namespace CloudCore.Services.Interfaces
         /// <param name="sortBy">The field to sort the items by (e.g., "name", "createdAt"). Defaults to "name".</param>
         /// <param name="sortDir">The sort direction ("asc" for ascending, "desc" for descending). Defaults to "asc".</param>
         /// <param name="IsTrashFolder">A flag indicating whether to fetch items from the trash (where IsDeleted is true).</param>
+        /// <param name="searchQuery">An optional search query to filter items by name.</param>
+        /// <param name="teamspaceId">An optional teamspace to filter items by it.</param>
         /// <returns>A Task that resolves to a PaginatedResponse containing the list of items and pagination metadata.</returns>
         Task<(IEnumerable<Item> Items, int TotalCount)> GetItemsAsync(int userId, int? parentId, int page, int pageSize, string? sortBy = "name", string? sortDir = "asc", bool IsTrashFolder = false, string? searchQuery = null, int? teamspaceId = null);
 
@@ -124,6 +126,7 @@ namespace CloudCore.Services.Interfaces
         /// Atomically updates multiple items in the database, committing all changes in a single transaction.
         /// </summary>
         /// <param name="items">The collection of items to be updated.</param>
+        /// <param name="batchSize">The number of items to process in each batch within the transaction.</param>
         Task UpdateItemsInTransactionAsync(IAsyncEnumerable<Item> items, int batchSize = 500);
 
         /// <summary>

@@ -44,7 +44,7 @@ namespace CloudCore.Tests
 
             // Assert
             Assert.Equal(0, result);
-            _mockItemRepository.Verify(x => x.GetDeletedItemsByIdsAsync(It.IsAny<List<int>>()),Times.Never);
+            _mockItemRepository.Verify(x => x.GetDeletedItemsByIdsAsync(It.IsAny<List<int>>()), Times.Never);
         }
 
         [Fact]

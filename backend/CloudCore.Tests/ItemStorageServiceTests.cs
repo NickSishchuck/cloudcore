@@ -18,7 +18,7 @@ using Xunit;
 namespace CloudCore.Tests
 {
 
-    public class ItemStorageServiceTests
+    public class ItemStorageServiceTests : IDisposable
     {
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<ILogger<ItemStorageService>> _mockLogger;

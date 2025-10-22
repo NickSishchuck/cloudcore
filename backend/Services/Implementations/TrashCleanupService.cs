@@ -24,7 +24,6 @@ namespace CloudCore.Services.Implementations
         }
 
 
-
         public async Task<int> CleanupExpiredItemsAsync()
         {
             _logger.LogInformation("Starting trash cleanup job for items older than {RetentionDays} days.", -RETENTION_DAYS);

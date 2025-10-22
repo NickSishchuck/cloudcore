@@ -8,12 +8,38 @@ class AuthManager {
         this.checkExistingAuth();
     }
 
+    parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+                atob(base64)
+                    .split('')
+                    .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join('')
+            );
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return null;
+        }
+    }
+
     checkExistingAuth() {
         const token = localStorage.getItem('cloudcore_token');
         if (token) {
-            console.log('User already logged in, redirecting...');
-            window.location.href = 'index.html';
-            return true;
+            const payload = this.parseJwt(token);
+            if (payload) {
+                if (payload.isEmailVerified) {
+                    console.log('User email verified, redirecting...');
+                    window.location.href = 'index.html';
+                    return true;
+                } else {
+                    console.log('User email not verified.');
+                    return false;
+                }
+            } else {
+                localStorage.removeItem('cloudcore_token');
+            }
         }
         return false;
     }
@@ -62,39 +88,40 @@ class AuthManager {
 
         try {
             const data = await this.api.login(username, password);
-            
+
             // Store authentication data
             this.api.setAuthToken(data.token);
-            localStorage.setItem('cloudcore_user', JSON.stringify({
-                id: data.userId,
-                username: data.username,
-                email: data.email
-            }));
+            localStorage.setItem(
+                'cloudcore_user',
+                JSON.stringify({
+                    id: data.userId,
+                    username: data.username,
+                    email: data.email
+                })
+            );
 
             console.log('🎉 Login successful!');
-            
-            const welcomeMsg = this.i18n.t('welcomeBack')
-                .replace('{username}', data.username);
+
+            const welcomeMsg = this.i18n.t('welcomeBack').replace('{username}', data.username);
             this.showSuccess(welcomeMsg);
 
             // Redirect after 1 second
             setTimeout(() => {
                 window.location.href = 'index.html';
             }, 1000);
-
         } catch (error) {
             console.error('Login error:', error);
-            
+
             let errorMessage = this.i18n.t('signInFailed');
             if (error.message.toLowerCase().includes('invalid')) {
                 errorMessage = this.i18n.t('invalidCredentials');
             } else if (error.message.toLowerCase().includes('unauthorized')) {
                 errorMessage = this.i18n.t('invalidCredentials');
             } else if (error.message) {
-                errorMessage = error.message;
+                errorMessage = this.i18n.t('signInFailed');;
             }
-        
-        this.showError(errorMessage);
+
+            this.showError(errorMessage);
         } finally {
             button.disabled = false;
             button.textContent = this.i18n.t('signIn');
@@ -114,34 +141,18 @@ class AuthManager {
 
         try {
             const data = await this.api.register(username, email, password);
-            
-            // Store authentication data
-            this.api.setAuthToken(data.token);
-            localStorage.setItem('cloudcore_user', JSON.stringify({
-                id: data.userId,
-                username: data.username,
-                email: data.email
-            }));
 
             console.log('🎉 Registration successful!');
-            
-            const successMsg = this.i18n.t('accountCreated')
-                .replace('{username}', data.username);
-            this.showSuccess(successMsg);
 
-            // Redirect after 2 seconds
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 2000);
-
+            this.showEmailVerificationModal();
         } catch (error) {
             console.error('Registration error:', error);
-            
+
             let errorMessage = this.i18n.t('registrationFailed');
             if (error.message) {
                 errorMessage = error.message;
             }
-            
+
             this.showError(errorMessage);
         } finally {
             button.disabled = false;
@@ -152,7 +163,7 @@ class AuthManager {
     setupThemeSwitcher() {
         const themeBtn = document.getElementById('themeBtn');
         const themeIcon = document.querySelector('.theme-icon');
-        
+
         if (themeBtn) {
             // Set initial icon based on current theme
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -164,15 +175,15 @@ class AuthManager {
                 console.log('Theme switch clicked');
                 const currentTheme = document.documentElement.getAttribute('data-theme');
                 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                
+
                 document.documentElement.setAttribute('data-theme', newTheme);
                 localStorage.setItem('cloudcore-theme', newTheme);
-                
+
                 // Update icon
                 if (themeIcon) {
                     themeIcon.textContent = newTheme === 'dark' ? 'light_mode' : 'dark_mode';
                 }
-                
+
                 console.log('Theme switched to:', newTheme);
             });
         }
@@ -190,16 +201,16 @@ class AuthManager {
     }
 
     setupPasswordVisibilityToggles() {
-        document.querySelectorAll('.toggle-password').forEach(button => {
-        button.addEventListener('click', function() {
+        document.querySelectorAll('.toggle-password').forEach((button) => {
+            button.addEventListener('click', function () {
                 // Find the input field (previous sibling)
                 const wrapper = this.parentElement;
                 const input = wrapper.querySelector('input');
                 const icon = this.querySelector('.material-symbols-outlined');
-                
+
                 // Add animation class
                 this.classList.add('changing');
-                
+
                 // Toggle password visibility
                 if (input.type === 'password') {
                     input.type = 'text';
@@ -210,12 +221,12 @@ class AuthManager {
                     icon.textContent = 'visibility_off';
                     this.setAttribute('aria-label', 'Show password');
                 }
-                
+
                 // Remove animation class after transition
                 setTimeout(() => {
                     this.classList.remove('changing');
                 }, 150);
-                
+
                 // Keep focus on input
                 input.focus();
             });
@@ -237,17 +248,16 @@ class AuthManager {
 
         document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const button = document.getElementById('loginBtn');
-            
+
             await this.handleLogin(username, password, button);
         });
     }
 
     initializeRegisterPage() {
-        
         this.setupPasswordVisibilityToggles();
         this.setupThemeSwitcher();
         this.i18n.updateUI();
@@ -261,7 +271,7 @@ class AuthManager {
         }
 
         // Real-time password confirmation validation
-        document.getElementById('confirmPassword')?.addEventListener('input', function() {
+        document.getElementById('confirmPassword')?.addEventListener('input', function () {
             const password = document.getElementById('password').value;
             const confirmPassword = this.value;
 
@@ -274,15 +284,22 @@ class AuthManager {
 
         document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const button = document.getElementById('registerBtn');
-            
+
             await this.handleRegister(username, email, password, confirmPassword, button);
         });
+    }
+
+    showEmailVerificationModal() {
+        const modal = document.getElementById('emailVerificationModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
     }
 }
 
@@ -304,4 +321,20 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (document.getElementById('registerForm')) {
         initRegister();
     }
+
+    const modal = document.getElementById('emailVerificationModal');
+    const closeBtn = document.getElementById('emailVerificationCloseBtn');
+    const okBtn = document.getElementById('modalOkBtn');
+
+    if (closeBtn) closeBtn.onclick = () => (modal.style.display = 'none');
+    if (okBtn)
+        okBtn.onclick = () => {
+            modal.style.display = 'none';
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 500);
+        };
+    window.onclick = (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    };
 });

@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 using CloudCore.Common.Models;
 using CloudCore.Contracts.Responses;
 using CloudCore.Data.Context;
@@ -6,9 +7,8 @@ using CloudCore.Domain.Entities;
 using CloudCore.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
-using System.Linq;
-using Sprache;
 using NaturalSort.Extension;
+using Sprache;
 
 namespace CloudCore.Services.Implementations
 {
@@ -28,11 +28,11 @@ namespace CloudCore.Services.Implementations
             var context = _dbContextFactory.CreateDbContext();
             try
             {
-            var userIdParam = new MySqlParameter("@UserId", userId);
-            var parentIdParam = new MySqlParameter("@ParentId", parentId);
-            var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
+                var userIdParam = new MySqlParameter("@UserId", userId);
+                var parentIdParam = new MySqlParameter("@ParentId", parentId);
+                var maxDepthParam = new MySqlParameter("@MaxDepth", maxDepth);
 
-            var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted, 1 as level
+                var sql = @" WITH RECURSIVE ItemsHierarchy AS (SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted, 1 as level
                 FROM items
                 WHERE user_id = @UserId AND parent_id = @ParentId
                 UNION ALL
@@ -45,14 +45,14 @@ namespace CloudCore.Services.Implementations
                 SELECT id, name, type, parent_id, user_id, teamspace_id, file_path, file_size, mime_type, created_at, updated_at, deleted_at, access_level, is_deleted
                 FROM ItemsHierarchy 
                 ORDER BY Level, Type DESC, Name;"
-            ;
+                ;
 
-            await foreach (var item in context.Items.FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
-                                                    .AsNoTracking()
-                                                    .AsAsyncEnumerable())
-            {
+                await foreach (var item in context.Items.FromSqlRaw(sql, userIdParam, parentIdParam, maxDepthParam)
+                                                        .AsNoTracking()
+                                                        .AsAsyncEnumerable())
+                {
                     yield return item;
-            }
+                }
 
             }
             finally
@@ -69,7 +69,7 @@ namespace CloudCore.Services.Implementations
                 .AsNoTracking()
                 .Where(i => i.UserId == userId && i.ParentId == parentId);
 
-            if(!string.IsNullOrEmpty(itemType))
+            if (!string.IsNullOrEmpty(itemType))
             {
                 query = query.Where(i => i.Type == itemType);
             }
@@ -137,31 +137,31 @@ namespace CloudCore.Services.Implementations
             {
                 case "size":
                 case "filesize":
-                    orderedItems = desc
-                        ? orderedItems.ThenByDescending(i => i.FileSize ?? 0)
-                        : orderedItems.ThenBy(i => i.FileSize ?? 0);
-                    break;
+                orderedItems = desc
+                    ? orderedItems.ThenByDescending(i => i.FileSize ?? 0)
+                    : orderedItems.ThenBy(i => i.FileSize ?? 0);
+                break;
 
                 case "modified":
                 case "updatedat":
-                    orderedItems = desc
-                        ? orderedItems.ThenByDescending(i => i.UpdatedAt)
-                        : orderedItems.ThenBy(i => i.UpdatedAt);
-                    break;
+                orderedItems = desc
+                    ? orderedItems.ThenByDescending(i => i.UpdatedAt)
+                    : orderedItems.ThenBy(i => i.UpdatedAt);
+                break;
 
                 case "created":
                 case "createdat":
-                    orderedItems = desc
-                        ? orderedItems.ThenByDescending(i => i.CreatedAt)
-                        : orderedItems.ThenBy(i => i.CreatedAt);
-                    break;
+                orderedItems = desc
+                    ? orderedItems.ThenByDescending(i => i.CreatedAt)
+                    : orderedItems.ThenBy(i => i.CreatedAt);
+                break;
 
                 case "name":
                 default:
-                    orderedItems = desc
-                        ? orderedItems.ThenByDescending(i => i.Name, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
-                        : orderedItems.ThenBy(i => i.Name, StringComparison.OrdinalIgnoreCase.WithNaturalSort());
-                    break;
+                orderedItems = desc
+                    ? orderedItems.ThenByDescending(i => i.Name, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
+                    : orderedItems.ThenBy(i => i.Name, StringComparison.OrdinalIgnoreCase.WithNaturalSort());
+                break;
             }
 
 
@@ -449,7 +449,7 @@ namespace CloudCore.Services.Implementations
             _logger.LogInformation("Starting transaction to add ItemName={ItemName}.", item.Name);
             try
             {
-                context.Update(item);
+                context.Add(item);
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 _logger.LogInformation("Transaction committed successfully. Item added.");
@@ -618,7 +618,7 @@ namespace CloudCore.Services.Implementations
         //     if (userId == null)
         //         return false;
         //
-        //     //TODO: 
+        //     //TODO:
         // }
 
         public async Task<TeamspaceLimits> GetTeamspaceLimitsAsync(int userId)

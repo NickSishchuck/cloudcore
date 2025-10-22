@@ -1,6 +1,7 @@
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
+using FluentEmail.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CloudCore.Services.Interfaces;
@@ -45,12 +46,16 @@ public interface IAuthService
     /// <returns>True if password is correct, false otherwise</returns>
     bool VerifyPassword(string password, string hash);
 
-    /// <summary>
-    /// Generates a JWT token for authenticated user
-    /// </summary>
-    /// <param name="user">User for whom to create the token</param>
-    /// <returns>JWT token string containing user claims</returns>
-    string GenerateJwtToken(User user);
+    Task<string?> ConfirmEmailAndGenerateTokenAsync(string token);
+
+
+    Task<bool> ChangeUsernameAsync(int userId, string newUsername);
+
+    Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword);
+
+    Task<bool> SendEmailVerificationAsync(int userId, string newEmail);
+
+    Task<bool> ConfirmEmailChangeAsync(string token);
     #endregion
 
 }

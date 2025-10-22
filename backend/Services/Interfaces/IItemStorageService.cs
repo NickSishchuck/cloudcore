@@ -95,7 +95,7 @@ namespace CloudCore.Services.Interfaces
         /// <param name="newName">The new name for the item.</param>
         /// <param name="folderPath">The current absolute path of the item. Required for renaming.</param>
         /// <returns>The new relative path of the renamed item.</returns>
-        string RenameItemPhysically(Item item, string newName, string? folderPath = null);
+        string? RenameItemPhysically(Item item, string newName, string? folderPath = null);
 
 
         #endregion
@@ -107,7 +107,7 @@ namespace CloudCore.Services.Interfaces
         /// </summary>
         /// <param name="fileName">The name of the file including its extension (e.g., "document.pdf", "image.jpg")</param>
         /// <returns>
-        /// The corresponding MIME type string for the file extension. 
+        /// The corresponding MIME type string for the file extension.
         /// Returns "application/octet-stream" for unknown or unsupported file extensions
         /// </returns>
         string GetMimeType(string fileName);

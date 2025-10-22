@@ -11,9 +11,9 @@
 
         public class FileDownloadResult
         {
-            public Stream Stream { get; set; }
-            public string FileName { get; set; }
-            public string MimeType { get; set; }
+            public required Stream Stream { get; set; }
+            public required string FileName { get; set; }
+            public required string MimeType { get; set; }
         }
 
         public class RenameResult : ServiceResult
@@ -38,7 +38,7 @@
         }
 
         public class RestoreResult : ServiceResult
-        { 
+        {
         }
 
         public class MoveResult : ServiceResult

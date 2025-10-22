@@ -2,8 +2,8 @@
 {
     public class PaginatedResponse<T>
     {
-        public IEnumerable<T> Data { get; set; }
-        public PaginationMetadata Pagination { get; set; }
+        public IEnumerable<T>? Data { get; set; }
+        public required PaginationMetadata Pagination { get; set; }
     }
 
     public class PaginationMetadata

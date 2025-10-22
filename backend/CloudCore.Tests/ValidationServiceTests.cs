@@ -139,7 +139,7 @@ public class ValidationServiceTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void ValidateItemName_ShouldReturnFailure_WhenNameIsEmpty(string name)
+    public void ValidateItemName_ShouldReturnFailure_WhenNameIsEmpty(string? name)
     {
         // Act
         var result = _service.ValidateItemName(name);
@@ -264,7 +264,7 @@ public class ValidationServiceTests
     [InlineData("file", "File not found")]
     [InlineData("folder", "Folder not found")]
     [InlineData(null, "Item not found")]
-    public async Task ValidateItemExistsAsync_ShouldReturnFailure_WhenItemNotExists(string itemType, string expectedMessage)
+    public async Task ValidateItemExistsAsync_ShouldReturnFailure_WhenItemNotExists(string? itemType, string expectedMessage)
     {
         // Arrange
         _mockItemRepository
@@ -459,7 +459,7 @@ public class ValidationServiceTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public void ValidateQuery_ShouldReturnFailure_WhenQueryNullOrEmpty(string query)
+    public void ValidateQuery_ShouldReturnFailure_WhenQueryNullOrEmpty(string? query)
     {
         // Act
         var result = _service.ValidateQuery(query);
