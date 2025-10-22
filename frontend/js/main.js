@@ -217,6 +217,8 @@ class CloudCoreDrive {
     toggleTheme() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        const icon = themeBtn.querySelector('.material-symbols-outlined');
+        icon.textContent = newTheme === 'dark' ? 'dark_mode' : 'light_mode';
         this.setTheme(newTheme);
     }
 
@@ -240,7 +242,7 @@ class CloudCoreDrive {
 
         console.log('🔐 Authenticated as:', this.currentUser.username);
 
-        document.getElementById('userInfo').textContent = this.currentUser.username;
+        document.getElementById('userName').textContent = this.currentUser.username;
 
         // Cache DOM elements
         this.fileListBody = document.getElementById('fileListBody');
@@ -266,9 +268,13 @@ class CloudCoreDrive {
         });
 
         // Logout button
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            console.log('Logout clicked');
-            this.showLogoutModal();
+        // document.getElementById('logoutBtn').addEventListener('click', () => {
+        //     console.log('Logout clicked');
+        //     this.showLogoutModal();
+        // });
+
+        document.getElementById('userMenuBtn').addEventListener('click', () => {
+            window.location.href = 'settings.html';
         });
 
         // Language switcher

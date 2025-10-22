@@ -326,7 +326,41 @@ export const translations = {
         error50xMessage: "Something went wrong on our end. We're working to fix the issue. Please try again in a few moments.",
         refreshPage: 'Refresh Page',
         goHome: 'Go to Home',
-        contactSupport: 'If the problem persists, please contact support.'
+        contactSupport: 'If the problem persists, please contact support.',
+
+        // ═══════════════════════════════════════════════════════════════
+        // Settings
+        // ═══════════════════════════════════════════════════════════════
+
+        settings: 'Settings',
+        profile: 'Profile',
+        subscription: 'Subscription',
+        security: 'Security',
+        signOut: 'Sign Out',
+        email: 'Email',
+        currentPlan: 'Current plan',
+        storageUsed: 'Storage used',
+        plan_free_1: '10GB personal',
+        plan_free_2: '5GB teamspace',
+        plan_free_3: '2 teamspaces',
+        plan_free_4: '5 members',
+        plan_premium_1: '20GB personal',
+        plan_premium_2: '50GB teamspace',
+        plan_premium_3: '10 teamspaces',
+        plan_premium_4: '25 members',
+        plan_enterprise_1: '50GB personal',
+        plan_enterprise_2: '500GB teamspace',
+        plan_enterprise_3: 'Unlimited teamspaces',
+        plan_enterprise_4: '100 members',
+        subscribe: 'Subscribe',
+        changeEmail: 'Change Email',
+        changeUsername: 'Change Username',
+        changePassword: 'Change Password',
+        currentPlanBadge: 'Current',
+        popularBadge: 'Popular',
+        perMonth: '/month',
+        currentPlanBtn: 'Current Plan',
+        getStarted: 'Get Started',
     },
 
     uk: {
@@ -653,7 +687,41 @@ export const translations = {
         error50xMessage: 'Щось пішло не так на нашому боці. Ми працюємо над вирішенням проблеми. Будь ласка, спробуйте ще раз через кілька хвилин.',
         refreshPage: 'Оновити сторінку',
         goHome: 'На головну',
-        contactSupport: 'Якщо проблема не зникає, зверніться до служби підтримки.'
+        contactSupport: 'Якщо проблема не зникає, зверніться до служби підтримки.',
+
+        // ═══════════════════════════════════════════════════════════════
+        // Settings
+        // ═══════════════════════════════════════════════════════════════
+
+        settings: 'Налаштування',
+        profile: 'Профіль',
+        subscription: 'Підписка',
+        security: 'Безпека',
+        signOut: 'Вийти',
+        email: 'Пошта',
+        currentPlan: 'Поточний план',
+        storageUsed: 'Використано місця',
+        plan_free_1: '10ГБ особисте',
+        plan_free_2: '5ГБ teamspace',
+        plan_free_3: '2 teamspaces',
+        plan_free_4: '5 учасників',
+        plan_premium_1: '20ГБ особисте',
+        plan_premium_2: '50ГБ teamspace',
+        plan_premium_3: '10 teamspaces',
+        plan_premium_4: '25 учасників',
+        plan_enterprise_1: '50ГБ особисте',
+        plan_enterprise_2: '500ГБ teamspace',
+        plan_enterprise_3: 'Безліміт teamspaces',
+        plan_enterprise_4: '100 учасників',
+        subscribe: 'Підписатися',
+        changeEmail: 'Змінити пошту',
+        changeUsername: 'Змінити ім\'я користувача',
+        changePassword: 'Змінити пароль',
+        currentPlanBadge: 'Поточний',
+        popularBadge: 'Популярний',
+        perMonth: '/місяць',
+        currentPlanBtn: 'Поточний план',
+        getStarted: 'Почати',
     }
 };
 
@@ -712,7 +780,22 @@ export class I18n {
             }
         });
 
+        this.updatePrices();
+
         this.updateLanguageButton();
+    }
+
+    updatePrices() {
+        document.querySelectorAll('.price-amount').forEach((priceElement) => {
+        const usdPrice = priceElement.getAttribute('data-price-usd');
+        const uahPrice = priceElement.getAttribute('data-price-uah');
+        
+        if (this.currentLanguage === 'uk') {
+            priceElement.textContent = uahPrice === '0' ? '₴0' : `₴${uahPrice}`;
+        } else {
+            priceElement.textContent = usdPrice === '0' ? '$0' : `$${usdPrice}`;
+        }
+        });
     }
 
     updateLanguageButton() {
