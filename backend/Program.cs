@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
 using CloudCore.Data.Context;
 using CloudCore.Middleware;
@@ -97,6 +98,8 @@ namespace CloudCore
                 builder.Services.AddScoped<ITeamspaceService, TeamspaceService>();
                 builder.Services.AddScoped<ITeamspaceApplication, TeamspaceApplication>();
                 builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
+                builder.Services.AddScoped<IEmailSendService, EmailSendService>();
+                builder.Services.AddScoped<ITokenService, TokenService>();
                 builder.Services.AddScoped<UserAuthorizationFilter>();
 
                 var senderEmail = Environment.GetEnvironmentVariable("Email_SenderEmail");
@@ -111,7 +114,18 @@ namespace CloudCore
                     .AddSmtpSender(emailHost, emailPort);
 
                 // Add JWT Authentication
-                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+
+                var jwtSettings = new JwtSettings
+                {
+                    Key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long",
+                    Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "CloudCore",
+                    Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "CloudCore",
+                    EmailTokenExpirationMinutes = int.Parse(Environment.GetEnvironmentVariable("EMAIL_TOKEN_EXPIRATION_MINUTES") ?? "10"),
+                    JwtTokenExpirationDays = int.Parse(Environment.GetEnvironmentVariable("JWT_TOKEN_EXPIRATION_DAYS") ?? "7")
+                };
+
+                builder.Services.AddSingleton(jwtSettings);
+
                 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
                     {
@@ -121,14 +135,12 @@ namespace CloudCore
                             ValidateAudience = true,
                             ValidateLifetime = true,
                             ValidateIssuerSigningKey = true,
-                            ValidIssuer = "CloudCore",
-                            ValidAudience = "CloudCore",
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                            ValidIssuer = jwtSettings.Issuer,
+                            ValidAudience = jwtSettings.Issuer,
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
                         };
                     });
 
-                // Add authorization
-                builder.Services.AddAuthorization();
 
                 // Add controllers and endpoints
                 builder.Services.AddControllers(options =>

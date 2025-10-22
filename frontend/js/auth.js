@@ -118,7 +118,7 @@ class AuthManager {
             } else if (error.message.toLowerCase().includes('unauthorized')) {
                 errorMessage = this.i18n.t('invalidCredentials');
             } else if (error.message) {
-                errorMessage = error.message;
+                errorMessage = this.i18n.t('signInFailed');;
             }
 
             this.showError(errorMessage);
