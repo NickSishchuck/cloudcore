@@ -19,6 +19,213 @@
 </head>
 
 <body>
+    <div id="notification" aria-live="polite" aria-atomic="true"></div>
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <!-- Change Email Modal -->
+    <div id="modalEmail" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="changeEmail">Change Email</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <label for="newEmail" data-i18n="newEmail">New Email Address</label>
+            <input type="email" id="newEmail" class="rename-input" placeholder="user@example.com" required />
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-primary" data-action="save">
+                <span data-i18n="save">Save</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Change Username Modal -->
+    <div id="modalUsername" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="changeUsername">Change Username</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <label for="newUsername" data-i18n="newUsername">New Username</label>
+            <input type="text" id="newUsername" class="rename-input" data-i18n-placeholder="usernamePlaceholder" required />
+            <p class="rename-hint" data-i18n="usernameHint">Choose a unique username (3-20 characters)</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-primary" data-action="save">
+                <span data-i18n="save">Save</span>
+            </button>
+        </div>
+    </div>
+
+<div id="modalPassword" class="modal">
+    <div class="modal-header">
+        <h3 data-i18n="changePassword">Change Password</h3>
+        <button class="modal-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <!-- Current Password -->
+        <div style="margin-bottom: 16px;">
+            <label for="currentPassword" data-i18n="currentPassword">Current Password</label>
+            <div class="password-wrapper">
+                <input 
+                    type="password" 
+                    id="currentPassword" 
+                    class="rename-input" 
+                    data-i18n-placeholder="currentPasswordPlaceholder"
+                    placeholder="Enter current password" 
+                    required>
+                <button type="button" class="toggle-password" data-target="currentPassword" aria-label="Toggle password visibility">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- New Password -->
+        <div style="margin-bottom: 16px;">
+            <label for="newPassword" data-i18n="newPassword">New Password</label>
+            <div class="password-wrapper">
+                <input 
+                    type="password" 
+                    id="newPassword" 
+                    class="rename-input" 
+                    data-i18n-placeholder="newPasswordPlaceholder"
+                    placeholder="Enter new password" 
+                    required>
+                <button type="button" class="toggle-password" data-target="newPassword" aria-label="Toggle password visibility">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Confirm New Password -->
+        <div>
+            <label for="confirmNewPassword" data-i18n="confirmPassword">Confirm New Password</label>
+            <div class="password-wrapper">
+                <input 
+                    type="password" 
+                    id="confirmNewPassword" 
+                    class="rename-input" 
+                    data-i18n-placeholder="confirmPasswordPlaceholder"
+                    placeholder="Confirm new password" 
+                    required>
+                <button type="button" class="toggle-password" data-target="confirmNewPassword" aria-label="Toggle password visibility">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+        </div>
+        
+        <p class="rename-hint" data-i18n="passwordHint">Password must be at least 8 characters long</p>
+    </div>
+    <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" data-action="cancel">
+            <span data-i18n="cancel">Cancel</span>
+        </button>
+        <button class="modal-btn modal-btn-primary" data-action="save">
+            <span data-i18n="save">Save</span>
+        </button>
+    </div>
+</div>
+
+
+    <!-- Delete Account Modal - Step 1 (Warning) -->
+<!-- <div id="modalDelete" class="modal">
+    <div class="modal-header">
+        <h3 data-i18n="deleteAccount">Delete Account</h3>
+        <button class="modal-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div style="text-align: center; margin-bottom: 16px;">
+            <span class="material-symbols-outlined" style="font-size: 64px; color: var(--color-red);">warning</span>
+        </div>
+        
+        <p data-i18n="deleteAccountWarning" style="text-align: center;">
+            This action is permanent and cannot be undone. All your files, folders, and data will be permanently deleted.
+        </p>
+        
+        <p style="margin-top: 16px; font-weight: 600; color: var(--color-red); text-align: center;" data-i18n="deleteAccountConfirmText">
+            Are you absolutely sure you want to delete your account?
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" data-action="cancel">
+            <span data-i18n="cancel">Cancel</span>
+        </button>
+        <button class="modal-btn modal-btn-danger" data-action="continue-delete">
+            <span data-i18n="continue">Continue</span>
+        </button>
+    </div>
+</div>
+
+<div id="modalDeleteConfirm" class="modal">
+    <div class="modal-header">
+        <h3 data-i18n="confirmDeletion">Confirm Deletion</h3>
+        <button class="modal-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <p id="deleteConfirmInstructions" style="margin-bottom: 12px;">
+        </p>
+        
+        <label for="deleteConfirmInput" data-i18n="confirmation">Confirmation</label>
+        <input 
+            type="text" 
+            id="deleteConfirmInput" 
+            class="rename-input" 
+            data-i18n-placeholder="typeHere"
+            placeholder="Type here..."
+            autocomplete="off"
+            required>
+        
+        <p class="rename-hint" style="color: var(--color-red); margin-top: 8px;" data-i18n="deleteIsPermanent">
+            This action is permanent and cannot be undone!
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" data-action="cancel">
+            <span data-i18n="cancel">Cancel</span>
+        </button>
+        <button class="modal-btn modal-btn-danger" id="finalDeleteBtn" disabled data-action="final-delete">
+            <span data-i18n="deleteAccount">Delete Account</span>
+        </button>
+    </div>
+</div> -->
+
+    <!-- Logout Confirmation Modal -->
+    <div id="modalLogout" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="signOut">Sign Out</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p data-i18n="signOutMessage">Are you sure you want to sign out?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-danger" data-action="logout">
+                <span data-i18n="signOut">Sign Out</span>
+            </button>
+        </div>
+    </div>
     <div class="header">
         <button id="backBtn" aria-label="Back">
             <span class="material-symbols-outlined">arrow_back</span>
@@ -226,8 +433,9 @@
                         </div>
                         <div class="security-info">
                             <h3 class="security-title" data-i18n="changeEmail">Change Email</h3>
-                            <p class="security-description" data-i18n="changeEmailDesc">Update your email address for
-                                account access</p>
+                            <p class="security-description" data-i18n="changeEmailDesc">
+                                Update your email address for account access
+                            </p>
                         </div>
                     </div>
                     <div class="security-action">
@@ -246,7 +454,9 @@
                         </div>
                         <div class="security-info">
                             <h3 class="security-title" data-i18n="changeUsername">Change Username</h3>
-                            <p class="security-description" data-i18n="changeUsernameDesc">Update your display name</p>
+                            <p class="security-description" data-i18n="changeUsernameDesc">
+                                Update your display name
+                            </p>
                         </div>
                     </div>
                     <div class="security-action">
@@ -265,8 +475,9 @@
                         </div>
                         <div class="security-info">
                             <h3 class="security-title" data-i18n="changePassword">Change Password</h3>
-                            <p class="security-description" data-i18n="changePasswordDesc">Keep your account secure with
-                                a strong password</p>
+                            <p class="security-description" data-i18n="changePasswordDesc">
+                                Keep your account secure with a strong password
+                            </p>
                         </div>
                     </div>
                     <div class="security-action">
@@ -277,7 +488,7 @@
                     </div>
                 </div>
 
-                <!-- Delete Account (Danger) -->
+                <!-- Delete Account (Danger)
                 <div class="security-card security-card-danger">
                     <div class="security-card-content">
                         <div class="security-icon">
@@ -285,8 +496,9 @@
                         </div>
                         <div class="security-info">
                             <h3 class="security-title" data-i18n="deleteAccount">Delete Account</h3>
-                            <p class="security-description" data-i18n="deleteAccountDesc">Permanently delete your
-                                account and all data</p>
+                            <p class="security-description" data-i18n="deleteAccountDesc">
+                                Permanently delete your account and all data
+                            </p>
                         </div>
                     </div>
                     <div class="security-action">
@@ -295,7 +507,7 @@
                             <span class="material-symbols-outlined">arrow_forward</span>
                         </button>
                     </div>
-                </div>
+                </div> -->
             </div>
         </section>
     </div>

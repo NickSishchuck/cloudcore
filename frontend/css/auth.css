@@ -440,11 +440,6 @@ input:valid:not(:placeholder-shown) + .input-hint {
     transition: transform 0.3s ease;
 }
 
-.toggle-password:focus {
-    outline: 2px solid var(--text-link);
-    outline-offset: 2px;
-}
-
 .toggle-password.changing .material-symbols-outlined {
     opacity: 0.5;
 }

@@ -33,10 +33,20 @@ export class ApiClient {
             throw new Error('Unauthorized');
         }
 
-        const data = await response.json().catch(() => ({}));
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = {};
+        }
 
         if (!response.ok) {
-            throw new Error(data.message || `HTTP ${response.status}`);
+            const error = new Error(data.message || `HTTP ${response.status}`);
+            error.errorCode = data.errorCode || data.code || null;
+            error.status = response.status;
+            error.data = data;
+
+            throw error;
         }
 
         return data;
@@ -487,6 +497,41 @@ export class ApiClient {
         const response = await fetch(`${this.baseUrl}/user/${userId}/storage/teamspace/${teamspaceId}`, {
             method: 'GET',
             headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async changeUsername(userId, newUsername) {
+        const response = await fetch(`${this.baseUrl}/auth/${userId}/change-username`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                NewUsername: newUsername
+            })
+        });
+        return this.handleResponse(response);
+    }
+
+    async changePassword(userId, currentPassword, newPassword, confirmPassword) {
+        const response = await fetch(`${this.baseUrl}/auth/${userId}/change-password`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                CurrentPassword: currentPassword,
+                NewPassword: newPassword,
+                ConfirmNewPassword: confirmPassword
+            })
+        });
+        return this.handleResponse(response);
+    }
+
+    async requestEmailChange(userId, newEmail) {
+        const response = await fetch(`${this.baseUrl}/auth/${userId}/request-email-change`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                NewEmail: newEmail
+            })
         });
         return this.handleResponse(response);
     }

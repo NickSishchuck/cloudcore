@@ -30,7 +30,7 @@ class SettingsManager {
             this.currentUserId = this.getUserIdFromToken();
 
             if (!this.currentUserId) {
-                this.notifications.error('accessDenied');
+                this.notifications.error(this.i18n.t('accessDenied'));
                 setTimeout(() => (window.location.href = '../login.html'), 2000);
                 return;
             }
@@ -45,12 +45,13 @@ class SettingsManager {
             this.initializeTabs();
             this.initializeEventHandlers();
             this.initializeTheme();
+            this.initializeModals();
 
             // Update translations
             this.i18n.updateUI();
         } catch (error) {
             console.error('Error initializing settings:', error);
-            this.notifications.error('unexpectedError');
+            this.notifications.error(this.i18n.t('unexpectedError'));
         }
     }
 
@@ -216,14 +217,14 @@ class SettingsManager {
 
             // Use translated error messages
             if (error.message === 'Unauthorized') {
-                this.notifications.error('accessDenied');
+                this.notifications.error(this.i18n.t('accessDenied'));
                 setTimeout(() => (window.location.href = '../login.html'), 2000);
             } else if (error.message.includes('Network')) {
-                this.notifications.error('networkError');
+                this.notifications.error(this.i18n.t('networkError'));
             } else if (error.message.includes('timeout')) {
-                this.notifications.error('timeoutMessage');
+                this.notifications.error(this.i18n.t('timeoutMessage'));
             } else {
-                this.notifications.error('operationFailed');
+                this.notifications.error(this.i18n.t('operationFailed'));
             }
         }
     }
@@ -421,17 +422,41 @@ class SettingsManager {
      * Initialize security modals
      */
     initializeSecurityModals() {
-        const modalTriggers = document.querySelectorAll('.modal-trigger');
-
-        modalTriggers.forEach((trigger) => {
-            trigger.addEventListener('click', () => {
-                const modalId = trigger.getAttribute('data-modal');
-                // Use featureNotImplemented from translations
-                this.notifications.info('featureNotImplemented', 5000, null, {
-                    featureName: trigger.textContent
-                });
+        // Change Email button
+        const emailBtn = document.querySelector('[data-modal="modalEmail"]');
+        if (emailBtn) {
+            emailBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleChangeEmail();
             });
-        });
+        }
+
+        // Change Username button
+        const usernameBtn = document.querySelector('[data-modal="modalUsername"]');
+        if (usernameBtn) {
+            usernameBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleChangeUsername();
+            });
+        }
+
+        // Change Password button
+        const passwordBtn = document.querySelector('[data-modal="modalPassword"]');
+        if (passwordBtn) {
+            passwordBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleChangePassword();
+            });
+        }
+
+        // Delete Account button
+        const deleteBtn = document.querySelector('[data-modal="modalDelete"]');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleDeleteAccount();
+            });
+        }
     }
 
     /**
@@ -458,30 +483,439 @@ class SettingsManager {
         }
 
         if (confirm(confirmMessage)) {
-            this.notifications.info('processing');
+            this.notifications.info(this.i18n.t('processing'));
 
             // TODO: Implement actual upgrade/downgrade logic
             setTimeout(() => {
                 const action = targetPlanLevel > currentPlanLevel ? 'upgrade' : 'downgrade';
-                this.notifications.info('featureNotImplemented', 5000, null, {
+                this.notifications.info(this.i18n.t('featureNotImplemented'), 5000, null, {
                     featureName: `Plan ${action}`
                 });
             }, 1000);
         }
     }
 
+    initializeModals() {
+        const overlay = document.getElementById('modalOverlay');
+
+        // Close modal on overlay click
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                this.closeAllModals();
+            });
+        }
+
+        // Close buttons
+        document.querySelectorAll('.modal-close').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                this.closeAllModals();
+            });
+        });
+
+        // Cancel buttons
+        document.querySelectorAll('[data-action="cancel"]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                this.closeAllModals();
+            });
+        });
+
+        // ESC key to close modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeAllModals();
+            }
+        });
+
+        document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const icon = button.querySelector('.material-symbols-outlined');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility_off';
+            }
+        });
+    });
+    }
+
     /**
-     * Handle logout
+     * Open modal
+     */
+    openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        const overlay = document.getElementById('modalOverlay');
+
+        if (modal && overlay) {
+            overlay.classList.add('show');
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+
+            // Auto-focus first input
+            setTimeout(() => {
+                const firstInput = modal.querySelector('input');
+                if (firstInput) {
+                    firstInput.focus();
+                    if (firstInput.select) firstInput.select();
+                }
+            }, 100);
+        }
+    }
+
+    /**
+     * Close all modals
+     */
+    closeAllModals() {
+        const overlay = document.getElementById('modalOverlay');
+
+        document.querySelectorAll('.modal.show').forEach((modal) => {
+            modal.classList.remove('show');
+
+            // Clear input values
+            modal.querySelectorAll('input').forEach((input) => {
+                if (input.type !== 'email') {
+                    input.value = '';
+                }
+            });
+        });
+
+        if (overlay) {
+            overlay.classList.remove('show');
+        }
+
+        document.body.style.overflow = '';
+    }
+
+    /**
+     * Handle Change Email
+     */
+    async handleChangeEmail() {
+        this.openModal('modalEmail');
+
+        const modal = document.getElementById('modalEmail');
+        const saveBtn = modal.querySelector('[data-action="save"]');
+        const emailInput = document.getElementById('newEmail');
+
+        // Set current email as default
+        emailInput.value = this.currentUser.email || '';
+
+        // Remove old listeners
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+        newSaveBtn.addEventListener('click', async () => {
+            const newEmail = emailInput.value.trim();
+
+            if (!newEmail || !this.validateEmail(newEmail)) {
+                this.notifications.error(this.i18n.t('invalidEmail'));
+                return;
+            }
+
+            if (newEmail === this.currentUser.email) {
+                this.notifications.info(this.i18n.t('sameEmail'));
+                return;
+            }
+
+            try {
+                // Disable button during request
+                newSaveBtn.disabled = true;
+                newSaveBtn.textContent = this.i18n.t('processing') || 'Processing...';
+
+                const response = await this.api.requestEmailChange(this.currentUserId, newEmail);
+
+                this.notifications.success(this.i18n.t('verificationEmailSent'));
+                this.closeAllModals();
+
+                // Note: Email will be updated after user confirms via email link
+            } catch (error) {
+                console.error('Error requesting email change:', error);
+
+                if (error.errorCode === 'EMAIL_EXISTS') {
+                    this.notifications.error(this.i18n.t('emailAlreadyExists'));
+                } else if (error.errorCode === 'INVALID_EMAIL') {
+                    this.notifications.error(this.i18n.t('invalidEmail'));
+                } else {
+                    this.notifications.error(this.i18n.t('failedToUpdateEmail'));
+                }
+            } finally {
+                newSaveBtn.disabled = false;
+                newSaveBtn.innerHTML = `<span data-i18n="save">${this.i18n.t('save')}</span>`;
+            }
+        });
+    }
+
+    /**
+     * Handle Change Username
+     */
+    async handleChangeUsername() {
+        this.openModal('modalUsername');
+
+        const modal = document.getElementById('modalUsername');
+        const saveBtn = modal.querySelector('[data-action="save"]');
+        const usernameInput = document.getElementById('newUsername');
+
+        // Set current username as default
+        usernameInput.value = this.currentUser.username || '';
+
+        // Remove old listeners
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+        newSaveBtn.addEventListener('click', async () => {
+            const newUsername = usernameInput.value.trim();
+
+            if (!newUsername || newUsername.length < 3 || newUsername.length > 20) {
+                this.notifications.error(this.i18n.t('invalidUsername'));
+                return;
+            }
+
+            if (newUsername === this.currentUser.username) {
+                this.notifications.info(this.i18n.t('sameUsername'));
+                return;
+            }
+
+            try {
+                // Disable button during request
+                newSaveBtn.disabled = true;
+                newSaveBtn.textContent = this.i18n.t('processing') || 'Processing...';
+
+                await this.api.changeUsername(this.currentUserId, newUsername);
+
+                this.notifications.success(this.i18n.t('usernameUpdated'));
+                this.closeAllModals();
+
+                // Update display
+                this.currentUser.username = newUsername;
+                localStorage.setItem('cloudcore_user', JSON.stringify(this.currentUser));
+                this.loadUserDataFromStorage();
+            } catch (error) {
+                console.error('Error updating username:', error);
+
+                if (error.errorCode === 'USERNAME_EXISTS') {
+                    this.notifications.error(this.i18n.t('usernameAlreadyExists'));
+                } else {
+                    this.notifications.error(this.i18n.t('failedToUpdateUsername'));
+                }
+            } finally {
+                newSaveBtn.disabled = false;
+                newSaveBtn.innerHTML = `<span data-i18n="save">${this.i18n.t('save')}</span>`;
+            }
+        });
+    }
+
+    /**
+     * Handle Change Password
+     */
+    async handleChangePassword() {
+        this.openModal('modalPassword');
+
+        const modal = document.getElementById('modalPassword');
+        const saveBtn = modal.querySelector('[data-action="save"]');
+        const currentPasswordInput = document.getElementById('currentPassword');
+        const newPasswordInput = document.getElementById('newPassword');
+        const confirmPasswordInput = document.getElementById('confirmNewPassword');
+
+        // Remove old listeners
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+        newSaveBtn.addEventListener('click', async () => {
+            const currentPassword = currentPasswordInput.value;
+            const newPassword = newPasswordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                this.notifications.error(this.i18n.t('allFieldsRequired'));
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                this.notifications.error(this.i18n.t('passwordTooShort'));
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                this.notifications.error(this.i18n.t('passwordsDoNotMatch'));
+                return;
+            }
+
+            if (currentPassword === newPassword) {
+                this.notifications.error(this.i18n.t('samePassword'));
+                return;
+            }
+
+            try {
+                // Disable button during request
+                newSaveBtn.disabled = true;
+                newSaveBtn.textContent = this.i18n.t('processing') || 'Processing...';
+
+                await this.api.changePassword(this.currentUserId, currentPassword, newPassword, confirmPassword);
+
+                this.notifications.success(this.i18n.t('passwordChanged'));
+                this.closeAllModals();
+
+                // Optional: Force logout after password change for security
+                // setTimeout(() => this.handleLogout(), 2000);
+            } catch (error) {
+                console.error('Error changing password:', error);
+
+                if (error.errorCode === 'INVALID_PASSWORD') {
+                    this.notifications.error(this.i18n.t('invalidCurrentPassword'));
+                } else {
+                    this.notifications.error(this.i18n.t('failedToChangePassword'));
+                }
+            } finally {
+                newSaveBtn.disabled = false;
+                newSaveBtn.innerHTML = `<span data-i18n="save">${this.i18n.t('save')}</span>`;
+            }
+        });
+    }
+
+    /**
+ * Handle Delete Account - Step 1
+ */
+// async handleDeleteAccount() {
+//     this.openModal('modalDelete');
+    
+//     const modal = document.getElementById('modalDelete');
+//     const continueBtn = modal.querySelector('[data-action="continue-delete"]');
+    
+//     // Remove old listeners
+//     const newContinueBtn = continueBtn.cloneNode(true);
+//     continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
+    
+//     newContinueBtn.addEventListener('click', () => {
+//         this.closeAllModals();
+//         this.showDeleteConfirmation();
+//     });
+// }
+
+/**
+ * Show Delete Confirmation - Step 2
+ */
+// showDeleteConfirmation() {
+//     this.openModal('modalDeleteConfirm');
+    
+//     const modal = document.getElementById('modalDeleteConfirm');
+//     const confirmInput = document.getElementById('deleteConfirmInput');
+//     const finalDeleteBtn = document.getElementById('finalDeleteBtn');
+//     const instructionsEl = document.getElementById('deleteConfirmInstructions');
+    
+//     // Set confirmation text with username
+//     const username = this.currentUser.username || 'user';
+//     const confirmText = `delete ${username}-account`;
+    
+//     // Use i18n with parameter replacement
+//     const instructionText = this.i18n.t('typeToConfirm', {
+//         text: `<strong>${confirmText}</strong>`
+//     });
+    
+//     instructionsEl.innerHTML = instructionText;
+    
+//     // Clear input
+//     confirmInput.value = '';
+//     finalDeleteBtn.disabled = true;
+    
+//     // Validate input
+//     const validateInput = () => {
+//         const inputValue = confirmInput.value.trim();
+//         const isValid = inputValue === confirmText;
+//         finalDeleteBtn.disabled = !isValid;
+        
+//         if (isValid) {
+//             confirmInput.style.borderColor = 'var(--color-green)';
+//         } else if (inputValue.length > 0) {
+//             confirmInput.style.borderColor = 'var(--color-red)';
+//         } else {
+//             confirmInput.style.borderColor = 'var(--border-color)';
+//         }
+//     };
+    
+//     // Remove old event listeners by cloning
+//     const newConfirmInput = confirmInput.cloneNode(true);
+//     confirmInput.parentNode.replaceChild(newConfirmInput, confirmInput);
+    
+//     const newFinalDeleteBtn = finalDeleteBtn.cloneNode(true);
+//     finalDeleteBtn.parentNode.replaceChild(newFinalDeleteBtn, finalDeleteBtn);
+    
+//     // Add new listeners
+//     newConfirmInput.addEventListener('input', validateInput);
+    
+//     newFinalDeleteBtn.addEventListener('click', async () => {
+//         if (newFinalDeleteBtn.disabled) return;
+        
+//         try {
+//             newFinalDeleteBtn.disabled = true;
+//             newFinalDeleteBtn.textContent = this.i18n.t('processing') || 'Processing...';
+            
+//             await this.api.deleteAccount(this.currentUserId);
+            
+//             this.notifications.success(this.i18n.t('accountDeleted'));
+//             this.closeAllModals();
+            
+//             // Clear everything and redirect
+//             localStorage.clear();
+//             setTimeout(() => {
+//                 window.location.href = '../login.html';
+//             }, 2000);
+//         } catch (error) {
+//             console.error('Error deleting account:', error);
+//             this.notifications.error(this.i18n.t('failedToDeleteAccount'));
+            
+//             newFinalDeleteBtn.disabled = false;
+//             newFinalDeleteBtn.innerHTML = `<span data-i18n="deleteAccount">${this.i18n.t('deleteAccount')}</span>`;
+//         }
+//     });
+    
+//     // Focus input
+//     setTimeout(() => newConfirmInput.focus(), 100);
+// }
+
+
+    /**
+     * Handle Logout
      */
     handleLogout() {
-        const confirmMessage = this.i18n.t('signOutMessage');
+        this.openModal('modalLogout');
 
-        if (confirm(confirmMessage)) {
-            this.api.clearAuthToken();
-            localStorage.removeItem('cloudcore_userPlan'); // Clear cached plan
-            this.notifications.success('deletedSuccessfully'); // Repurpose as "Signed out successfully"
-            setTimeout(() => (window.location.href = '../login.html'), 1000);
-        }
+        const modal = document.getElementById('modalLogout');
+        const logoutBtn = modal.querySelector('[data-action="logout"]');
+
+        // Remove old listeners
+        const newLogoutBtn = logoutBtn.cloneNode(true);
+        logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+
+        newLogoutBtn.addEventListener('click', () => {
+            // Save theme preference
+            const theme = localStorage.getItem('cloudcore-theme');
+            const language = localStorage.getItem('cloudcore_language');
+
+            // Clear all
+            localStorage.clear();
+
+            // Restore preferences
+            if (theme) localStorage.setItem('cloudcore-theme', theme);
+            if (language) localStorage.setItem('cloudcore_language', language);
+
+            this.notifications.success('signedOut');
+            this.closeAllModals();
+
+            setTimeout(() => {
+                window.location.href = '../login.html';
+            }, 1000);
+        });
+    }
+
+    /**
+     * Validate email
+     */
+    validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
     }
 
     /**

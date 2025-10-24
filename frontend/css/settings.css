@@ -1245,3 +1245,727 @@ body {
         justify-content: center;
     }
 }
+
+/* Notification Container */
+.notification-container {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    z-index: 10002;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 400px;
+    pointer-events: none;
+}
+
+/* Individual Notification (Toast) */
+.notification {
+    position: relative;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px var(--shadow-lg), 0 4px 12px var(--shadow-md);
+    box-shadow: 0 8px 24px var(--shadow-lg), 0 4px 12px var(--shadow-md);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    min-width: 320px;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+    pointer-events: auto;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-left: 4px solid var(--color-blue);
+    overflow: hidden;
+}
+
+/* Show Animation */
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+    animation: notificationSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Hide Animation */
+.notification.hide {
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+    animation: notificationSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes notificationSlideIn {
+    0% {
+        transform: translateX(calc(100% + 24px)) scale(0.9);
+        opacity: 0;
+    }
+    60% {
+        transform: translateX(-8px) scale(1.02);
+    }
+    100% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes notificationSlideOut {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(calc(100% + 24px));
+        opacity: 0;
+    }
+}
+
+/* Notification Icon Container */
+.notification-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    position: relative;
+}
+
+.notification-icon {
+    font-size: 24px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+/* Notification Content */
+.notification-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notification-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.notification-message {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Close Button */
+.notification-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -2px;
+}
+
+.notification-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    transform: rotate(90deg);
+}
+
+.notification-close:active {
+    background: var(--bg-active);
+    transform: rotate(90deg) scale(0.9);
+}
+
+.notification-close .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* Progress Bar */
+.notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    opacity: 0.3;
+    animation: notificationProgress 5s linear forwards;
+    border-radius: 0 0 0 12px;
+}
+
+@keyframes notificationProgress {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0%;
+    }
+}
+
+/* ==================== Notification Types ==================== */
+
+/* Success */
+.notification.success {
+    border-left-color: var(--color-green);
+}
+
+.notification.success .notification-icon-wrapper {
+    background: rgba(52, 168, 83, 0.1);
+}
+
+.notification.success .notification-icon {
+    color: var(--color-green);
+}
+
+.notification.success .notification-progress {
+    background: var(--color-green);
+}
+
+/* Error */
+.notification.error {
+    border-left-color: var(--color-red);
+}
+
+.notification.error .notification-icon-wrapper {
+    background: rgba(234, 67, 53, 0.1);
+}
+
+.notification.error .notification-icon {
+    color: var(--color-red);
+}
+
+.notification.error .notification-progress {
+    background: var(--color-red);
+}
+
+/* Warning */
+.notification.warning {
+    border-left-color: var(--color-yellow);
+}
+
+.notification.warning .notification-icon-wrapper {
+    background: rgba(251, 188, 4, 0.1);
+}
+
+.notification.warning .notification-icon {
+    color: var(--color-yellow);
+}
+
+.notification.warning .notification-progress {
+    background: var(--color-yellow);
+}
+
+/* Info */
+.notification.info {
+    border-left-color: var(--color-blue);
+}
+
+.notification.info .notification-icon-wrapper {
+    background: rgba(66, 133, 244, 0.1);
+}
+
+.notification.info .notification-icon {
+    color: var(--color-blue);
+}
+
+.notification.info .notification-progress {
+    background: var(--color-blue);
+}
+
+/* ==================== Dark Theme ==================== */
+
+
+[data-theme='dark'] .notification {
+    background: var(--bg-secondary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+
+[data-theme='dark'] .notification.success .notification-icon-wrapper {
+    background: rgba(129, 201, 149, 0.15);
+}
+
+
+[data-theme='dark'] .notification.error .notification-icon-wrapper {
+    background: rgba(242, 139, 130, 0.15);
+}
+
+
+[data-theme='dark'] .notification.warning .notification-icon-wrapper {
+    background: rgba(253, 214, 99, 0.15);
+}
+
+[data-theme='dark'] .notification.info .notification-icon-wrapper {
+    background: rgba(138, 180, 248, 0.15);
+}
+
+/* ==================== Responsive Design ==================== */
+
+@media (max-width: 768px) {
+    .notification-container {
+        top: 72px;
+        right: 16px;
+        left: 16px;
+        max-width: none;
+    }
+
+    .notification {
+        min-width: auto;
+        max-width: none;
+        width: 100%;
+    }
+}
+
+/* ==================== Hover Effects ==================== */
+
+.notification:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px var(--shadow-lg), 0 6px 16px var(--shadow-md);
+    box-shadow: 0 12px 32px var(--shadow-lg), 0 6px 16px var(--shadow-md);
+}
+
+[data-theme='dark'] .notification:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.notification:hover .notification-icon {
+    transform: scale(1.1) rotate(20deg);
+}
+
+/* ==================== Accessibility ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .notification {
+        animation: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .notification.show {
+        animation: none;
+    }
+
+    .notification.hide {
+        animation: none;
+    }
+
+    .notification-progress {
+        animation: none;
+    }
+
+    .notification:hover {
+        transform: none;
+    }
+
+    .notification:hover .notification-icon {
+        transform: none;
+        transform: none;
+    }
+}
+
+
+/* ==================== Modals ==================== */
+/* Modal Overlay */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10000;
+    animation: overlayFadeIn 0.3s ease;
+}
+
+.modal-overlay.show {
+    display: block;
+}
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+}
+
+/* Modal Window */
+.modal {
+    display: none; /* ДОДАЙТЕ ЦЕ! */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: var(--bg-primary);
+    border-radius: 16px;
+    box-shadow: 0 24px 48px var(--shadow-lg), 0 12px 24px var(--shadow-md), 0 0 1px var(--shadow-sm);
+    z-index: 10001;
+    min-width: 440px;
+    max-width: 540px;
+    padding: 0;
+    animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    opacity: 0; /* ДОДАЙТЕ ЦЕ! */
+}
+
+.modal.show {
+    display: block;
+    opacity: 1; /* ДОДАЙТЕ ЦЕ! */
+    transform: translate(-50%, -50%) scale(1);
+}
+
+@keyframes modalSlideIn {
+    0% {
+        transform: translate(-50%, -48%) scale(0.9);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Modal Header */
+.modal-header {
+    padding: 28px 28px 20px 28px;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+}
+
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-blue) 0%, var(--color-green) 50%, var(--color-yellow) 100%);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 32px;
+    letter-spacing: -0.5px;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 6px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    margin-left: 12px;
+    margin-top: -4px;
+}
+
+.modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    transform: rotate(90deg);
+}
+
+.modal-close:active {
+    background: var(--bg-active);
+    transform: rotate(90deg) scale(0.95);
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 24px 28px 28px 28px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 24px;
+    background: var(--bg-primary);
+}
+
+.modal-body p {
+    margin: 0;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+.modal-body label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+/* Modal Footer */
+.modal-footer {
+    padding: 20px 24px 24px 24px;
+    border-top: none;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: var(--bg-primary);
+}
+
+/* Modal Buttons */
+.modal-btn {
+    padding: 11px 26px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 90px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.25px;
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.modal-btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.modal-btn-secondary {
+    background: transparent;
+    color: var(--text-link);
+    border: 2px solid transparent;
+}
+
+.modal-btn-secondary:hover {
+    background: var(--bg-active);
+    border-color: var(--bg-active);
+    transform: translateY(-1px);
+}
+
+.modal-btn-secondary:active {
+    background: var(--bg-hover);
+    transform: translateY(0);
+}
+
+.modal-btn-primary {
+    background: linear-gradient(135deg, var(--color-blue) 0%, #1967d2 100%);
+    color: white;
+    border: 2px solid transparent;
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+}
+
+.modal-btn-primary:hover {
+    background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+    transform: translateY(-2px);
+}
+
+.modal-btn-primary:active {
+    background: linear-gradient(135deg, #1557b0 0%, #0d47a1 100%);
+    box-shadow: 0 2px 4px rgba(66, 133, 244, 0.3);
+    transform: translateY(0);
+}
+
+.modal-btn-danger {
+    background: linear-gradient(135deg, var(--color-red) 0%, #d93025 100%);
+    color: white;
+    border: 2px solid transparent;
+    box-shadow: 0 2px 8px rgba(234, 67, 53, 0.3);
+}
+
+.modal-btn-danger:hover {
+    background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+    box-shadow: 0 4px 12px rgba(234, 67, 53, 0.4);
+    transform: translateY(-2px);
+}
+
+.modal-btn-danger:active {
+    background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);
+    box-shadow: 0 2px 4px rgba(234, 67, 53, 0.3);
+    transform: translateY(0);
+}
+
+[data-theme='dark'] .modal-btn-primary {
+    box-shadow: 0 2px 8px rgba(138, 180, 248, 0.3);
+}
+
+[data-theme='dark'] .modal-btn-primary:hover {
+    box-shadow: 0 4px 12px rgba(138, 180, 248, 0.4);
+}
+
+/* ==================== Form Inputs ==================== */
+/* Rename Input */
+.rename-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+}
+
+.rename-input:focus {
+    border-color: var(--color-blue);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.rename-input:hover {
+    border-color: var(--text-secondary);
+}
+
+[data-theme='dark'] .rename-input {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme='dark'] .rename-input:focus {
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.15);
+}
+
+/* Rename Hint */
+.rename-hint {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .modal {
+        min-width: 90vw;
+        max-width: 90vw;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
+
+/* Password Wrapper */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.password-wrapper .rename-input {
+    width: 100%;
+    padding-right: 48px;
+    margin-top: 0; 
+}
+
+/* Toggle Password Button */
+.toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    outline: none;
+}
+
+.toggle-password:hover {
+    background: var(--bg-hover);
+    color: var(--text-link);
+}
+
+.toggle-password:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.toggle-password .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+    pointer-events: none;
+    transition: transform 0.3s ease;
+}
+
+.toggle-password:hover .material-symbols-outlined {
+    transform: rotate(20deg);
+}
+
+
+.toggle-password.changing .material-symbols-outlined {
+    opacity: 0.5;
+}
+
+/* Dark Theme */
+[data-theme='dark'] .toggle-password {
+    color: var(--text-secondary);
+}
+
+[data-theme='dark'] .toggle-password:hover {
+    background: var(--bg-hover);
+    color: var(--color-blue);
+}
+
