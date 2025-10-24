@@ -467,6 +467,30 @@ export class ApiClient {
         return results;
     }
 
+    async getPersonalStorage(userId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/storage/personal`, {
+            method: 'GET',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async recalculatePersonalStorage(userId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/storage/personal/recalculate`, {
+            method: 'POST',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async getTeamspaceStorage(userId, teamspaceId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/storage/teamspace/${teamspaceId}`, {
+            method: 'GET',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
     uploadFileWithProgress(userId, file, parentId = null, onProgress = null) {
         const xhr = new XMLHttpRequest();
 

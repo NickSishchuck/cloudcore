@@ -361,6 +361,16 @@ export const translations = {
         perMonth: '/month',
         currentPlanBtn: 'Current Plan',
         getStarted: 'Get Started',
+        downgrade: 'Downgrade',
+        confirmDowngrade: 'Are you sure you want to downgrade your plan?',
+        change: 'Change',
+        enable: 'Enable',
+        delete: 'Delete',
+        changeEmailDesc: 'Update your email address for account access',
+        changeUsernameDesc: 'Update your display name',
+        changePasswordDesc: 'Keep your account secure with a strong password',
+        deleteAccount: 'Delete Account',
+        deleteAccountDesc: 'Permanently delete your account and all data',
     },
 
     uk: {
@@ -722,6 +732,16 @@ export const translations = {
         perMonth: '/місяць',
         currentPlanBtn: 'Поточний план',
         getStarted: 'Почати',
+        downgrade: 'Понизити',
+        confirmDowngrade: 'Ви впевнені, що хочете понизити свій план?',
+        change: 'Змінити',
+        enable: 'Увімкнути',
+        delete: 'Видалити',
+        changeEmailDesc: 'Оновіть свою електронну адресу для доступу до облікового запису',
+        changeUsernameDesc: 'Оновіть своє відображуване ім\'я',
+        changePasswordDesc: 'Захистіть свій обліковий запис надійним паролем',
+        deleteAccount: 'Видалити обліковий запис',
+        deleteAccountDesc: 'Назавжди видалити ваш обліковий запис та всі дані',
     }
 };
 
