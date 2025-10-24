@@ -46,9 +46,11 @@ class SettingsManager {
             this.initializeEventHandlers();
             this.initializeTheme();
             this.initializeModals();
+            this.initializePlanTooltip();
 
             // Update translations
             this.i18n.updateUI();
+            this.updatePrices();
         } catch (error) {
             console.error('Error initializing settings:', error);
             this.notifications.error(this.i18n.t('unexpectedError'));
@@ -152,6 +154,62 @@ class SettingsManager {
 
         // Update subscription tab cards
         this.updateActivePlan(normalizedPlan);
+    }
+
+    updatePrices() {
+        const currentLang = this.i18n.getCurrentLanguage();
+        const currency = currentLang === 'uk' ? 'uah' : 'usd';
+        const currencySymbol = currentLang === 'uk' ? '₴' : '$';
+
+        console.log('Current language:', currentLang);
+        console.log('Currency:', currency);
+
+        document.querySelectorAll('.price-amount').forEach((priceElement) => {
+            console.log('Element:', priceElement);
+            console.log(`data-${currency}:`, priceElement.getAttribute(`data-${currency}`));
+
+            const price = priceElement.getAttribute(`data-${currency}`);
+
+            if (price !== null) {
+                priceElement.textContent = `${currencySymbol}${price}`;
+            }
+        });
+    }
+
+    /**
+     * Update plan tooltip content
+     */
+    updatePlanTooltip(planType) {
+        const tooltipPlanName = document.getElementById('tooltipPlanName');
+        const tooltipFeatures = document.getElementById('tooltipFeatures');
+
+        if (!tooltipPlanName || !tooltipFeatures) return;
+
+        const planFeatures = {
+            free: [
+                this.i18n.t('plan_free_1'),
+                this.i18n.t('plan_free_2'),
+                this.i18n.t('plan_free_3'),
+                this.i18n.t('plan_free_4')
+            ],
+            premium: [
+                this.i18n.t('plan_premium_1'),
+                this.i18n.t('plan_premium_2'),
+                this.i18n.t('plan_premium_3'),
+                this.i18n.t('plan_premium_4')
+            ],
+            enterprise: [
+                this.i18n.t('plan_enterprise_1'),
+                this.i18n.t('plan_enterprise_2'),
+                this.i18n.t('plan_enterprise_3'),
+                this.i18n.t('plan_enterprise_4')
+            ]
+        };
+
+        tooltipPlanName.textContent = this.getPlanDisplayName(planType);
+
+        const features = planFeatures[planType] || planFeatures.free;
+        tooltipFeatures.innerHTML = features.map((feature) => `<li>${feature}</li>`).join('');
     }
 
     /**
@@ -262,6 +320,13 @@ class SettingsManager {
         document.querySelectorAll('.plan-card').forEach((card) => {
             const planType = card.dataset.plan;
             const planLevel = planHierarchy[planType] || 0;
+
+            // Hide Free plan card completely
+            if (planType === 'free') {
+                card.style.display = 'none';
+                return;
+            }
+
             let badge = card.querySelector('.plan-badge');
             const button = card.querySelector('.plan-btn');
 
@@ -274,7 +339,6 @@ class SettingsManager {
                 if (!badge) {
                     badge = document.createElement('div');
                     badge.className = 'plan-badge plan-badge-current';
-                    badge.setAttribute('data-i18n', 'currentPlanBadge');
                     card.insertBefore(badge, card.firstChild);
                 }
 
@@ -291,15 +355,15 @@ class SettingsManager {
                 `;
                 }
             } else {
+                // Other plans
                 card.setAttribute('aria-checked', 'false');
 
-                if (planType === 'premium' && normalizedCurrentPlan !== 'premium') {
+                if (planType === 'premium') {
                     card.classList.add('plan-card-popular');
 
                     if (!badge) {
                         badge = document.createElement('div');
                         badge.className = 'plan-badge plan-badge-popular';
-                        badge.setAttribute('data-i18n', 'popularBadge');
                         card.insertBefore(badge, card.firstChild);
                     }
 
@@ -313,24 +377,64 @@ class SettingsManager {
                 if (button) {
                     button.disabled = false;
 
+                    // Показуємо тільки кнопки для вищих планів
                     if (planLevel > currentPlanLevel) {
                         button.className = 'plan-btn plan-btn-upgrade';
-                        button.innerHTML = `
-                        <span data-i18n="getStarted">${this.i18n.t('getStarted')}</span>
-                        <span class="material-symbols-outlined">arrow_forward</span>
-                    `;
+                        button.style.display = 'flex'; // Показуємо кнопку
+
+                        // Якщо поточний план Free - показуємо "Get Started"
+                        if (currentPlanLevel === 0) {
+                            button.innerHTML = `
+                            <span data-i18n="getStarted">${this.i18n.t('getStarted')}</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        `;
+                        } else {
+                            // Інакше показуємо "Upgrade"
+                            button.innerHTML = `
+                            <span data-i18n="upgrade">${this.i18n.t('upgrade')}</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        `;
+                        }
                     } else {
-                        button.className = 'plan-btn plan-btn-downgrade';
-                        button.innerHTML = `
-                        <span data-i18n="downgrade">${this.i18n.t('downgrade')}</span>
-                        <span class="material-symbols-outlined">arrow_downward</span>
-                    `;
+                        // Для планів нижче поточного - ховаємо кнопку
+                        button.style.display = 'none';
                     }
                 }
             }
         });
+    }
 
-        console.log(`Updated plan cards UI for: ${normalizedCurrentPlan}`);
+    /**
+     * Initialize plan tooltip
+     */
+    initializePlanTooltip() {
+        const planCard = document.querySelector('.plan-card-info');
+        const planTooltip = document.getElementById('planTooltip');
+
+        if (!planCard || !planTooltip) return;
+
+        let tooltipTimeout;
+
+        // Show on card hover
+        planCard.addEventListener('mouseenter', () => {
+            clearTimeout(tooltipTimeout);
+            planTooltip.classList.add('show');
+        });
+
+        planCard.addEventListener('mouseleave', () => {
+            tooltipTimeout = setTimeout(() => {
+                planTooltip.classList.remove('show');
+            }, 200);
+        });
+
+        // Keep tooltip open when hovering over it
+        planTooltip.addEventListener('mouseenter', () => {
+            clearTimeout(tooltipTimeout);
+        });
+
+        planTooltip.addEventListener('mouseleave', () => {
+            planTooltip.classList.remove('show');
+        });
     }
 
     /**
@@ -411,6 +515,7 @@ class SettingsManager {
                 this.i18n.switchLanguage();
                 this.loadUserDataFromStorage(); // Reload to update translations
                 this.loadStorageInfo(); // Reload storage to update "of" text
+                this.updatePrices();
             });
         }
 
@@ -446,6 +551,15 @@ class SettingsManager {
             passwordBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.handleChangePassword();
+            });
+        }
+
+        // Cancel Subscription button
+        const cancelSubscriptionBtn = document.getElementById('cancelSubscriptionBtn');
+        if (cancelSubscriptionBtn) {
+            cancelSubscriptionBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleCancelSubscription();
             });
         }
 
@@ -526,21 +640,21 @@ class SettingsManager {
             }
         });
 
-        document.querySelectorAll('.toggle-password').forEach(button => {
-        button.addEventListener('click', () => {
-            const targetId = button.getAttribute('data-target');
-            const input = document.getElementById(targetId);
-            const icon = button.querySelector('.material-symbols-outlined');
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.textContent = 'visibility';
-            } else {
-                input.type = 'password';
-                icon.textContent = 'visibility_off';
-            }
+        document.querySelectorAll('.toggle-password').forEach((button) => {
+            button.addEventListener('click', () => {
+                const targetId = button.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                const icon = button.querySelector('.material-symbols-outlined');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility';
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility_off';
+                }
+            });
         });
-    });
     }
 
     /**
@@ -776,105 +890,104 @@ class SettingsManager {
     }
 
     /**
- * Handle Delete Account - Step 1
- */
-// async handleDeleteAccount() {
-//     this.openModal('modalDelete');
-    
-//     const modal = document.getElementById('modalDelete');
-//     const continueBtn = modal.querySelector('[data-action="continue-delete"]');
-    
-//     // Remove old listeners
-//     const newContinueBtn = continueBtn.cloneNode(true);
-//     continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
-    
-//     newContinueBtn.addEventListener('click', () => {
-//         this.closeAllModals();
-//         this.showDeleteConfirmation();
-//     });
-// }
+     * Handle Delete Account - Step 1
+     */
+    // async handleDeleteAccount() {
+    //     this.openModal('modalDelete');
 
-/**
- * Show Delete Confirmation - Step 2
- */
-// showDeleteConfirmation() {
-//     this.openModal('modalDeleteConfirm');
-    
-//     const modal = document.getElementById('modalDeleteConfirm');
-//     const confirmInput = document.getElementById('deleteConfirmInput');
-//     const finalDeleteBtn = document.getElementById('finalDeleteBtn');
-//     const instructionsEl = document.getElementById('deleteConfirmInstructions');
-    
-//     // Set confirmation text with username
-//     const username = this.currentUser.username || 'user';
-//     const confirmText = `delete ${username}-account`;
-    
-//     // Use i18n with parameter replacement
-//     const instructionText = this.i18n.t('typeToConfirm', {
-//         text: `<strong>${confirmText}</strong>`
-//     });
-    
-//     instructionsEl.innerHTML = instructionText;
-    
-//     // Clear input
-//     confirmInput.value = '';
-//     finalDeleteBtn.disabled = true;
-    
-//     // Validate input
-//     const validateInput = () => {
-//         const inputValue = confirmInput.value.trim();
-//         const isValid = inputValue === confirmText;
-//         finalDeleteBtn.disabled = !isValid;
-        
-//         if (isValid) {
-//             confirmInput.style.borderColor = 'var(--color-green)';
-//         } else if (inputValue.length > 0) {
-//             confirmInput.style.borderColor = 'var(--color-red)';
-//         } else {
-//             confirmInput.style.borderColor = 'var(--border-color)';
-//         }
-//     };
-    
-//     // Remove old event listeners by cloning
-//     const newConfirmInput = confirmInput.cloneNode(true);
-//     confirmInput.parentNode.replaceChild(newConfirmInput, confirmInput);
-    
-//     const newFinalDeleteBtn = finalDeleteBtn.cloneNode(true);
-//     finalDeleteBtn.parentNode.replaceChild(newFinalDeleteBtn, finalDeleteBtn);
-    
-//     // Add new listeners
-//     newConfirmInput.addEventListener('input', validateInput);
-    
-//     newFinalDeleteBtn.addEventListener('click', async () => {
-//         if (newFinalDeleteBtn.disabled) return;
-        
-//         try {
-//             newFinalDeleteBtn.disabled = true;
-//             newFinalDeleteBtn.textContent = this.i18n.t('processing') || 'Processing...';
-            
-//             await this.api.deleteAccount(this.currentUserId);
-            
-//             this.notifications.success(this.i18n.t('accountDeleted'));
-//             this.closeAllModals();
-            
-//             // Clear everything and redirect
-//             localStorage.clear();
-//             setTimeout(() => {
-//                 window.location.href = '../login.html';
-//             }, 2000);
-//         } catch (error) {
-//             console.error('Error deleting account:', error);
-//             this.notifications.error(this.i18n.t('failedToDeleteAccount'));
-            
-//             newFinalDeleteBtn.disabled = false;
-//             newFinalDeleteBtn.innerHTML = `<span data-i18n="deleteAccount">${this.i18n.t('deleteAccount')}</span>`;
-//         }
-//     });
-    
-//     // Focus input
-//     setTimeout(() => newConfirmInput.focus(), 100);
-// }
+    //     const modal = document.getElementById('modalDelete');
+    //     const continueBtn = modal.querySelector('[data-action="continue-delete"]');
 
+    //     // Remove old listeners
+    //     const newContinueBtn = continueBtn.cloneNode(true);
+    //     continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
+
+    //     newContinueBtn.addEventListener('click', () => {
+    //         this.closeAllModals();
+    //         this.showDeleteConfirmation();
+    //     });
+    // }
+
+    /**
+     * Show Delete Confirmation - Step 2
+     */
+    // showDeleteConfirmation() {
+    //     this.openModal('modalDeleteConfirm');
+
+    //     const modal = document.getElementById('modalDeleteConfirm');
+    //     const confirmInput = document.getElementById('deleteConfirmInput');
+    //     const finalDeleteBtn = document.getElementById('finalDeleteBtn');
+    //     const instructionsEl = document.getElementById('deleteConfirmInstructions');
+
+    //     // Set confirmation text with username
+    //     const username = this.currentUser.username || 'user';
+    //     const confirmText = `delete ${username}-account`;
+
+    //     // Use i18n with parameter replacement
+    //     const instructionText = this.i18n.t('typeToConfirm', {
+    //         text: `<strong>${confirmText}</strong>`
+    //     });
+
+    //     instructionsEl.innerHTML = instructionText;
+
+    //     // Clear input
+    //     confirmInput.value = '';
+    //     finalDeleteBtn.disabled = true;
+
+    //     // Validate input
+    //     const validateInput = () => {
+    //         const inputValue = confirmInput.value.trim();
+    //         const isValid = inputValue === confirmText;
+    //         finalDeleteBtn.disabled = !isValid;
+
+    //         if (isValid) {
+    //             confirmInput.style.borderColor = 'var(--color-green)';
+    //         } else if (inputValue.length > 0) {
+    //             confirmInput.style.borderColor = 'var(--color-red)';
+    //         } else {
+    //             confirmInput.style.borderColor = 'var(--border-color)';
+    //         }
+    //     };
+
+    //     // Remove old event listeners by cloning
+    //     const newConfirmInput = confirmInput.cloneNode(true);
+    //     confirmInput.parentNode.replaceChild(newConfirmInput, confirmInput);
+
+    //     const newFinalDeleteBtn = finalDeleteBtn.cloneNode(true);
+    //     finalDeleteBtn.parentNode.replaceChild(newFinalDeleteBtn, finalDeleteBtn);
+
+    //     // Add new listeners
+    //     newConfirmInput.addEventListener('input', validateInput);
+
+    //     newFinalDeleteBtn.addEventListener('click', async () => {
+    //         if (newFinalDeleteBtn.disabled) return;
+
+    //         try {
+    //             newFinalDeleteBtn.disabled = true;
+    //             newFinalDeleteBtn.textContent = this.i18n.t('processing') || 'Processing...';
+
+    //             await this.api.deleteAccount(this.currentUserId);
+
+    //             this.notifications.success(this.i18n.t('accountDeleted'));
+    //             this.closeAllModals();
+
+    //             // Clear everything and redirect
+    //             localStorage.clear();
+    //             setTimeout(() => {
+    //                 window.location.href = '../login.html';
+    //             }, 2000);
+    //         } catch (error) {
+    //             console.error('Error deleting account:', error);
+    //             this.notifications.error(this.i18n.t('failedToDeleteAccount'));
+
+    //             newFinalDeleteBtn.disabled = false;
+    //             newFinalDeleteBtn.innerHTML = `<span data-i18n="deleteAccount">${this.i18n.t('deleteAccount')}</span>`;
+    //         }
+    //     });
+
+    //     // Focus input
+    //     setTimeout(() => newConfirmInput.focus(), 100);
+    // }
 
     /**
      * Handle Logout

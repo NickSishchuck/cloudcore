@@ -630,7 +630,7 @@ body {
 .plan-card:hover {
     border-color: var(--color-blue);
     box-shadow: 0 12px 32px var(--shadow-lg);
-    transform: translateY(-8px) scale(1.02);
+    transform: rotate(1deg);
 }
 
 /* Plan Badges */
@@ -697,6 +697,100 @@ body {
     color: var(--color-blue);
     line-height: 1;
     letter-spacing: -2px;
+}
+
+/* Plan Value Wrapper */
+.plan-value-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+/* Plan Status Badge */
+.plan-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Plan Card Info */
+.plan-card-info {
+    position: relative;
+}
+
+/* Plan Tooltip */
+.plan-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 16px var(--shadow-md);
+    min-width: 280px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px); 
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.plan-tooltip.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.plan-tooltip-header {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.plan-tooltip-header strong {
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.plan-tooltip-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.plan-tooltip-features li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.plan-tooltip-features li::before {
+    content: '✓';
+    color: var(--color-green);
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* Dark Theme */
+[data-theme='dark'] .plan-tooltip {
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .price-crossed {
+    color: var(--text-secondary);
+    opacity: 0.6;
 }
 
 .price-period {
@@ -1613,7 +1707,7 @@ body {
 
 /* Modal Window */
 .modal {
-    display: none; /* ДОДАЙТЕ ЦЕ! */
+    display: none;
     position: fixed;
     top: 50%;
     left: 50%;
@@ -1627,12 +1721,12 @@ body {
     padding: 0;
     animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
-    opacity: 0; /* ДОДАЙТЕ ЦЕ! */
+    opacity: 0; 
 }
 
 .modal.show {
     display: block;
-    opacity: 1; /* ДОДАЙТЕ ЦЕ! */
+    opacity: 1; 
     transform: translate(-50%, -50%) scale(1);
 }
 
@@ -1967,5 +2061,80 @@ body {
 [data-theme='dark'] .toggle-password:hover {
     background: var(--bg-hover);
     color: var(--color-blue);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BILLING TOGGLE
+   ═══════════════════════════════════════════════════════════════ */
+
+.billing-toggle-container {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.billing-toggle-btn {
+    position: relative;
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.billing-toggle-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.billing-toggle-btn.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px var(--shadow-md);
+}
+
+.billing-discount {
+    display: inline-block;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #34a853 0%, #2d8e47 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    line-height: 1.4;
+}
+
+/* Price Note */
+.price-note {
+    margin-top: 4px;
+}
+
+.price-note-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+/* Dark Theme */
+[data-theme='dark'] .billing-toggle-container {
+    background: var(--bg-secondary);
+}
+
+[data-theme='dark'] .billing-toggle-btn.active {
+    background: var(--bg-hover);
 }
 
