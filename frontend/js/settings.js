@@ -321,7 +321,7 @@ class SettingsManager {
             const planType = card.dataset.plan;
             const planLevel = planHierarchy[planType] || 0;
 
-            // Hide Free plan card completely
+            // Скрыть Free план
             if (planType === 'free') {
                 card.style.display = 'none';
                 return;
@@ -330,9 +330,10 @@ class SettingsManager {
             let badge = card.querySelector('.plan-badge');
             const button = card.querySelector('.plan-btn');
 
-            card.classList.remove('plan-card-current', 'plan-card-popular');
+            card.classList.remove('plan-card-current', 'plan-card-popular', 'plan-card-disabled');
 
             if (planType === normalizedCurrentPlan) {
+                // ТЕКУЩИЙ ПЛАН
                 card.classList.add('plan-card-current');
                 card.setAttribute('aria-checked', 'true');
 
@@ -350,13 +351,34 @@ class SettingsManager {
                     button.disabled = true;
                     button.className = 'plan-btn plan-btn-current';
                     button.innerHTML = `
-                    <span class="material-symbols-outlined">check_circle</span>
-                    <span data-i18n="currentPlanBtn">${this.i18n.t('currentPlanBtn')}</span>
-                `;
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <span data-i18n="currentPlanBtn">${this.i18n.t('currentPlanBtn')}</span>
+                    `;
+                }
+            } else if (planLevel < currentPlanLevel) {
+                // ДАУНГРЕЙД - БЛОКИРУЕМ ПОЛНОСТЬЮ
+                card.classList.add('plan-card-disabled');
+                card.setAttribute('aria-checked', 'false');
+                card.style.opacity = '0.5';
+
+                if (badge) {
+                    badge.style.display = 'none';
+                }
+
+                if (button) {
+                    button.disabled = true;
+                    button.className = 'plan-btn plan-btn-disabled';
+                    button.innerHTML = `
+                        <span class="material-symbols-outlined">block</span>
+                        <span>${this.i18n.t('downgradeNotAllowed') || 'Downgrade Not Allowed'}</span>
+                    `;
+                    button.style.cursor = 'not-allowed';
+                    button.style.opacity = '0.5';
                 }
             } else {
-                // Other plans
+                // АПГРЕЙД РАЗРЕШЁН
                 card.setAttribute('aria-checked', 'false');
+                card.style.opacity = '1';
 
                 if (planType === 'premium') {
                     card.classList.add('plan-card-popular');
@@ -376,28 +398,21 @@ class SettingsManager {
 
                 if (button) {
                     button.disabled = false;
+                    button.className = 'plan-btn plan-btn-upgrade';
+                    button.style.display = 'flex';
+                    button.style.cursor = 'pointer';
+                    button.style.opacity = '1';
 
-                    // Показуємо тільки кнопки для вищих планів
-                    if (planLevel > currentPlanLevel) {
-                        button.className = 'plan-btn plan-btn-upgrade';
-                        button.style.display = 'flex'; // Показуємо кнопку
-
-                        // Якщо поточний план Free - показуємо "Get Started"
-                        if (currentPlanLevel === 0) {
-                            button.innerHTML = `
+                    if (currentPlanLevel === 0) {
+                        button.innerHTML = `
                             <span data-i18n="getStarted">${this.i18n.t('getStarted')}</span>
                             <span class="material-symbols-outlined">arrow_forward</span>
                         `;
-                        } else {
-                            // Інакше показуємо "Upgrade"
-                            button.innerHTML = `
+                    } else {
+                        button.innerHTML = `
                             <span data-i18n="upgrade">${this.i18n.t('upgrade')}</span>
                             <span class="material-symbols-outlined">arrow_forward</span>
                         `;
-                        }
-                    } else {
-                        // Для планів нижче поточного - ховаємо кнопку
-                        button.style.display = 'none';
                     }
                 }
             }
@@ -576,7 +591,7 @@ class SettingsManager {
     /**
      * Handle plan upgrade
      */
-    handlePlanUpgrade(planType) {
+    async handlePlanUpgrade(planType) {
         const planHierarchy = {
             free: 0,
             premium: 1,
@@ -586,26 +601,171 @@ class SettingsManager {
         const currentPlanLevel = planHierarchy[this.currentPlan.toLowerCase()] || 0;
         const targetPlanLevel = planHierarchy[planType.toLowerCase()] || 0;
 
-        let confirmMessage;
+        if (targetPlanLevel <= currentPlanLevel) {
+            if (targetPlanLevel === currentPlanLevel) {
+                this.notifications.warning(this.i18n.t('alreadyOnThisPlan') || 'You are already on this plan');
+            } else {
+                this.notifications.error(this.i18n.t('downgradeNotAllowed') || 'Downgrade is not allowed');
+            }
+            return;
+        }
+        this.showUpgradeConfirmationModal(planType);
+    }
 
-        if (targetPlanLevel > currentPlanLevel) {
-            // Upgrade
-            confirmMessage = `${this.i18n.t('subscribe')}: ${planType}?`;
-        } else {
-            // Downgrade
-            confirmMessage = this.i18n.t('confirmDowngrade');
+    /**
+     * Show upgrade confirmation modal
+     */
+    /**
+     * Show upgrade confirmation modal
+     */
+    showUpgradeConfirmationModal(targetPlan) {
+        const modal = document.getElementById('modalUpgradePlan');
+        if (!modal) return;
+
+        const planHierarchy = {
+            free: 0,
+            premium: 1,
+            enterprise: 2
+        };
+
+        // Данные планов
+        const planData = {
+            premium: {
+                name: 'Premium',
+                price: { usd: '$9.99', uah: '₴399' },
+                benefits: [
+                    this.i18n.t('plan_premium_1') || '100 GB Storage',
+                    this.i18n.t('plan_premium_2') || 'Priority Support',
+                    this.i18n.t('plan_premium_3') || 'Advanced Features',
+                    this.i18n.t('plan_premium_4') || 'Ad-free Experience'
+                ]
+            },
+            enterprise: {
+                name: 'Enterprise',
+                price: { usd: '$49.99', uah: '₴1999' },
+                benefits: [
+                    this.i18n.t('plan_enterprise_1') || 'Unlimited Storage',
+                    this.i18n.t('plan_enterprise_2') || '24/7 Premium Support',
+                    this.i18n.t('plan_enterprise_3') || 'API Access',
+                    this.i18n.t('plan_enterprise_4') || 'Custom Integrations'
+                ]
+            }
+        };
+
+        const targetPlanData = planData[targetPlan.toLowerCase()];
+        if (!targetPlanData) return;
+
+        // Обновить содержимое модального окна
+        const targetPlanName = document.getElementById('targetPlanName');
+        const currentPlanValue = document.getElementById('currentPlanValue');
+        const newPlanValue = document.getElementById('newPlanValue');
+        const planPriceValue = document.getElementById('planPriceValue');
+        const benefitsList = document.getElementById('upgradeBenefitsList');
+
+        if (targetPlanName) {
+            targetPlanName.textContent = targetPlanData.name;
         }
 
-        if (confirm(confirmMessage)) {
-            this.notifications.info(this.i18n.t('processing'));
+        if (currentPlanValue) {
+            const currentPlanNames = {
+                free: 'Free',
+                premium: 'Premium',
+                enterprise: 'Enterprise'
+            };
+            currentPlanValue.textContent = currentPlanNames[this.currentPlan.toLowerCase()];
+        }
 
-            // TODO: Implement actual upgrade/downgrade logic
-            setTimeout(() => {
-                const action = targetPlanLevel > currentPlanLevel ? 'upgrade' : 'downgrade';
-                this.notifications.info(this.i18n.t('featureNotImplemented'), 5000, null, {
-                    featureName: `Plan ${action}`
-                });
-            }, 1000);
+        if (newPlanValue) {
+            newPlanValue.textContent = targetPlanData.name;
+        }
+
+        if (planPriceValue) {
+            const currentLang = this.i18n.getCurrentLanguage();
+            const price = currentLang === 'uk' ? targetPlanData.price.uah : targetPlanData.price.usd;
+            planPriceValue.textContent = `${price}/${this.i18n.t('perMonth') || 'month'}`;
+        }
+
+        // ОБНОВЛЕНО: Добавляем Material Icons в список преимуществ
+        if (benefitsList) {
+            benefitsList.innerHTML = targetPlanData.benefits
+                .map(
+                    (benefit) => `
+                <li>
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <span>${benefit}</span>
+                </li>
+            `
+                )
+                .join('');
+        }
+
+        // Открыть модальное окно
+        this.openModal('modalUpgradePlan');
+
+        // Обработчик кнопки подтверждения
+        const confirmBtn = modal.querySelector('[data-action="confirm-upgrade"]');
+        if (confirmBtn) {
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', async () => {
+                await this.executeUpgrade(targetPlan, newConfirmBtn);
+            });
+        }
+    }
+
+    /*
+    Execute the actual upgrade
+ */
+    async executeUpgrade(planType, button) {
+        const planHierarchy = {
+            free: 0,
+            premium: 1,
+            enterprise: 2
+        };
+
+        const targetPlanLevel = planHierarchy[planType.toLowerCase()] || 0;
+
+        try {
+            button.disabled = true;
+            button.innerHTML = `
+            <span class="material-symbols-outlined rotating">sync</span>
+            <span>${this.i18n.t('processing') || 'Processing...'}</span>
+        `;
+
+            const response = await this.api.upgradePlan(this.currentUserId, targetPlanLevel);
+
+            if (response.success) {
+                this.notifications.success(this.i18n.t('planUpgraded') || 'Plan upgraded successfully!');
+
+                this.closeAllModals();
+
+                this.currentPlan = planType;
+                localStorage.setItem('cloudcore_userPlan', planType);
+
+                this.updateProfilePlanDisplay(planType);
+
+                await this.loadStorageInfo();
+            } else {
+                throw new Error(response.message || 'Upgrade failed');
+            }
+        } catch (error) {
+            console.error('Error upgrading plan:', error);
+
+            // Восстановить кнопку
+            button.disabled = false;
+            button.innerHTML = `
+            <span class="material-symbols-outlined">check_circle</span>
+            <span data-i18n="confirmUpgrade">${this.i18n.t('confirmUpgrade')}</span>
+        `;
+
+            if (error.message?.includes('Cannot downgrade')) {
+                this.notifications.error(this.i18n.t('downgradeNotAllowed') || 'Downgrade is not allowed');
+            } else if (error.message?.includes('same plan')) {
+                this.notifications.warning(this.i18n.t('alreadyOnThisPlan') || 'Already on this plan');
+            } else {
+                this.notifications.error(this.i18n.t('failedToUpgradePlan') || 'Failed to upgrade plan');
+            }
         }
     }
 

@@ -1,3 +1,4 @@
+using CloudCore.Common.Models;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
@@ -56,6 +57,8 @@ public interface IAuthService
     Task<bool> SendEmailVerificationAsync(int userId, string newEmail);
 
     Task<bool> ConfirmEmailChangeAsync(string token);
+
+    Task<bool> UpgradePlanAsync(int userId, SubscriptionPlan subscriptionPlan);
     #endregion
 
 }

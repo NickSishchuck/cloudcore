@@ -536,6 +536,18 @@ export class ApiClient {
         return this.handleResponse(response);
     }
 
+    async upgradePlan(userId, newPlan)
+    {
+        const response = await fetch(`${this.baseUrl}/auth/${userId}/upgrade-plan`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                NewPlan: newPlan
+            })
+        });
+        return this.handleResponse(response);
+    }
+
     uploadFileWithProgress(userId, file, parentId = null, onProgress = null) {
         const xhr = new XMLHttpRequest();
 

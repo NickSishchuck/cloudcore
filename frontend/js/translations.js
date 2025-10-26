@@ -427,6 +427,18 @@ export const translations = {
         yesCancelSubscription: 'Yes, Cancel Subscription',
         subscriptionCancelled: 'Subscription cancelled successfully. You will be downgraded to Free plan at the end of billing period.',
         failedToCancelSubscription: 'Failed to cancel subscription. Please try again.',
+        confirmUpgradeTitle: 'Confirm Plan Upgrade',
+        upgradePlanMessage: 'You are about to upgrade your plan to',
+        currentPlanLabel: 'Current Plan:',
+        newPlanLabel: 'New Plan:',
+        priceLabel: 'Price:',
+        benefitsTitle: 'You will get:',
+        confirmUpgrade: 'Confirm Upgrade',
+        perMonth: 'month',
+        alreadyOnThisPlan: 'You are already on this plan',
+        downgradeNotAllowed: 'Downgrade is not allowed',
+        planUpgraded: 'Plan upgraded successfully!',
+        failedToUpgradePlan: 'Failed to upgrade plan',
     },
 
     uk: {
@@ -854,6 +866,18 @@ export const translations = {
         yesCancelSubscription: 'Так, скасувати підписку',
         subscriptionCancelled: 'Підписку скасовано успішно. Ви будете переведені на безкоштовний план після закінчення платіжного періоду.',
         failedToCancelSubscription: 'Не вдалося скасувати підписку. Спробуйте ще раз.',
+        confirmUpgradeTitle: 'Підтвердження покращення плану',
+        upgradePlanMessage: 'Ви збираєтесь перейти на тарифний план',
+        currentPlanLabel: 'Поточний план:',
+        newPlanLabel: 'Новий план:',
+        priceLabel: 'Ціна:',
+        benefitsTitle: 'Ви отримаєте:',
+        confirmUpgrade: 'Підтвердити покращення',
+        perMonth: 'місяць',
+        alreadyOnThisPlan: 'Ви вже використовуєте цей план',
+        downgradeNotAllowed: 'Даунгрейд заборонено',
+        planUpgraded: 'План успішно оновлено!',
+        failedToUpgradePlan: 'Не вдалося оновити план',
     }
 };
 

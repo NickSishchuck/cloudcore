@@ -1,6 +1,7 @@
 
 using System.Security.Claims;
 using CloudCore.Common.Errors;
+using CloudCore.Common.Models;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
@@ -144,4 +145,23 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse.Ok("Email successfully changed and verified."));
     }
 
+    [Authorize]
+    [HttpPost("{userId}/upgrade-plan")]
+    public async Task<ActionResult> UpgradePlan([FromRoute] int userId, [FromBody] UpgradePlanRequest upgradePlanRequest)
+    {
+        if (upgradePlanRequest.NewPlan == null || !Enum.IsDefined(typeof(SubscriptionPlan), upgradePlanRequest.NewPlan))
+        {
+            _logger.LogWarning("Requested upgrade plan value: {upgradePlanRequest}", upgradePlanRequest);
+            return BadRequest(ApiResponse.Error("Invalid subscription plan value"));
+        }
+
+        var tokenUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (tokenUserId != userId)
+            return Forbid();
+
+        var success = await _authService.UpgradePlanAsync(userId, upgradePlanRequest.NewPlan.Value);
+        if (!success)
+            return BadRequest(ApiResponse.Error("Error upgrading plan"));
+        return Ok(ApiResponse.Ok("Plan upgraded successfully"));
+    }
 }
