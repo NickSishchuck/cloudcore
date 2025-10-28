@@ -317,7 +317,7 @@ namespace CloudCore.Controllers
         [ProducesResponseType(typeof(MoveResult), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(MoveResult), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(MoveResult), StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> MoveItemAsync([FromRoute] int userId, [FromRoute] int itemId, [FromQuery] int? targetId)
+        public async Task<IActionResult> MoveItemAsync([FromRoute] int userId, [FromRoute] int itemId, [FromRoute] int? targetId)
         {
             _logger.LogInformation("User {UserId} attempting to move Item ID: {ItemID} to Target ID: {TargetId}", userId, itemId, targetId);
             var result = await _itemApplication.MoveItemAsync(userId, itemId, targetId);
