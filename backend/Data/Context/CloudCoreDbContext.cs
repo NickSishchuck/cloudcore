@@ -184,17 +184,10 @@ public partial class CloudCoreDbContext : DbContext
             entity.Property(e => e.PersonalStorageUsedMb)
                 .HasDefaultValueSql("'0'")
                 .HasColumnName("personal_storage_used_mb");
-            entity.Property(e => e.SubscriptionExpiresAt)
-                .HasColumnType("timestamp")
-                .HasColumnName("subscription_expires_at");
             entity.Property(e => e.SubscriptionPlan)
                 .HasDefaultValueSql("'free'")
                 .HasColumnType("enum('free','premium','enterprise')")
                 .HasColumnName("subscription_plan");
-            entity.Property(e => e.SubscriptionStatus)
-                .HasDefaultValueSql("'active'")
-                .HasColumnType("enum('active','expired','cancelled')")
-                .HasColumnName("subscription_status");
             entity.Property(e => e.TeamspacesOwned)
                 .HasDefaultValueSql("'0'")
                 .HasColumnName("teamspaces_owned");

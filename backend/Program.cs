@@ -100,6 +100,7 @@ namespace CloudCore
                 builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
                 builder.Services.AddScoped<IEmailSendService, EmailSendService>();
                 builder.Services.AddScoped<ITokenService, TokenService>();
+                builder.Services.AddScoped<IUserService, UserService>();
                 builder.Services.AddScoped<UserAuthorizationFilter>();
 
                 var senderEmail = Environment.GetEnvironmentVariable("Email_SenderEmail");

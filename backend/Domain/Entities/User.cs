@@ -18,10 +18,6 @@ public partial class User
 
     public string? SubscriptionPlan { get; set; }
 
-    public string? SubscriptionStatus { get; set; }
-
-    public DateTime? SubscriptionExpiresAt { get; set; }
-
     public long? PersonalStorageUsedMb { get; set; }
 
     public int? TeamspacesOwned { get; set; }

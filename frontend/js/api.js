@@ -502,7 +502,7 @@ export class ApiClient {
     }
 
     async changeUsername(userId, newUsername) {
-        const response = await fetch(`${this.baseUrl}/auth/${userId}/change-username`, {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/change-username`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify({
@@ -513,7 +513,7 @@ export class ApiClient {
     }
 
     async changePassword(userId, currentPassword, newPassword, confirmPassword) {
-        const response = await fetch(`${this.baseUrl}/auth/${userId}/change-password`, {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/change-password`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify({
@@ -526,7 +526,7 @@ export class ApiClient {
     }
 
     async requestEmailChange(userId, newEmail) {
-        const response = await fetch(`${this.baseUrl}/auth/${userId}/request-email-change`, {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/request-email-change`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify({
@@ -538,7 +538,7 @@ export class ApiClient {
 
     async upgradePlan(userId, newPlan)
     {
-        const response = await fetch(`${this.baseUrl}/auth/${userId}/upgrade-plan`, {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/upgrade-plan`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify({

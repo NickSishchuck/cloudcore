@@ -11,8 +11,6 @@ CREATE TABLE users (
 
     -- subscription state
   subscription_plan ENUM('free', 'premium', 'enterprise') DEFAULT 'free',
-  subscription_status ENUM('active', 'expired', 'cancelled') DEFAULT 'active',
-  subscription_expires_at TIMESTAMP NULL,
     
   personal_storage_used_mb BIGINT DEFAULT 0,
   teamspaces_owned INT DEFAULT 0
