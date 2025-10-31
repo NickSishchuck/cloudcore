@@ -1,11 +1,11 @@
-﻿using CloudCore.Domain.Entities;
-using System.Security.Claims;
-using CloudCore.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc.Filters;
-using CloudCore.Contracts.Responses;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
 using CloudCore.Common.Errors;
+using CloudCore.Contracts.Responses;
+using CloudCore.Domain.Entities;
+using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace CloudCore.Services.Implementations
 {
@@ -57,7 +57,7 @@ namespace CloudCore.Services.Implementations
             {
                 _logger.LogWarning("User authorization failed. CurrentUserId={CurrentUserId}, TargetUserId={TargetUserId}",
                     currentUserId, targetUserId);
-                var errorResponse = ApiResponse.Error(authValidation.ErrorMessage, authValidation.ErrorCode);
+                var errorResponse = ApiResponse.Error(authValidation.ErrorMessage!, authValidation.ErrorCode);
                 context.Result = new ObjectResult(errorResponse)
                 {
                     StatusCode = StatusCodes.Status403Forbidden

@@ -3,8 +3,8 @@
     public class ApiResponse
     {
         public bool Success { get; set; }
-        public string Message { get; set; }
-        public string ErrorCode { get; set; }
+        public required string Message { get; set; }
+        public string? ErrorCode { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
         public static ApiResponse Ok(string message = "Operation completed successfully")
@@ -16,7 +16,7 @@
             };
         }
 
-        public static ApiResponse Error(string message, string errorCode = null)
+        public static ApiResponse Error(string message, string? errorCode = null)
         {
             return new ApiResponse
             {
@@ -30,7 +30,7 @@
 
     public class ApiResponse<T> : ApiResponse
     {
-        public T Data { get; set; }
+        public T? Data { get; set; }
 
         public static ApiResponse<T> Ok(T data, string message = "Operation completed successfully")
         {
@@ -42,7 +42,7 @@
             };
         }
 
-        public static new ApiResponse<T> Error(string message, string errorCode = null)
+        public static new ApiResponse<T> Error(string message, string? errorCode = null)
         {
             return new ApiResponse<T>
             {

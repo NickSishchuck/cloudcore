@@ -1,9 +1,9 @@
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using CloudCore.Contracts.Responses;
 using CloudCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 
 namespace CloudCore.Controllers
 {

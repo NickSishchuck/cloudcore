@@ -1,11 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using MySqlConnector;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Net.Sockets;
-using System.Security.Authentication;
 using System.Security;
+using System.Security.Authentication;
 using System.Text.Json;
 using CloudCore.Contracts.Responses;
+using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 
 namespace CloudCore.Middleware
 {

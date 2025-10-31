@@ -124,7 +124,7 @@ namespace CloudCore.Services.Implementations
             int userId,
             int teamspaceId,
             int itemId,
-            string type)
+            string? type)
         {
             _logger.LogInformation("Fetching teamspace item. TeamspaceId={TeamspaceId}, ItemId={ItemId}",
                 teamspaceId, itemId);
@@ -178,8 +178,8 @@ namespace CloudCore.Services.Implementations
                 return new UploadResult
                 {
                     IsSuccess = false,
-                    ErrorCode = fileValidation.ErrorCode,
-                    Message = fileValidation.ErrorMessage
+                    ErrorCode = fileValidation.ErrorCode!,
+                    Message = fileValidation.ErrorMessage!
                 };
             }
 
@@ -231,8 +231,8 @@ namespace CloudCore.Services.Implementations
                 return new UploadResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -290,8 +290,8 @@ namespace CloudCore.Services.Implementations
                 return new CreateFolderResult
                 {
                     IsSuccess = false,
-                    ErrorCode = nameValidation.ErrorCode,
-                    Message = nameValidation.ErrorMessage
+                    ErrorCode = nameValidation.ErrorCode!,
+                    Message = nameValidation.ErrorMessage!
                 };
             }
 
@@ -325,8 +325,8 @@ namespace CloudCore.Services.Implementations
                 return new CreateFolderResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -400,8 +400,8 @@ namespace CloudCore.Services.Implementations
                 return new RenameResult
                 {
                     IsSuccess = false,
-                    ErrorCode = nameValidation.ErrorCode,
-                    Message = nameValidation.ErrorMessage
+                    ErrorCode = nameValidation.ErrorCode!,
+                    Message = nameValidation.ErrorMessage!
                 };
             }
 
@@ -431,8 +431,8 @@ namespace CloudCore.Services.Implementations
                 return new RenameResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -452,7 +452,7 @@ namespace CloudCore.Services.Implementations
                 childItemsAsync = AsyncEnumerable.Repeat(item, 1);
             }
 
-            var itemsToRenameAsync = _itemManagerService.PrepareItemsForRenaming(item, newName, childItemsAsync, folderPath);
+            var itemsToRenameAsync = _itemManagerService.PrepareItemsForRenaming(item, newName, childItemsAsync, folderPath!);
 
             try
             {
@@ -579,8 +579,8 @@ namespace CloudCore.Services.Implementations
                 return new RestoreResult
                 {
                     IsSuccess = false,
-                    ErrorCode = uniquenessValidation.ErrorCode,
-                    Message = uniquenessValidation.ErrorMessage
+                    ErrorCode = uniquenessValidation.ErrorCode!,
+                    Message = uniquenessValidation.ErrorMessage!
                 };
             }
 
@@ -665,7 +665,7 @@ namespace CloudCore.Services.Implementations
                 throw new FileNotFoundException(ErrorCodes.FILE_NOT_FOUND);
             }
 
-            var fullPath = _itemStorageService.GetFileFullPath(userId, file.FilePath);
+            var fullPath = _itemStorageService.GetFileFullPath(userId, file.FilePath!);
 
             if (!File.Exists(fullPath))
             {

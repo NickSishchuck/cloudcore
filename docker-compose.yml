@@ -27,6 +27,14 @@ services:
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD:-defaultpassword}
       - FileStorage__BasePath=/app/storage
+      - Email_Host=mailhog
+      - Email_Port=1025
+      - Email_SenderEmail=mailhog@test.com
+      - Email_Sender=CloudCore
+      - JWT_KEY=${JWT_KEY:-your-super-secret-key-that-is-at-least-32-characters-long}
+      - JWT_ISSUER=${JWT_ISSUER:-CloudCore}
+      - JWT_AUDIENCE=${JWT_AUDIENCE:-CloudCore}
+      - JWT_TOKEN_EXPIRATION_DAYS=${JWT_TOKEN_EXPIRATION_DAYS:-7}
     volumes:
       - ./backend/storage:/app/storage
     depends_on:
@@ -53,6 +61,15 @@ services:
       timeout: 20s
       retries: 10
       interval: 10s
+    networks:
+      - app-network
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
     networks:
       - app-network
 

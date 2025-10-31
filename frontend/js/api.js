@@ -33,10 +33,20 @@ export class ApiClient {
             throw new Error('Unauthorized');
         }
 
-        const data = await response.json().catch(() => ({}));
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = {};
+        }
 
         if (!response.ok) {
-            throw new Error(data.message || `HTTP ${response.status}`);
+            const error = new Error(data.message || `HTTP ${response.status}`);
+            error.errorCode = data.errorCode || data.code || null;
+            error.status = response.status;
+            error.data = data;
+
+            throw error;
         }
 
         return data;
@@ -59,6 +69,30 @@ export class ApiClient {
             body: JSON.stringify({ username, email, password })
         });
         return this.handleResponse(response);
+    }
+
+    async verifyEmailToken(token) {
+        const response = await fetch(`${this.baseUrl}/auth/verify-email`, {
+            method: 'POST',
+            headers: this.getHeaders(false),
+            body: JSON.stringify({ token })
+        });
+
+        return this.handleResponse(response);
+    }
+
+    async confirmEmailChange(token) {
+        const response = await fetch(`${this.baseUrl}/auth/confirm-email-change`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+
+        if (!response.ok) {
+            throw new Error('Email change confirmation failed');
+        }
+
+        return response.json();
     }
 
     // File/Folder endpoints
@@ -441,6 +475,77 @@ export class ApiClient {
         }
 
         return results;
+    }
+
+    async getPersonalStorage(userId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/storage/personal`, {
+            method: 'GET',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async recalculatePersonalStorage(userId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/storage/personal/recalculate`, {
+            method: 'POST',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async getTeamspaceStorage(userId, teamspaceId) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/storage/teamspace/${teamspaceId}`, {
+            method: 'GET',
+            headers: this.getHeaders()
+        });
+        return this.handleResponse(response);
+    }
+
+    async changeUsername(userId, newUsername) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/change-username`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                NewUsername: newUsername
+            })
+        });
+        return this.handleResponse(response);
+    }
+
+    async changePassword(userId, currentPassword, newPassword, confirmPassword) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/change-password`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                CurrentPassword: currentPassword,
+                NewPassword: newPassword,
+                ConfirmNewPassword: confirmPassword
+            })
+        });
+        return this.handleResponse(response);
+    }
+
+    async requestEmailChange(userId, newEmail) {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/request-email-change`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                NewEmail: newEmail
+            })
+        });
+        return this.handleResponse(response);
+    }
+
+    async upgradePlan(userId, newPlan)
+    {
+        const response = await fetch(`${this.baseUrl}/user/${userId}/upgrade-plan`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+                NewPlan: newPlan
+            })
+        });
+        return this.handleResponse(response);
     }
 
     uploadFileWithProgress(userId, file, parentId = null, onProgress = null) {

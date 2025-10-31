@@ -7,11 +7,10 @@ CREATE TABLE users (
   username VARCHAR(50) NOT NULL UNIQUE,
   email VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255),
+  is_email_verified BOOLEAN DEFAULT FALSE,
 
     -- subscription state
   subscription_plan ENUM('free', 'premium', 'enterprise') DEFAULT 'free',
-  subscription_status ENUM('active', 'expired', 'cancelled') DEFAULT 'active',
-  subscription_expires_at TIMESTAMP NULL,
     
   personal_storage_used_mb BIGINT DEFAULT 0,
   teamspaces_owned INT DEFAULT 0

@@ -1,5 +1,5 @@
-﻿using CloudCore.Domain.Entities;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using CloudCore.Domain.Entities;
 
 namespace CloudCore.Contracts.Responses
 {

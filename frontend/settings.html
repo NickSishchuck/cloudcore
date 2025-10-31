@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('cloudcore-theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="css/settings.css" />
+    <script type="module" src="js/settings.js"></script>
+</head>
+
+<body>
+    <div id="notification" aria-live="polite" aria-atomic="true"></div>
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <!-- Change Email Modal -->
+    <div id="modalEmail" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="changeEmail">Change Email</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <label for="newEmail" data-i18n="newEmail">New Email Address</label>
+            <input type="email" id="newEmail" class="rename-input" placeholder="user@example.com" required />
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-primary" data-action="save">
+                <span data-i18n="save">Save</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Change Username Modal -->
+    <div id="modalUsername" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="changeUsername">Change Username</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <label for="newUsername" data-i18n="newUsername">New Username</label>
+            <input type="text" id="newUsername" class="rename-input" data-i18n-placeholder="usernamePlaceholder"
+                required />
+            <p class="rename-hint" data-i18n="usernameHint">Choose a unique username (3-20 characters)</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-primary" data-action="save">
+                <span data-i18n="save">Save</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="modalPassword" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="changePassword">Change Password</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <!-- Current Password -->
+            <div style="margin-bottom: 16px">
+                <label for="currentPassword" data-i18n="currentPassword">Current Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="currentPassword" class="rename-input"
+                        data-i18n-placeholder="currentPasswordPlaceholder" placeholder="Enter current password"
+                        required />
+                    <button type="button" class="toggle-password" data-target="currentPassword"
+                        aria-label="Toggle password visibility">
+                        <span class="material-symbols-outlined">visibility_off</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- New Password -->
+            <div style="margin-bottom: 16px">
+                <label for="newPassword" data-i18n="newPassword">New Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="newPassword" class="rename-input"
+                        data-i18n-placeholder="newPasswordPlaceholder" placeholder="Enter new password" required />
+                    <button type="button" class="toggle-password" data-target="newPassword"
+                        aria-label="Toggle password visibility">
+                        <span class="material-symbols-outlined">visibility_off</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Confirm New Password -->
+            <div>
+                <label for="confirmNewPassword" data-i18n="confirmPassword">Confirm New Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="confirmNewPassword" class="rename-input"
+                        data-i18n-placeholder="confirmPasswordPlaceholder" placeholder="Confirm new password"
+                        required />
+                    <button type="button" class="toggle-password" data-target="confirmNewPassword"
+                        aria-label="Toggle password visibility">
+                        <span class="material-symbols-outlined">visibility_off</span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="rename-hint" data-i18n="passwordHint">Password must be at least 8 characters long</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-primary" data-action="save">
+                <span data-i18n="save">Save</span>
+            </button>
+        </div>
+    </div>
+    <!-- Upgrade Plan Confirmation Modal -->
+    <div id="modalUpgradePlan" class="modal" role="dialog" aria-labelledby="modalUpgradePlanTitle" aria-hidden="true">
+        <div class="modal-header">
+            <h3 id="modalUpgradePlanTitle" data-i18n="confirmUpgradeTitle">Confirm Plan Upgrade</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="upgrade-confirmation-content">
+                <div class="upgrade-icon">
+                    <span class="material-symbols-outlined">upgrade</span>
+                </div>
+                <p class="upgrade-message" data-i18n="upgradePlanMessage">
+                    You are about to upgrade your plan to <strong id="targetPlanName">Premium</strong>.
+                </p>
+                <div class="upgrade-details">
+                    <div class="upgrade-detail-row">
+                        <span class="detail-label">
+                            <span class="material-symbols-outlined">person</span>
+                            <span data-i18n="currentPlanLabel">Current Plan:</span>
+                        </span>
+                        <span class="detail-value" id="currentPlanValue">Free</span>
+                    </div>
+                    <div class="upgrade-detail-row">
+                        <span class="detail-label">
+                            <span class="material-symbols-outlined">workspace_premium</span>
+                            <span data-i18n="newPlanLabel">New Plan:</span>
+                        </span>
+                        <span class="detail-value highlight" id="newPlanValue">Premium</span>
+                    </div>
+                    <div class="upgrade-detail-row">
+                        <span class="detail-label">
+                            <span class="material-symbols-outlined">payments</span>
+                            <span data-i18n="priceLabel">Price:</span>
+                        </span>
+                        <span class="detail-value price" id="planPriceValue">$9.99/month</span>
+                    </div>
+                </div>
+                <div class="upgrade-benefits">
+                    <h4>
+                        <span class="material-symbols-outlined">star</span>
+                        <span data-i18n="benefitsTitle">You will get:</span>
+                    </h4>
+                    <ul id="upgradeBenefitsList">
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span class="material-symbols-outlined">close</span>
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-primary" data-action="confirm-upgrade">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span data-i18n="confirmUpgrade">Confirm Upgrade</span>
+            </button>
+        </div>
+    </div>
+
+
+
+    <!-- Delete Account Modal - Step 1 (Warning) -->
+    <!-- <div id="modalDelete" class="modal">
+    <div class="modal-header">
+        <h3 data-i18n="deleteAccount">Delete Account</h3>
+        <button class="modal-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div style="text-align: center; margin-bottom: 16px;">
+            <span class="material-symbols-outlined" style="font-size: 64px; color: var(--color-red);">warning</span>
+        </div>
+        
+        <p data-i18n="deleteAccountWarning" style="text-align: center;">
+            This action is permanent and cannot be undone. All your files, folders, and data will be permanently deleted.
+        </p>
+        
+        <p style="margin-top: 16px; font-weight: 600; color: var(--color-red); text-align: center;" data-i18n="deleteAccountConfirmText">
+            Are you absolutely sure you want to delete your account?
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" data-action="cancel">
+            <span data-i18n="cancel">Cancel</span>
+        </button>
+        <button class="modal-btn modal-btn-danger" data-action="continue-delete">
+            <span data-i18n="continue">Continue</span>
+        </button>
+    </div>
+</div>
+
+<div id="modalDeleteConfirm" class="modal">
+    <div class="modal-header">
+        <h3 data-i18n="confirmDeletion">Confirm Deletion</h3>
+        <button class="modal-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <p id="deleteConfirmInstructions" style="margin-bottom: 12px;">
+        </p>
+        
+        <label for="deleteConfirmInput" data-i18n="confirmation">Confirmation</label>
+        <input 
+            type="text" 
+            id="deleteConfirmInput" 
+            class="rename-input" 
+            data-i18n-placeholder="typeHere"
+            placeholder="Type here..."
+            autocomplete="off"
+            required>
+        
+        <p class="rename-hint" style="color: var(--color-red); margin-top: 8px;" data-i18n="deleteIsPermanent">
+            This action is permanent and cannot be undone!
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" data-action="cancel">
+            <span data-i18n="cancel">Cancel</span>
+        </button>
+        <button class="modal-btn modal-btn-danger" id="finalDeleteBtn" disabled data-action="final-delete">
+            <span data-i18n="deleteAccount">Delete Account</span>
+        </button>
+    </div>
+</div> -->
+
+    <!-- Logout Confirmation Modal -->
+    <div id="modalLogout" class="modal">
+        <div class="modal-header">
+            <h3 data-i18n="signOut">Sign Out</h3>
+            <button class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p data-i18n="signOutMessage">Are you sure you want to sign out?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="cancel">
+                <span data-i18n="cancel">Cancel</span>
+            </button>
+            <button class="modal-btn modal-btn-danger" data-action="logout">
+                <span data-i18n="signOut">Sign Out</span>
+            </button>
+        </div>
+    </div>
+    <div class="header">
+        <button id="backBtn" aria-label="Back">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+
+        <div class="header-controls">
+            <button class="language-btn" id="languageBtn" aria-label="Change Language" type="button">
+                <span class="material-symbols-outlined" aria-hidden="true">language</span>
+                <span class="language-code">EN</span>
+            </button>
+
+            <button id="themeToggleBtn" class="theme-btn" aria-label="Toggle Theme" type="button">
+                <span class="material-symbols-outlined theme-icon" aria-hidden="true">light_mode</span>
+            </button>
+        </div>
+
+        <h1 data-i18n="settings">Settings</h1>
+    </div>
+
+    <div class="settings-container" role="main">
+        <div class="sidebar-wrapper">
+            <nav class="sidebar" role="tablist" aria-label="Settings Categories">
+                <button class="sidebar-item active" role="tab" aria-selected="true" aria-controls="profile-tab"
+                    id="tab-profile">
+                    <span class="material-symbols-outlined" aria-hidden="true">person</span>
+                    <span data-i18n="profile">Profile</span>
+                </button>
+                <button class="sidebar-item" role="tab" aria-selected="false" aria-controls="subscription-tab"
+                    id="tab-subscription">
+                    <span class="material-symbols-outlined" aria-hidden="true">subscriptions</span>
+                    <span data-i18n="subscription">Subscription</span>
+                </button>
+                <button class="sidebar-item" role="tab" aria-selected="false" aria-controls="security-tab"
+                    id="tab-security">
+                    <span class="material-symbols-outlined" aria-hidden="true">security</span>
+                    <span data-i18n="security">Security</span>
+                </button>
+            </nav>
+            <button class="logout-btn" id="logoutBtn" data-i18n="signOut">Sign Out</button>
+        </div>
+
+        <section id="profile-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-profile">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <span class="material-symbols-outlined">account_circle</span>
+                </div>
+                <h2 id="nicknameDisplay" class="profile-name">Hello, NicknameUser!</h2>
+            </div>
+
+            <div class="profile-info-grid">
+                <!-- Email Card -->
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <span class="material-symbols-outlined">mail</span>
+                    </div>
+                    <div class="info-card-content">
+                        <span class="info-card-label" data-i18n="email">Email</span>
+                        <strong id="emailDisplay" class="info-card-value">user@example.com</strong>
+                    </div>
+                </div>
+
+                <!-- Current Plan Card -->
+                <div class="info-card plan-card-info" data-plan-status="free">
+                    <div class="info-card-icon">
+                        <span class="material-symbols-outlined">workspace_premium</span>
+                    </div>
+                    <div class="info-card-content">
+                        <span class="info-card-label" data-i18n="currentPlan">Current plan</span>
+                        <div class="plan-value-wrapper">
+                            <span class="plan-status-badge" id="planStatusBadge">Free</span>
+                        </div>
+
+                        <!-- Tooltip -->
+                        <div class="plan-tooltip" id="planTooltip" role="tooltip">
+                            <div class="plan-tooltip-header">
+                                <strong id="tooltipPlanName">Free Plan</strong>
+                            </div>
+                            <ul class="plan-tooltip-features" id="tooltipFeatures">
+                                <li data-i18n="plan_free_1">10GB personal storage</li>
+                                <li data-i18n="plan_free_2">5GB teamspace storage</li>
+                                <li data-i18n="plan_free_3">2 teamspaces</li>
+                                <li data-i18n="plan_free_4">5 members per teamspace</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Storage Card -->
+                <div class="info-card storage-card">
+                    <div class="info-card-icon">
+                        <span class="material-symbols-outlined">cloud</span>
+                    </div>
+                    <div class="info-card-content">
+                        <span class="info-card-label" data-i18n="storageUsed">Storage used</span>
+                        <div class="storage-bar" aria-label="Disk usage progress">
+                            <div class="storage-bar-fill" id="storageBarFill" style="width: 45%"></div>
+                        </div>
+                        <strong class="info-card-value storage-info" id="storageInfo">45 GB of 100 GB</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="subscription-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-subscription">
+            <div class="plans-container" role="radiogroup" aria-label="Choose a plan">
+                <!-- Free Plan (Current) -->
+                <div tabindex="0" aria-checked="true" class="plan-card plan-card-current" data-plan="free"
+                    aria-label="Free plan">
+                    <div class="plan-badge plan-badge-current" data-i18n="currentPlanBadge">Current</div>
+                    <div class="plan-header">
+                        <h3 class="plan-title">Free</h3>
+                        <div class="plan-price">
+                            <span class="price-amount">$0</span>
+                            <span class="price-period" data-i18n="forever">/forever</span>
+                        </div>
+                    </div>
+                    <ul class="plan-features">
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_free_1">10GB personal</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_free_2">5GB teamspace</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_free_3">2 teamspaces</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_free_4">5 members</span>
+                        </li>
+                    </ul>
+                    <button class="plan-btn plan-btn-current" disabled>
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <span data-i18n="currentPlanBtn">Current Plan</span>
+                    </button>
+                </div>
+
+                <!-- Premium Plan (Popular) -->
+                <div tabindex="0" aria-checked="false" class="plan-card plan-card-popular" data-plan="premium"
+                    aria-label="Premium plan">
+                    <div class="plan-badge plan-badge-popular" data-i18n="popularBadge">Popular</div>
+                    <div class="plan-header">
+                        <h3 class="plan-title">Premium</h3>
+                        <div class="plan-price">
+                            <span class="price-amount" data-usd="29.99" data-uah="1199">$29.99</span>
+                            <span class="price-period" data-i18n="forever">/forever</span>
+                        </div>
+                    </div>
+                    <ul class="plan-features">
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_premium_1">20GB personal</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_premium_2">50GB teamspace</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_premium_3">10 teamspaces</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_premium_4">25 members</span>
+                        </li>
+                    </ul>
+                    <button class="plan-btn plan-btn-upgrade">
+                        <span data-i18n="getStarted">Get Started</span>
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                </div>
+
+                <!-- Enterprise Plan -->
+                <div tabindex="0" aria-checked="false" class="plan-card" data-plan="enterprise"
+                    aria-label="Enterprise plan">
+                    <div class="plan-header">
+                        <h3 class="plan-title">Enterprise</h3>
+                        <div class="plan-price">
+                            <span class="price-amount" data-usd="49.99" data-uah="1999">$49.99</span>
+                            <span class="price-period" data-i18n="forever">/forever</span>
+                        </div>
+                    </div>
+                    <ul class="plan-features">
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_enterprise_1">50GB personal</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_enterprise_2">500GB teamspace</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_enterprise_3">Unlimited teamspaces</span>
+                        </li>
+                        <li>
+                            <span class="material-symbols-outlined feature-icon">check_circle</span>
+                            <span data-i18n="plan_enterprise_4">100 members</span>
+                        </li>
+                    </ul>
+                    <button class="plan-btn plan-btn-upgrade">
+                        <span data-i18n="getStarted">Get Started</span>
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="security-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-security">
+            <div class="security-section">
+                <!-- Change Email -->
+                <div class="security-card">
+                    <div class="security-card-content">
+                        <div class="security-icon">
+                            <span class="material-symbols-outlined">mail</span>
+                        </div>
+                        <div class="security-info">
+                            <h3 class="security-title" data-i18n="changeEmail">Change Email</h3>
+                            <p class="security-description" data-i18n="changeEmailDesc">
+                                Update your email address for account access
+                            </p>
+                        </div>
+                    </div>
+                    <div class="security-action">
+                        <button type="button" class="security-btn modal-trigger" data-modal="modalEmail">
+                            <span data-i18n="change">Change</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Change Username -->
+                <div class="security-card">
+                    <div class="security-card-content">
+                        <div class="security-icon">
+                            <span class="material-symbols-outlined">badge</span>
+                        </div>
+                        <div class="security-info">
+                            <h3 class="security-title" data-i18n="changeUsername">Change Username</h3>
+                            <p class="security-description" data-i18n="changeUsernameDesc">
+                                Update your display name
+                            </p>
+                        </div>
+                    </div>
+                    <div class="security-action">
+                        <button type="button" class="security-btn modal-trigger" data-modal="modalUsername">
+                            <span data-i18n="change">Change</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Change Password -->
+                <div class="security-card">
+                    <div class="security-card-content">
+                        <div class="security-icon">
+                            <span class="material-symbols-outlined">lock</span>
+                        </div>
+                        <div class="security-info">
+                            <h3 class="security-title" data-i18n="changePassword">Change Password</h3>
+                            <p class="security-description" data-i18n="changePasswordDesc">
+                                Keep your account secure with a strong password
+                            </p>
+                        </div>
+                    </div>
+                    <div class="security-action">
+                        <button type="button" class="security-btn modal-trigger" data-modal="modalPassword">
+                            <span data-i18n="change">Change</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Delete Account (Danger)
+                <div class="security-card security-card-danger">
+                    <div class="security-card-content">
+                        <div class="security-icon">
+                            <span class="material-symbols-outlined">delete_forever</span>
+                        </div>
+                        <div class="security-info">
+                            <h3 class="security-title" data-i18n="deleteAccount">Delete Account</h3>
+                            <p class="security-description" data-i18n="deleteAccountDesc">
+                                Permanently delete your account and all data
+                            </p>
+                        </div>
+                    </div>
+                    <div class="security-action">
+                        <button type="button" class="security-btn security-btn-danger" data-modal="modalDelete">
+                            <span data-i18n="delete">Delete</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    </div>
+                </div> -->
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

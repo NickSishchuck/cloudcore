@@ -1,4 +1,7 @@
 
+using System.Security.Claims;
+using CloudCore.Common.Errors;
+using CloudCore.Common.Models;
 using CloudCore.Contracts.Requests;
 using CloudCore.Contracts.Responses;
 using CloudCore.Domain.Entities;
@@ -57,9 +60,32 @@ public class AuthController : ControllerBase
         if (result == null)
         {
             _logger.LogWarning($"Failed register attempt for user: {request.Username}, (Email: {request.Email})");
-            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS")); 
+            return BadRequest(ApiResponse.Error("Username or email already exists", "USER_ALREADY_EXISTS"));
         }
         _logger.LogInformation($"User {request.Username} (ID: {result.UserId}) registered successfully.");
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Email verification endpoint
+    /// </summary>
+    /// <param name="token">JWT token from email link</param>
+    /// <returns>Result of verification</returns>
+    [HttpPost("verify-email")]
+    public async Task<ActionResult> VerifyEmail([FromBody] TokenRequest token)
+    {
+        _logger.LogInformation("Email verification attempt.");
+        _logger.LogInformation($"Verification token: {token.Token}");
+        var jwtToken = await _authService.ConfirmEmailAndGenerateTokenAsync(token.Token);
+        if (jwtToken == null)
+        {
+            _logger.LogWarning("Email verification failed or token invalid.");
+            return BadRequest(ApiResponse.Error("Invalid or expired token", "INVALID_TOKEN"));
+        }
+
+        return Ok(new AuthResponse
+        {
+            Token = jwtToken
+        });
     }
 }

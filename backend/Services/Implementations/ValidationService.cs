@@ -158,7 +158,7 @@ namespace CloudCore.Services.Implementations
             return ValidationResult.Success();
         }
 
-        public async Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string itemType = null)
+        public async Task<ValidationResult> ValidateItemExistsAsync(int itemId, int userId, string? itemType = null)
         {
             _logger.LogInformation("Validating existence of item {ItemId} of type {ItemType} for user {UserId}", itemId, itemType ?? "any", userId);
 
@@ -256,7 +256,7 @@ namespace CloudCore.Services.Implementations
 
         public ValidationResult ValidateQuery(string query)
         {
-            if(string.IsNullOrEmpty(query))
+            if (string.IsNullOrEmpty(query))
             {
                 _logger.LogWarning("Validation failed: query is null or empty.");
                 return ValidationResult.Failure("Querry cannot be null or empty", ErrorCodes.NULL_OR_EMPTY);

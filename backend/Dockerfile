@@ -2,12 +2,17 @@
 
 WORKDIR /app
 
+
 COPY *.csproj ./
 COPY CloudCore.Tests/*.csproj ./CloudCore.Tests/
+
+
 RUN dotnet restore
 
 COPY . ./
-RUN dotnet build -c Release --no-restore
+
+
+RUN dotnet build -c Release
 
 # Test stage (optional)
 FROM build AS test
@@ -21,6 +26,8 @@ RUN if [ "$RUN_TESTS" = "true" ]; then \
 
 FROM build AS publish
 RUN dotnet publish -c Release -o out --no-build
+
+COPY Common/EmailTemplates ./out/EmailTemplates
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 

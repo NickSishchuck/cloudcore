@@ -9,6 +9,8 @@
         public const string INVALID_CHARECTER = "INVALID_CHARACTER";
         public const string RESERVED_NAME = "RESERVED_NAME";
         public const string INVALID_NAME_FORMAT = "INVALID_NAME_FORMAT";
+        public const string USERNAME_EXISTS = "USERNAME_EXISTS";
+        public const string EMAIL_EXISTS = "EMAIL_EXISTS";
 
         public const string ITEM_NOT_FOUND = "ITEM_NOT_FOUND";
         public const string FILE_NOT_FOUND = "FILE_NOT_FOUND";

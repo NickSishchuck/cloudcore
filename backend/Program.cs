@@ -1,16 +1,17 @@
-using Microsoft.EntityFrameworkCore;
-using CloudCore.Services.Interfaces;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
+using System.Security.Claims;
 using System.Text;
+using CloudCore.Data.Context;
 using CloudCore.Middleware;
 using CloudCore.Services.Implementations;
-using CloudCore.Data.Context;
+using CloudCore.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
-using Microsoft.OpenApi.Models;
-using System.Reflection;
-using Microsoft.AspNetCore.Http.Features;
 
 namespace CloudCore
 {
@@ -64,7 +65,6 @@ namespace CloudCore
                 var connectionString = $"Server={host};Port={port};Database={database};Uid={user};Pwd={password};";
 
 
-
                 // Create web
                 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,13 +98,35 @@ namespace CloudCore
                 builder.Services.AddScoped<ITeamspaceService, TeamspaceService>();
                 builder.Services.AddScoped<ITeamspaceApplication, TeamspaceApplication>();
                 builder.Services.AddScoped<IStorageTrackingService, StorageTrackingService>();
+                builder.Services.AddScoped<IEmailSendService, EmailSendService>();
+                builder.Services.AddScoped<ITokenService, TokenService>();
+                builder.Services.AddScoped<IUserService, UserService>();
                 builder.Services.AddScoped<UserAuthorizationFilter>();
 
+                var senderEmail = Environment.GetEnvironmentVariable("Email_SenderEmail");
+                var senderName = Environment.GetEnvironmentVariable("Email_Sender");
+                var emailHost = Environment.GetEnvironmentVariable("Email_Host");
+                var emailPort = int.Parse(Environment.GetEnvironmentVariable("Email_Port"));
 
+                Console.WriteLine($"Email Config - Sender Email: {senderEmail}, Sender Name: {senderName} Host: {emailHost}, Port: {emailPort}");
 
+                builder.Services
+                    .AddFluentEmail(senderEmail, senderName)
+                    .AddSmtpSender(emailHost, emailPort);
 
                 // Add JWT Authentication
-                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+
+                var jwtSettings = new JwtSettings
+                {
+                    Key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "your-super-secret-key-that-is-at-least-32-characters-long",
+                    Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "CloudCore",
+                    Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "CloudCore",
+                    EmailTokenExpirationMinutes = int.Parse(Environment.GetEnvironmentVariable("EMAIL_TOKEN_EXPIRATION_MINUTES") ?? "10"),
+                    JwtTokenExpirationDays = int.Parse(Environment.GetEnvironmentVariable("JWT_TOKEN_EXPIRATION_DAYS") ?? "7")
+                };
+
+                builder.Services.AddSingleton(jwtSettings);
+
                 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
                     {
@@ -114,14 +136,12 @@ namespace CloudCore
                             ValidateAudience = true,
                             ValidateLifetime = true,
                             ValidateIssuerSigningKey = true,
-                            ValidIssuer = "CloudCore",
-                            ValidAudience = "CloudCore",
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                            ValidIssuer = jwtSettings.Issuer,
+                            ValidAudience = jwtSettings.Issuer,
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
                         };
                     });
 
-                // Add authorization
-                builder.Services.AddAuthorization();
 
                 // Add controllers and endpoints
                 builder.Services.AddControllers(options =>
