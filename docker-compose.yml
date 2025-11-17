@@ -3,9 +3,6 @@ services:
     build: ./frontend
     ports:
       - "3000:80"
-      - "3443:443"
-    volumes:
-      - ./frontend/certs:/etc/nginx/ssl:ro
     depends_on:
       - backend
     networks:
@@ -79,4 +76,3 @@ volumes:
 networks:
   app-network:
     driver: bridge
-

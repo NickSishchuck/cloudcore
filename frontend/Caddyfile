@@ -1,0 +1,35 @@
+{
+    # Global options
+    auto_https off
+    admin off
+}
+
+:80 {
+    # Serve your frontend files
+    root * /usr/share/caddy
+    
+    # Reverse proxy for backend API
+    handle /user/* {
+        reverse_proxy backend:5000
+    }
+    
+    # File server for static assets
+    handle /assets/* {
+        file_server
+    }
+    
+    # SPA routing - serve index.html for all other routes
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+    
+    # Enable gzip compression
+    encode gzip
+    
+    # Logging
+    log {
+        output stdout
+        format console
+    }
+}

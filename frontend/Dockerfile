@@ -1,11 +1,14 @@
-﻿FROM nginx:alpine
+﻿FROM caddy:alpine
 
-COPY . /usr/share/nginx/html/
+# Copy your frontend files
+COPY . /usr/share/caddy/
 
-RUN mkdir -p /usr/share/nginx/html/assets
+# Create assets directory
+RUN mkdir -p /usr/share/caddy/assets
 
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy Caddy configuration
+COPY Caddyfile /etc/caddy/Caddyfile
 
-EXPOSE 80 443
+EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
